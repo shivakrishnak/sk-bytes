@@ -25,8 +25,20 @@ COMPLEX) based on its level. Word targets:
 3. Each INTERMEDIATE / COMPLEX keyword states its `Prereq` and
    `Next` titles in the Learning Ladder section.
 
+## Topics
+
+| Topic                  | Code | Archetype      | Status                    | Folder                    |
+| ---------------------- | ---- | -------------- | ------------------------- | ------------------------- |
+| [Java Language](java/) | JLG  | LANGUAGE       | scaffolded (62 kw, stubs) | `learn/java/`             |
+| Java JVM               | JVM  | INFRASTRUCTURE | planned                   | `learn/java-jvm/`         |
+| Java Concurrency       | JCC  | CS-CONCEPT     | planned                   | `learn/java-concurrency/` |
+
 ## Spec
 
 See [LEARN_PROMPT v1.0](/learn/_config/LEARN_PROMPT/) for the
 master generation specification, including the three templates
 and the Code Example Taxonomy.
+
+Any topic / sub-topic / keyword list is generated through
+[LEARN_KEYWORD_GENERATOR v1.0](/learn/_config/LEARN_KEYWORD_GENERATOR/).
+No ad-hoc lists.

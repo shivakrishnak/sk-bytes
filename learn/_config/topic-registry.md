@@ -33,10 +33,11 @@
 
 ## Active Topics
 
-| Topic            | Folder            | Dictionary Sources | Status  | Description                                                                   |
-| ---------------- | ----------------- | ------------------ | ------- | ----------------------------------------------------------------------------- |
-| Java             | java/             | JVM, JLG           | planned | Core Java language, OOP, collections, modern Java features, JVM internals, GC |
-| Java Concurrency | java-concurrency/ | JCC                | planned | Threading, synchronization, virtual threads, concurrent collections           |
+| Topic            | Folder            | Code | Archetype      | ID Range         | Count | Dictionary Sources | Status     | Description                                                                      |
+| ---------------- | ----------------- | ---- | -------------- | ---------------- | ----- | ------------------ | ---------- | -------------------------------------------------------------------------------- |
+| Java Language    | java/             | JLG  | LANGUAGE       | JLG-001..JLG-062 | 62    | JLG                | scaffolded | The Java language proper: syntax, types, generics, collections, modern features. |
+| Java JVM         | java-jvm/         | JVM  | INFRASTRUCTURE | -                | 0     | JVM                | planned    | Runtime: classloader, bytecode, JIT, GC, JFR, diagnostics, tuning.               |
+| Java Concurrency | java-concurrency/ | JCC  | CS-CONCEPT     | -                | 0     | JCC                | planned    | Threading, synchronization, virtual threads, Loom, concurrent collections.       |
 
 ---
 
@@ -46,7 +47,20 @@ Each topic is split into sub-topic files. Each file MUST contain at
 least 5 related keywords (no per-keyword files). Files are grouped by
 relatedness and must be self-sufficient.
 
-### Java (java/)
+### Java Language (java/)
+
+| File                                                                                  | Keywords | Levels         | Status |
+| ------------------------------------------------------------------------------------- | -------- | -------------- | ------ |
+| [Java - Language Core](../java/Java%20-%20Language%20Core.md)                         | 15       | L0 + L1        | stub   |
+| [Java - Generics and Collections](../java/Java%20-%20Generics%20and%20Collections.md) | 10       | L2             | stub   |
+| [Java - Exceptions and IO](../java/Java%20-%20Exceptions%20and%20IO.md)               | 7        | L2 + L3        | stub   |
+| [Java - Modern Features](../java/Java%20-%20Modern%20Features.md)                     | 14       | L3 + L4        | stub   |
+| [Java - Production Practice](../java/Java%20-%20Production%20Practice.md)             | 8        | L4             | stub   |
+| [Java - Architecture and META](../java/Java%20-%20Architecture%20and%20META.md)       | 8        | L5 + L6 + META | stub   |
+
+### Java JVM (java-jvm/)
+
+_Planned. Will hold classloader, bytecode, JIT, GC, JFR diagnostics, and runtime tuning._
 
 ### Java Concurrency (java-concurrency/)
 
