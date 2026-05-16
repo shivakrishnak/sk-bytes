@@ -4331,7 +4331,7 @@ Pass `--debug` as a command-line argument or set `debug=true` in `application.pr
 
 **FailureAnalyzer - Spring Boot's error translator:**
 
-Before the raw stack trace reaches the console, Spring Boot passes the exception through a chain of `FailureAnalyzer` implementations. Each analyzer inspects the exception type, and if it recognizes the pattern, it produces a human-readable description with an "ACTION" section telling you exactly what to fix. For example, `PortInUseFailureAnalyzer` converts a `BindException` on port 8080 into "Web server failed to start. Port 8080 was already in use. ACTION: Identify and stop the process listening on port 8080 or configure this application to listen on another port." You see these formatted blocks *above* the stack trace. If no analyzer matches, you get the raw trace - which is your signal that this is an unusual failure requiring manual root-cause reading.
+Before the raw stack trace reaches the console, Spring Boot passes the exception through a chain of `FailureAnalyzer` implementations. Each analyzer inspects the exception type, and if it recognizes the pattern, it produces a human-readable description with an "ACTION" section telling you exactly what to fix. For example, `PortInUseFailureAnalyzer` converts a `BindException` on port 8080 into "Web server failed to start. Port 8080 was already in use. ACTION: Identify and stop the process listening on port 8080 or configure this application to listen on another port." You see these formatted blocks _above_ the stack trace. If no analyzer matches, you get the raw trace - which is your signal that this is an unusual failure requiring manual root-cause reading.
 
 ### 🛠️ Worked Example
 
