@@ -33,14 +33,14 @@
 
 ## Active Topics
 
-| Topic            | Folder            | Code | Archetype      | ID Range         | Count | Dictionary Sources | Status     | Description                                                                      |
-| ---------------- | ----------------- | ---- | -------------- | ---------------- | ----- | ------------------ | ---------- | -------------------------------------------------------------------------------- |
-| Java Language    | java/             | JLG  | LANGUAGE       | JLG-001..JLG-062 | 62    | JLG                | scaffolded | The Java language proper: syntax, types, generics, collections, modern features. |
-| Java JVM         | java-jvm/         | JVM  | INFRASTRUCTURE | JVM-001..JVM-132 | 132   | JVM                | scaffolded | Runtime: classloader, bytecode, JIT, GC, JFR, diagnostics, tuning.               |
-| Java Concurrency | java-concurrency/ | JCC  | CS-CONCEPT     | JCC-001..JCC-092 | 92    | JCC                | scaffolded | Threading, synchronization, virtual threads, Loom, concurrent collections.       |
-| Spring Ecosystem | spring/           | SPR  | FRAMEWORK      | SPR-001..SPR-115 | 115   | SPR                | scaffolded | Spring Framework, Boot, Data, Security, Cloud, WebFlux, Batch.                   |
+| Topic            | Folder            | Code | Archetype      | ID Range         | Count | Dictionary Sources | Status     | Description                                                                       |
+| ---------------- | ----------------- | ---- | -------------- | ---------------- | ----- | ------------------ | ---------- | --------------------------------------------------------------------------------- |
+| Java Language    | java/             | JLG  | LANGUAGE       | JLG-001..JLG-062 | 62    | JLG                | scaffolded | The Java language proper: syntax, types, generics, collections, modern features.  |
+| Java JVM         | java-jvm/         | JVM  | INFRASTRUCTURE | JVM-001..JVM-132 | 132   | JVM                | scaffolded | Runtime: classloader, bytecode, JIT, GC, JFR, diagnostics, tuning.                |
+| Java Concurrency | java-concurrency/ | JCC  | CS-CONCEPT     | JCC-001..JCC-092 | 92    | JCC                | scaffolded | Threading, synchronization, virtual threads, Loom, concurrent collections.        |
+| Spring Ecosystem | spring/           | SPR  | FRAMEWORK      | SPR-001..SPR-115 | 115   | SPR                | scaffolded | Spring Framework, Boot, Data, Security, Cloud, WebFlux, Batch.                    |
 | SQL              | sql/              | SQL  | LANGUAGE       | SQL-001..SQL-142 | 142   | new                | scaffolded | SQL language: DML, DDL, joins, subqueries, window functions, optimization, admin. |
-| Hibernate ORM    | hibernate/        | HIB  | FRAMEWORK      | HIB-001..HIB-115 | 115   | new                | scaffolded | Hibernate ORM and JPA: entity mapping, caching, performance, provider internals. |
+| Hibernate ORM    | hibernate/        | HIB  | FRAMEWORK      | HIB-001..HIB-115 | 115   | new                | scaffolded | Hibernate ORM and JPA: entity mapping, caching, performance, provider internals.  |
 
 ---
 
@@ -93,23 +93,23 @@ relatedness and must be self-sufficient.
 
 ### SQL (sql/)
 
-| File                                                                                            | Keywords | Levels         | Status |
-| ----------------------------------------------------------------------------------------------- | -------- | -------------- | ------ |
-| [SQL - Foundations](../sql/SQL%20-%20Foundations.md)                                             | 25       | L0 + L1        | stub   |
-| [SQL - Working Queries](../sql/SQL%20-%20Working%20Queries.md)                                  | 27       | L2             | stub   |
-| [SQL - Design and Optimization](../sql/SQL%20-%20Design%20and%20Optimization.md)                | 32       | L3             | stub   |
-| [SQL - Production and Internals](../sql/SQL%20-%20Production%20and%20Internals.md)              | 28       | L4             | stub   |
-| [SQL - Architecture and META](../sql/SQL%20-%20Architecture%20and%20META.md)                    | 30       | L5 + L6 + META | stub   |
+| File                                                                               | Keywords | Levels         | Status |
+| ---------------------------------------------------------------------------------- | -------- | -------------- | ------ |
+| [SQL - Foundations](../sql/SQL%20-%20Foundations.md)                               | 25       | L0 + L1        | stub   |
+| [SQL - Working Queries](../sql/SQL%20-%20Working%20Queries.md)                     | 27       | L2             | stub   |
+| [SQL - Design and Optimization](../sql/SQL%20-%20Design%20and%20Optimization.md)   | 32       | L3             | stub   |
+| [SQL - Production and Internals](../sql/SQL%20-%20Production%20and%20Internals.md) | 28       | L4             | stub   |
+| [SQL - Architecture and META](../sql/SQL%20-%20Architecture%20and%20META.md)       | 30       | L5 + L6 + META | stub   |
 
 ### Hibernate ORM (hibernate/)
 
-| File                                                                                                              | Keywords | Levels         | Status |
-| ----------------------------------------------------------------------------------------------------------------- | -------- | -------------- | ------ |
-| [Hibernate - Foundations](../hibernate/Hibernate%20-%20Foundations.md)                                             | 22       | L0 + L1        | stub   |
-| [Hibernate - Mappings and Queries](../hibernate/Hibernate%20-%20Mappings%20and%20Queries.md)                      | 21       | L2             | stub   |
-| [Hibernate - Performance and Internals](../hibernate/Hibernate%20-%20Performance%20and%20Internals.md)            | 28       | L3             | stub   |
-| [Hibernate - Production and Diagnostics](../hibernate/Hibernate%20-%20Production%20and%20Diagnostics.md)          | 22       | L4             | stub   |
-| [Hibernate - Architecture and META](../hibernate/Hibernate%20-%20Architecture%20and%20META.md)                    | 22       | L5 + L6 + META | stub   |
+| File                                                                                                     | Keywords | Levels         | Status |
+| -------------------------------------------------------------------------------------------------------- | -------- | -------------- | ------ |
+| [Hibernate - Foundations](../hibernate/Hibernate%20-%20Foundations.md)                                   | 22       | L0 + L1        | stub   |
+| [Hibernate - Mappings and Queries](../hibernate/Hibernate%20-%20Mappings%20and%20Queries.md)             | 21       | L2             | stub   |
+| [Hibernate - Performance and Internals](../hibernate/Hibernate%20-%20Performance%20and%20Internals.md)   | 28       | L3             | stub   |
+| [Hibernate - Production and Diagnostics](../hibernate/Hibernate%20-%20Production%20and%20Diagnostics.md) | 22       | L4             | stub   |
+| [Hibernate - Architecture and META](../hibernate/Hibernate%20-%20Architecture%20and%20META.md)           | 22       | L5 + L6 + META | stub   |
 
 ---
 

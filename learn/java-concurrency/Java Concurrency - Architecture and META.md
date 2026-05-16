@@ -69,6 +69,7 @@ Early microservice architectures (2012-2015) treated each service as independent
 ### 🔩 First Principles
 
 **CORE INVARIANTS:**
+
 1. Thread pool size must be derived from Little's Law (threads = throughput x latency), not guessed.
 2. Every pool must be monitored with consistent metric names (active, queued, rejected, completed).
 3. Queue strategy must match the service's SLA: bounded for latency-sensitive, bounded with backpressure for throughput-oriented.
@@ -190,12 +191,14 @@ flowchart LR
 **Symptom:** Teams bypass standard (copy-paste custom pools). Adoption drops below 50%.
 **Root cause:** Standard does not accommodate legitimate variations. No escape hatch. Too prescriptive.
 **Diagnostic:**
+
 ```
 # Grep codebase for raw ThreadPoolExecutor usage
 # vs FleetPool usage. Measure adoption %.
 grep -rn "ThreadPoolExecutor" --include="*.java" | wc -l
 grep -rn "FleetPool" --include="*.java" | wc -l
 ```
+
 **Fix:**
 
 **BAD:**
@@ -222,10 +225,12 @@ FleetPool.custom("special-case")
 **Symptom:** Standard pools sized too small for actual workload. Rejections across fleet.
 **Root cause:** Little's Law inputs (throughput, latency) estimated incorrectly. Didn't account for P99.
 **Diagnostic:**
+
 ```
 # Fleet dashboard: rejection rate by service
 # Correlate with actual latency vs estimated
 ```
+
 **Fix:** Use OBSERVED P99 latency (not P50) in Little's Law. Add 50% headroom. Make sizing dynamic (reconfigurable without deploy).
 
 ### 🔬 Production Reality
@@ -236,42 +241,46 @@ Cloud provider's API gateway adds 2s latency fleet-wide. Before standardization:
 
 ### ⚖️ Trade-offs & Alternatives
 
-| Approach | Consistency | Autonomy | Overhead |
-| -------- | ----------- | -------- | -------- |
-| Fleet standard (library) | High | Low | Medium (library maintenance) |
-| Guidelines only (wiki) | Low | High | Low |
-| Service mesh (Envoy) | High (L7 only) | Medium | High (infra) |
-| Platform runtime (Dapr) | High | Low | High |
-| No standard | None | Full | Zero |
+| Approach                 | Consistency    | Autonomy | Overhead                     |
+| ------------------------ | -------------- | -------- | ---------------------------- |
+| Fleet standard (library) | High           | Low      | Medium (library maintenance) |
+| Guidelines only (wiki)   | Low            | High     | Low                          |
+| Service mesh (Envoy)     | High (L7 only) | Medium   | High (infra)                 |
+| Platform runtime (Dapr)  | High           | Low      | High                         |
+| No standard              | None           | Full     | Zero                         |
 
 ### ⚡ Decision Snap
 
 **IMPLEMENT fleet standard WHEN:**
+
 - 10+ microservices with shared downstream dependencies.
 - Recurring incidents from pool misconfiguration.
 - Platform engineering team exists to maintain.
 
 **USE guidelines-only WHEN:**
+
 - Small team (< 5 services). Low blast radius.
 - High-trust environment where teams self-govern.
 
 **ADD dynamic sizing WHEN:**
+
 - Traffic patterns vary significantly (seasonal, burst).
 - Manual sizing cannot keep up with change rate.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "One size fits all services" | CPU-bound, I/O-bound, and mixed need different profiles. Provide 3-4 templates, not one. |
-| 2 | "Library = fire and forget" | Must evolve with fleet (JDK versions, VTs, new patterns). Needs dedicated ownership. |
-| 3 | "Monitoring is optional" | Monitoring IS the standard. Without metrics: cannot prove compliance or detect drift. |
-| 4 | "Teams will adopt voluntarily" | Need incentive: auto-alerting, faster incident resolution, reduced on-call burden. |
-| 5 | "Virtual threads eliminate pool standards" | VTs eliminate SIZING concerns but introduce new standards: Semaphore limits, pinning detection, ScopedValue usage. |
+| #   | Misconception                              | Reality                                                                                                            |
+| --- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| 1   | "One size fits all services"               | CPU-bound, I/O-bound, and mixed need different profiles. Provide 3-4 templates, not one.                           |
+| 2   | "Library = fire and forget"                | Must evolve with fleet (JDK versions, VTs, new patterns). Needs dedicated ownership.                               |
+| 3   | "Monitoring is optional"                   | Monitoring IS the standard. Without metrics: cannot prove compliance or detect drift.                              |
+| 4   | "Teams will adopt voluntarily"             | Need incentive: auto-alerting, faster incident resolution, reduced on-call burden.                                 |
+| 5   | "Virtual threads eliminate pool standards" | VTs eliminate SIZING concerns but introduce new standards: Semaphore limits, pinning detection, ScopedValue usage. |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - ThreadPoolExecutor Configuration - individual pool knowledge
 - Platform Thread Exhaustion Failure - what standardization prevents
 - Monitoring Thread Pools in Production - observability foundation
@@ -279,6 +288,7 @@ Cloud provider's API gateway adds 2s latency fleet-wide. Before standardization:
 **THIS:** Fleet Thread Pool Standardization
 
 **Next steps:**
+
 - Concurrency Observability Platform Design - monitoring architecture
 - Back-Pressure Architecture Patterns - fleet-level resilience
 - Java 19 to 25 Virtual Threads Migration Strategy - fleet migration
@@ -289,11 +299,13 @@ Cloud provider's API gateway adds 2s latency fleet-wide. Before standardization:
 The most effective fleet pool standard is NOT the one with the best technical defaults - it is the one with the best developer experience. If the library requires 3 lines to use (vs 15 for raw TPE) and auto-generates dashboards: adoption reaches 95%+. If it requires 20 lines of configuration: teams bypass it regardless of technical superiority.
 
 **Further Reading:**
+
 - Netflix, "Hystrix Thread Pool Isolation" (wiki, archived)
 - Kelsey Hightower, "Platform Engineering" (KubeCon talks)
 - Google SRE Book, Chapter 21: "Handling Overload"
 
 **Revision Card:**
+
 1. Fleet standard = Little's Law sizing + consistent metrics + bounded queues + circuit breakers. Applied uniformly.
 2. Gain: fleet-wide visibility, consistent failure modes. Cost: autonomy, maintenance overhead.
 3. Success factor: developer experience > technical perfection. Easy adoption > correct defaults.
@@ -317,6 +329,7 @@ Back-pressure concept originates from fluid dynamics (pressure opposing flow). A
 ### 🔩 First Principles
 
 **CORE INVARIANTS:**
+
 1. If producer rate > consumer rate sustained: buffers overflow (OOM or data loss). Always.
 2. Back-pressure = mechanism for consumer to signal "reduce rate" to producer.
 3. Back-pressure MUST propagate end-to-end. One missing link in the chain = overflow at that point.
@@ -427,10 +440,12 @@ stateDiagram-v2
 **Symptom:** Service B OOMs despite Service A having BP. Service C (downstream of B) is slow.
 **Root cause:** A back-pressures to B (bounded queue). But B does NOT back-pressure to A: B buffers unboundedly between its consumer and C.
 **Diagnostic:**
+
 ```
 # Monitor queue depth at EACH service boundary
 # Find the one growing unbounded
 ```
+
 **Fix:**
 
 **BAD:**
@@ -454,10 +469,12 @@ BlockingQueue<Event> outbound = new ABQ<>(500);
 **Symptom:** One slow consumer blocks ALL producers, even those targeting fast consumers.
 **Root cause:** Single shared queue for multiple consumer types. Slow consumer causes queue-full for everyone.
 **Diagnostic:**
+
 ```
 # Multiple producers blocked. Only one consumer slow.
 # Check: is there a shared queue?
 ```
+
 **Fix:** Per-consumer (or per-partition) queues. Slow consumer only back-pressures its own producers.
 
 ### 🔬 Production Reality
@@ -468,46 +485,51 @@ Kafka consumer reads at 100K msg/s. Downstream DB writes at 20K/s. Consumer does
 
 ### ⚖️ Trade-offs & Alternatives
 
-| Pattern | Mechanism | Complexity | Data Loss |
-| ------- | --------- | ---------- | --------- |
-| Bounded queue (block) | Physical block | Low | None |
-| Reactive demand | request(N) | Medium | None |
-| Rate limiting | Token bucket | Low | Rejected excess |
-| Load shedding | Drop policy | Low | YES (intentional) |
-| TCP flow control | Receive window | Built-in | None |
-| HTTP 429 | Response code | Low | Client retries |
+| Pattern               | Mechanism      | Complexity | Data Loss         |
+| --------------------- | -------------- | ---------- | ----------------- |
+| Bounded queue (block) | Physical block | Low        | None              |
+| Reactive demand       | request(N)     | Medium     | None              |
+| Rate limiting         | Token bucket   | Low        | Rejected excess   |
+| Load shedding         | Drop policy    | Low        | YES (intentional) |
+| TCP flow control      | Receive window | Built-in   | None              |
+| HTTP 429              | Response code  | Low        | Client retries    |
 
 ### ⚡ Decision Snap
 
 **USE bounded queue WHEN:**
+
 - Single-process producer-consumer. Simplest.
 - Blocking producer acceptable.
 
 **USE reactive demand WHEN:**
+
 - Complex pipelines with multiple stages.
 - Need precise demand propagation.
 
 **USE rate limiting WHEN:**
+
 - At API gateway / system entry point.
 - Need admission control independent of consumer.
 
 **USE load shedding WHEN:**
+
 - All other BP insufficient. Last resort.
 - Prefer dropping old/low-priority over OOM.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "Bounded queue = back-pressure" | Only if producer BLOCKS. If producer discards on full: that is load shedding, not BP. |
-| 2 | "Kafka has built-in back-pressure" | Only consumer-driven polling is implicit BP. If consumer processes faster than downstream: internal overflow possible. |
-| 3 | "One BP mechanism per system" | Need BP at EVERY boundary. One missing link = overflow point. |
-| 4 | "BP reduces throughput" | BP caps throughput at CONSUMER capacity. Without BP: same effective throughput + OOM crash. |
-| 5 | "Virtual threads eliminate BP need" | VTs eliminate thread exhaustion. But resource exhaustion (DB, memory) still requires BP. |
+| #   | Misconception                       | Reality                                                                                                                |
+| --- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 1   | "Bounded queue = back-pressure"     | Only if producer BLOCKS. If producer discards on full: that is load shedding, not BP.                                  |
+| 2   | "Kafka has built-in back-pressure"  | Only consumer-driven polling is implicit BP. If consumer processes faster than downstream: internal overflow possible. |
+| 3   | "One BP mechanism per system"       | Need BP at EVERY boundary. One missing link = overflow point.                                                          |
+| 4   | "BP reduces throughput"             | BP caps throughput at CONSUMER capacity. Without BP: same effective throughput + OOM crash.                            |
+| 5   | "Virtual threads eliminate BP need" | VTs eliminate thread exhaustion. But resource exhaustion (DB, memory) still requires BP.                               |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - Platform Thread Exhaustion Failure - what BP prevents
 - BlockingQueue Implementations - simplest BP mechanism
 - Reactive Streams vs Virtual Threads Decision - where reactive BP matters
@@ -515,6 +537,7 @@ Kafka consumer reads at 100K msg/s. Downstream DB writes at 20K/s. Consumer does
 **THIS:** Back-Pressure Architecture Patterns
 
 **Next steps:**
+
 - Transferable Pattern - Back-Pressure Across Systems - cross-domain
 - Fleet Thread Pool Standardization - fleet-level BP
 - Concurrency Observability Platform Design - monitoring BP
@@ -525,11 +548,13 @@ Kafka consumer reads at 100K msg/s. Downstream DB writes at 20K/s. Consumer does
 TCP has implemented back-pressure since 1981 (RFC 793 receive window). Every HTTP request you make uses back-pressure transparently. The "modern" reactive back-pressure movement (2013) reinvented what TCP had done for decades - but at the APPLICATION layer. The insight: what works at the transport layer (flow control based on receiver capacity) works identically at the application layer.
 
 **Further Reading:**
+
 - Reactive Streams Specification 1.0.4 (reactive-streams.org)
 - Reactive Manifesto (2014, reactivemanifesto.org)
 - Jay Kreps, "Kafka: a Distributed Messaging System" (original design)
 
 **Revision Card:**
+
 1. BP = consumer signals producer to slow down. Without it: OOM or data loss. Always.
 2. Must propagate end-to-end. One missing link = overflow at that point.
 3. Patterns (simplest to complex): bounded queue > rate limit > reactive demand > load shedding.
@@ -553,6 +578,7 @@ Java concurrency evolution: thread-per-request (1997-2010), async/NIO (2002-2015
 ### 🔩 First Principles
 
 **CORE INVARIANTS:**
+
 1. All three approaches achieve comparable throughput for I/O-bound workloads. Performance is NOT the primary differentiator.
 2. Code complexity, debuggability, and team expertise ARE the primary differentiators for request-response.
 3. Back-pressure architecture is the primary differentiator for streaming/event workloads.
@@ -626,12 +652,14 @@ Implement strategy as architectural decision record (ADR). Provide migration pla
 ### ⚙️ How It Works
 
 **Phase 1 - Classify workloads:**
+
 - Request-response (HTTP, gRPC, DB queries)
 - Streaming (Kafka, WebSocket, SSE)
 - CPU-bound (analytics, ML inference)
 - Hybrid (multiple patterns in one service)
 
 **Phase 2 - Assess constraints:**
+
 - JDK version (21+ required for VTs)
 - Existing codebase (reactive migration cost)
 - Team expertise (reactive learning curve)
@@ -672,11 +700,13 @@ flowchart TD
 **Symptom:** Reactive forced on CRUD services. Team velocity drops 50%. Debug time 3x.
 **Root cause:** "We chose reactive" applied uniformly without workload analysis.
 **Diagnostic:**
+
 ```
 # Measure: time-to-debug, time-to-implement
 # Compare reactive vs blocking services
 # If reactive services take 3x: wrong fit
 ```
+
 **Fix:**
 
 **BAD:**
@@ -702,10 +732,12 @@ return toDto(entity);
 **Symptom:** Kafka consumer with VTs overwhelms downstream DB. OOM on internal buffer.
 **Root cause:** VTs have no built-in demand signal. Consumer pulls at max rate.
 **Diagnostic:**
+
 ```
 # Monitor: internal queue depth between consumer and writer
 # If growing unbounded: missing backpressure
 ```
+
 **Fix:** Keep reactive (or reactive-style consumption) for streaming workloads where backpressure is essential. VTs for request-response only.
 
 ### 🔬 Production Reality
@@ -716,43 +748,48 @@ A fintech with 80 services adopted hybrid strategy. Request-response services (6
 
 ### ⚖️ Trade-offs & Alternatives
 
-| Criterion | Thread Pool | Virtual Threads | Reactive |
-| --------- | ----------- | --------------- | -------- |
-| Code simplicity | High | High | Low |
-| Scalability | Limited (pool size) | High (millions) | High (event loop) |
-| Debugging | Easy | Easy | Hard |
-| Backpressure | Implicit (pool full) | Manual (Semaphore) | Built-in |
-| Learning curve | None | Low | High |
-| Ecosystem | Universal | JDK 21+ | Reactive drivers |
-| Best for | Legacy, simple | Request-response | Streaming |
+| Criterion       | Thread Pool          | Virtual Threads    | Reactive          |
+| --------------- | -------------------- | ------------------ | ----------------- |
+| Code simplicity | High                 | High               | Low               |
+| Scalability     | Limited (pool size)  | High (millions)    | High (event loop) |
+| Debugging       | Easy                 | Easy               | Hard              |
+| Backpressure    | Implicit (pool full) | Manual (Semaphore) | Built-in          |
+| Learning curve  | None                 | Low                | High              |
+| Ecosystem       | Universal            | JDK 21+            | Reactive drivers  |
+| Best for        | Legacy, simple       | Request-response   | Streaming         |
 
 ### ⚡ Decision Snap
 
 **DEFAULT to virtual threads WHEN:**
+
 - JDK 21+. Request-response. Team not reactive-expert.
 
 **DEFAULT to reactive WHEN:**
+
 - Streaming workload. Backpressure essential. Already reactive.
 
 **KEEP thread pools WHEN:**
+
 - JDK < 21. Working. No scaling issues. If it works, do not fix it.
 
 **HYBRID (recommended for most orgs):**
+
 - VTs for HTTP/RPC. Reactive for messaging/streaming. FJP for compute.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "Must choose ONE for entire org" | Different subsystems need different strategies. Hybrid is correct. |
-| 2 | "Reactive is dead" | Repositioned: streaming/events. Not for mere concurrency anymore. |
-| 3 | "VTs are always simpler" | VTs need: pinning awareness, Semaphore for BP, ThreadLocal care. Not zero-knowledge. |
-| 4 | "Performance decides" | Performance is EQUIVALENT for I/O. Decide on complexity and fit. |
-| 5 | "Migration is all-or-nothing" | Incremental: one service at a time. Coexistence is normal and healthy. |
+| #   | Misconception                    | Reality                                                                              |
+| --- | -------------------------------- | ------------------------------------------------------------------------------------ |
+| 1   | "Must choose ONE for entire org" | Different subsystems need different strategies. Hybrid is correct.                   |
+| 2   | "Reactive is dead"               | Repositioned: streaming/events. Not for mere concurrency anymore.                    |
+| 3   | "VTs are always simpler"         | VTs need: pinning awareness, Semaphore for BP, ThreadLocal care. Not zero-knowledge. |
+| 4   | "Performance decides"            | Performance is EQUIVALENT for I/O. Decide on complexity and fit.                     |
+| 5   | "Migration is all-or-nothing"    | Incremental: one service at a time. Coexistence is normal and healthy.               |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - Reactive Streams vs Virtual Threads Decision - individual decision
 - Virtual Threads Internals (Project Loom) - VT mechanics
 - Platform Thread Exhaustion Failure - pool limitations
@@ -761,6 +798,7 @@ A fintech with 80 services adopted hybrid strategy. Request-response services (6
 **THIS:** Concurrency Strategy - Reactive vs Loom vs Pool
 
 **Next steps:**
+
 - Back-Pressure Architecture Patterns - for streaming decisions
 - Java 19 to 25 Virtual Threads Migration Strategy - execution
 - Concurrency Observability Platform Design - monitoring all strategies
@@ -771,11 +809,13 @@ A fintech with 80 services adopted hybrid strategy. Request-response services (6
 The majority of "reactive" microservices in production (2024 data from Spring surveys) could be rewritten as blocking code on virtual threads with ZERO throughput loss and 50% less code. Reactive was adopted for scalability - but virtual threads provide equivalent scalability with blocking code. The remaining value of reactive is BACKPRESSURE for streaming - which is 10-20% of typical microservice workloads.
 
 **Further Reading:**
+
 - Brian Goetz, "Virtual Threads: Coming to a Server Near You" (2023)
 - Spring State of the Ecosystem Report (2024)
 - Reactive Manifesto (2014) - original motivations
 
 **Revision Card:**
+
 1. Performance equivalent for I/O. Decide on: code complexity + backpressure need + team expertise.
 2. Hybrid strategy: VTs for request-response, reactive for streaming, pools for legacy/compute.
 3. Strategy evolves: as JDK versions advance and teams grow, reassess quarterly.
@@ -799,6 +839,7 @@ In-process locking: Java monitors since JDK 1.0, ReentrantLock since JDK 5. Well
 ### 🔩 First Principles
 
 **CORE INVARIANTS:**
+
 1. In-process locks provide MUTUAL EXCLUSION within one JVM. Guaranteed by hardware (CAS, monitors).
 2. Distributed locks provide BEST-EFFORT mutual exclusion across JVMs. Cannot be guaranteed (network partitions, GC pauses, clock skew).
 3. Distributed lock failure modes are SILENT: process holding lock can be paused (GC) while lock expires, allowing another process to acquire it. Both believe they hold the lock.
@@ -921,11 +962,13 @@ sequenceDiagram
 **Symptom:** Two processes execute "exclusive" section simultaneously. Data corruption.
 **Root cause:** Lock holder GC-paused beyond TTL. Lock auto-expired. New holder acquired.
 **Diagnostic:**
+
 ```
 # GC logs: long pause > lock TTL
 # Redis: multiple clients acquired same logical lock
 # within TTL window (monitor via keyspace notifications)
 ```
+
 **Fix:**
 
 **BAD:**
@@ -953,10 +996,12 @@ db.execute("UPDATE inventory SET qty = qty - ? " +
 **Symptom:** Redis restart -> all locks lost simultaneously. Multiple instances enter critical sections.
 **Root cause:** Single Redis instance. Restart clears all keys. No persistence of lock state.
 **Diagnostic:**
+
 ```
 # Redis: KEYS lock:* returns empty after restart
 # Multiple services log "lock acquired" simultaneously
 ```
+
 **Fix:** For safety-critical: use ZooKeeper (persisted) or DB advisory locks. Redlock (multi-instance) partially mitigates but has its own issues (Kleppmann critique).
 
 ### 🔬 Production Reality
@@ -967,47 +1012,52 @@ E-commerce: Redis lock guards inventory deduction. Black Friday: GC pauses incre
 
 ### ⚖️ Trade-offs & Alternatives
 
-| Lock Type | Guarantee | Latency | Failure Mode |
-| --------- | --------- | ------- | ------------ |
-| In-process (ReentrantLock) | Absolute (single JVM) | Nanoseconds | None (hardware) |
-| Redis (single) | Best-effort | 1-5ms | Redis crash, GC expiry |
-| Redis (Redlock) | Better-effort | 5-20ms | Clock skew, Kleppmann critique |
-| ZooKeeper | Session-based | 10-50ms | Session timeout, ZK cluster failure |
-| Database (SELECT FOR UPDATE) | ACID-guaranteed | 5-50ms | DB failure, deadlock |
-| Fencing token | Safety guarantee | +1 write check | Requires storage cooperation |
+| Lock Type                    | Guarantee             | Latency        | Failure Mode                        |
+| ---------------------------- | --------------------- | -------------- | ----------------------------------- |
+| In-process (ReentrantLock)   | Absolute (single JVM) | Nanoseconds    | None (hardware)                     |
+| Redis (single)               | Best-effort           | 1-5ms          | Redis crash, GC expiry              |
+| Redis (Redlock)              | Better-effort         | 5-20ms         | Clock skew, Kleppmann critique      |
+| ZooKeeper                    | Session-based         | 10-50ms        | Session timeout, ZK cluster failure |
+| Database (SELECT FOR UPDATE) | ACID-guaranteed       | 5-50ms         | DB failure, deadlock                |
+| Fencing token                | Safety guarantee      | +1 write check | Requires storage cooperation        |
 
 ### ⚡ Decision Snap
 
 **USE in-process lock WHEN:**
+
 - Single JVM instance (or state is JVM-local).
 - Maximum performance needed (nanoseconds).
 
 **USE Redis lock WHEN:**
+
 - Efficiency optimization (deduplication, rate limiting).
 - Concurrent execution is WASTEFUL but not DANGEROUS.
 - Operations are idempotent (safe if both execute).
 
 **USE DB lock WHEN:**
+
 - Correctness-critical (money, inventory).
 - Already using DB for the protected resource.
 - Need ACID consistency (not just mutual exclusion).
 
 **ALWAYS add fencing token WHEN:**
+
 - Two processes executing simultaneously would corrupt data.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "Distributed lock = mutual exclusion" | Best-effort only. GC pauses, network partitions can violate exclusion. |
-| 2 | "Redis is reliable enough" | Single Redis: SPOF. Restart = all locks lost. Redlock: still debated (Kleppmann). |
-| 3 | "Fencing tokens are optional" | Without fencing: two holders = corruption. With: safety preserved. Always add. |
-| 4 | "ZooKeeper solves everything" | ZK provides ordering guarantees but: session timeouts still allow dual-holder. Fencing still needed. |
-| 5 | "TTL long enough prevents expiry" | Long TTL = long recovery when holder actually crashes. Short TTL = expiry during GC. No perfect TTL. |
+| #   | Misconception                         | Reality                                                                                              |
+| --- | ------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| 1   | "Distributed lock = mutual exclusion" | Best-effort only. GC pauses, network partitions can violate exclusion.                               |
+| 2   | "Redis is reliable enough"            | Single Redis: SPOF. Restart = all locks lost. Redlock: still debated (Kleppmann).                    |
+| 3   | "Fencing tokens are optional"         | Without fencing: two holders = corruption. With: safety preserved. Always add.                       |
+| 4   | "ZooKeeper solves everything"         | ZK provides ordering guarantees but: session timeouts still allow dual-holder. Fencing still needed. |
+| 5   | "TTL long enough prevents expiry"     | Long TTL = long recovery when holder actually crashes. Short TTL = expiry during GC. No perfect TTL. |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - ReentrantLock vs synchronized - in-process mechanics
 - Platform Thread Exhaustion Failure - why we scale horizontally
 - Happens-Before Relationship - memory visibility (in-process only)
@@ -1015,6 +1065,7 @@ E-commerce: Redis lock guards inventory deduction. Black Friday: GC pauses incre
 **THIS:** Distributed Locking vs In-Process Locking
 
 **Next steps:**
+
 - Back-Pressure Architecture Patterns - related fleet concern
 - Concurrency Observability Platform Design - monitoring locks
 - Fleet Thread Pool Standardization - fleet coordination
@@ -1025,12 +1076,13 @@ E-commerce: Redis lock guards inventory deduction. Black Friday: GC pauses incre
 Martin Kleppmann proved (2016) that NO distributed lock algorithm based on timing assumptions (TTL, lease) can provide safety in an asynchronous system with GC pauses. The ONLY safe approach is fencing tokens verified by the storage layer. This means: the "lock" is not providing safety - the STORAGE is. The lock is merely an optimization to reduce conflicts, not a safety mechanism.
 
 **Further Reading:**
+
 - Martin Kleppmann, "How to do distributed locking" (2016, blog post)
 - Salvatore Sanfilippo, "Is Redlock safe?" (2016, response)
 - Mike Burrows, "The Chubby Lock Service" (Google, 2006, OSDI)
 
 **Revision Card:**
+
 1. In-process: guaranteed (hardware). Distributed: best-effort (network/GC can violate).
 2. ALWAYS use fencing tokens for safety-critical distributed coordination. Lock alone is insufficient.
 3. The lock is an OPTIMIZATION (reduces conflicts). The STORAGE provides safety (rejects stale tokens).
-
