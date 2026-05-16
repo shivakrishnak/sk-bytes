@@ -3,42 +3,77 @@ description: >-
   A learning ladder of bite-sized study units. One atomic keyword per
   file, depth-first and progression-first.
 
+# Permalinks honored from frontmatter
+permalink: pretty
+
+# Theme
 remote_theme: just-the-docs/just-the-docs
+
+# Plugins — jekyll-seo-tag and jekyll-include-cache are required by just-the-docs
 plugins:
   - jekyll-remote-theme
   - jekyll-seo-tag
+  - jekyll-include-cache
 
-# just-the-docs settings
-search_enabled: true
+# Search — disabled: 1,362 pages produce a ~25MB Lunr index
+# Re-enable once content is stable and index size is acceptable
+search_enabled: false
 search:
-  heading_level: 3
+  heading_level: 2
   previews: 3
-  preview_words_before: 4
-  preview_words_after: 4
-  tokenizer_separator: /[\s\-/]+/
+  preview_words_before: 5
+  preview_words_after: 10
+  tokenizer_separator: /[\s/]+/
   rel_url: true
-  button: false
+  button: true
+  focus_shortcut_key: "k"
 
+# Navigation
 heading_anchors: true
-color_scheme: light
+nav_sort: case_insensitive
+nav_fold: true
 
+# Links
 aux_links:
-  "Learn":
-    - "/learn/"
+  Repository: https://github.com/shivakrishnak/sk-keys
+aux_links_new_tab: true
 
-nav_external_links:
-  - title: Source on GitHub
-    url: https://github.com/shivakrishnak/sk-learn
+# Appearance
+color_scheme: light
+back_to_top: true
+back_to_top_text: "Back to top"
 
-# Build settings
-markdown: kramdown
+# ── Copy button on every code block ────────────────────────
+enable_copy_code_button: true
+
+# ── Mermaid diagrams (renders ```mermaid fenced blocks) ────
+mermaid:
+  version: "10.9.0"
+
+# ── Markdown renderer: GitHub Flavored Markdown ────────────
 kramdown:
   input: GFM
   syntax_highlighter: rouge
-  hard_wrap: false
+  syntax_highlighter_opts:
+    css_class: "highlight"
+    block:
+      line_numbers: false
 
-# Permalinks honored from frontmatter
-permalink: pretty
+# ── Resilient builds — warn on Liquid errors, don't fail ───
+liquid:
+  error_mode: warn
+  strict_filters: false
+
+# ── Compress HTML output ────────────────────────────────────
+compress_html:
+  clippings: all
+  comments: all
+  endings: all
+  blanklines: false
+
+# ── Compress CSS ────────────────────────────────────────────
+sass:
+  style: compressed
 
 # Exclude from build
 exclude:
