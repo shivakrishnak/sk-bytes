@@ -81,7 +81,7 @@ Future.get() blocks the calling thread until a result arrives. With 10 sequentia
 - "thenCombine" -> zip (merge two results)
 - "exceptionally" -> catch (handle errors)
 
-**Where this analogy breaks down:** CompletableFuture runs callbacks on ForkJoinPool.commonPool() by default. If callbacks are blocking (I/O), they can starve the common pool - use *Async variants with a dedicated executor.
+**Where this analogy breaks down:** CompletableFuture runs callbacks on ForkJoinPool.commonPool() by default. If callbacks are blocking (I/O), they can starve the common pool - use \*Async variants with a dedicated executor.
 
 ### ⚙️ How It Works
 
@@ -109,6 +109,7 @@ flowchart LR
 ```
 
 Key methods:
+
 - `thenApply(fn)` - sync transform (like map)
 - `thenCompose(fn)` - async chain (like flatMap)
 - `thenCombine(other, fn)` - merge two futures
@@ -170,45 +171,50 @@ CompletableFuture.allOf(futures.toArray(new CF[0]))
 
 **Cost:** harder to debug (stack traces are pool threads, not business context); exception handling is complex (wrapped in CompletionException); common pool starvation risk.
 
-| Aspect | Future.get() | CompletableFuture | Reactive (Mono) |
-| ------ | ------------ | ----------------- | --------------- |
-| Blocking | Yes | No (callbacks) | No |
-| Composition | None | Rich (then*) | Rich (map/flat) |
-| Backpressure | N/A | None built-in | Full |
-| Debugging | Simple stacks | Complex | Very complex |
+| Aspect       | Future.get()  | CompletableFuture | Reactive (Mono) |
+| ------------ | ------------- | ----------------- | --------------- |
+| Blocking     | Yes           | No (callbacks)    | No              |
+| Composition  | None          | Rich (then\*)     | Rich (map/flat) |
+| Backpressure | N/A           | None built-in     | Full            |
+| Debugging    | Simple stacks | Complex           | Very complex    |
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Chaining async operations (A then B then C).
 - Fan-out/fan-in (call 5 services, merge results).
 - Need non-blocking composition on JDK 8+.
 
 **AVOID WHEN:**
+
 - Simple single async task (Future is simpler).
 - Need backpressure (use Reactive Streams or virtual threads).
 
 **PREFER Virtual Threads WHEN:**
+
 - JDK 21+ with I/O-bound work (simpler imperative style).
 - Team finds callback chains hard to read/debug.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "thenApply is async" | thenApply runs on the completing thread (sync). Use thenApplyAsync for dedicated pool thread. |
-| 2 | "Common pool is fine for I/O" | ForkJoinPool.commonPool has CPU-count threads. I/O callbacks that block can starve it. Always pass ioPool for I/O. |
-| 3 | "Exceptions propagate normally" | Exceptions wrap in CompletionException. Use handle() or exceptionally() to unwrap. Unchecked exceptions in callbacks are swallowed if not observed. |
+| #   | Misconception                   | Reality                                                                                                                                             |
+| --- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | "thenApply is async"            | thenApply runs on the completing thread (sync). Use thenApplyAsync for dedicated pool thread.                                                       |
+| 2   | "Common pool is fine for I/O"   | ForkJoinPool.commonPool has CPU-count threads. I/O callbacks that block can starve it. Always pass ioPool for I/O.                                  |
+| 3   | "Exceptions propagate normally" | Exceptions wrap in CompletionException. Use handle() or exceptionally() to unwrap. Unchecked exceptions in callbacks are swallowed if not observed. |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - Future and Callable - the blocking version this replaces
 - Executor Framework - pools that execute the stages
 
 **THIS:** CompletableFuture Composition
 
 **Next steps:**
+
 - ForkJoinPool and Work-Stealing - the default pool behind CompletableFuture
 - Concurrent Chat Phase 3 - apply CompletableFuture to real application
 
@@ -270,6 +276,7 @@ flowchart LR
 ```
 
 Fork/Join pattern:
+
 1. Task splits into subtasks (fork)
 2. Subtasks pushed to local deque
 3. Worker processes subtasks (pop from top)
@@ -327,46 +334,51 @@ long sum = list.parallelStream()
 
 **Cost:** overhead for non-recursive tasks; commonPool shared across all parallel streams (starvation risk); join() can block.
 
-| Aspect | ForkJoinPool | ThreadPoolExecutor |
-| ------ | ------------ | ------------------ |
-| Best for | Recursive/divide-and-conquer | Independent tasks |
-| Queue | Per-thread deque | Shared single queue |
-| Load balance | Work-stealing (auto) | None (FIFO only) |
-| Parallel Streams | Default pool | Not used |
+| Aspect           | ForkJoinPool                 | ThreadPoolExecutor  |
+| ---------------- | ---------------------------- | ------------------- |
+| Best for         | Recursive/divide-and-conquer | Independent tasks   |
+| Queue            | Per-thread deque             | Shared single queue |
+| Load balance     | Work-stealing (auto)         | None (FIFO only)    |
+| Parallel Streams | Default pool                 | Not used            |
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Divide-and-conquer algorithms (sort, search, tree traversal).
 - CPU-bound parallel computation.
 - Parallel streams (uses commonPool automatically).
 
 **AVOID WHEN:**
+
 - I/O-bound tasks (blocking tasks starve the pool).
 - Independent tasks with no recursive structure (use ThreadPoolExecutor).
 
 **PREFER ThreadPoolExecutor WHEN:**
+
 - Tasks are independent (no fork/join hierarchy).
 - Need explicit queue sizing and rejection policies.
 - I/O-bound workload with blocking operations.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "commonPool is unlimited" | It has Runtime.availableProcessors()-1 threads. Blocking I/O starves all parallel streams in the JVM. |
-| 2 | "fork() both subtasks" | Fork one, compute the other inline. Forking both wastes the current thread (it just waits). |
-| 3 | "ForkJoinPool is always faster" | Only for recursive uneven workloads. For flat independent tasks, ThreadPoolExecutor has less overhead. |
+| #   | Misconception                   | Reality                                                                                                |
+| --- | ------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| 1   | "commonPool is unlimited"       | It has Runtime.availableProcessors()-1 threads. Blocking I/O starves all parallel streams in the JVM.  |
+| 2   | "fork() both subtasks"          | Fork one, compute the other inline. Forking both wastes the current thread (it just waits).            |
+| 3   | "ForkJoinPool is always faster" | Only for recursive uneven workloads. For flat independent tasks, ThreadPoolExecutor has less overhead. |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - Executor Framework - the general pool abstraction
 - CompletableFuture Composition - uses ForkJoinPool.commonPool by default
 
 **THIS:** ForkJoinPool and Work-Stealing
 
 **Next steps:**
+
 - ForkJoinPool.commonPool Saturation - the production failure mode
 - Lock-Free Algorithms (CAS) - internal deque uses CAS
 
@@ -488,45 +500,50 @@ void movePoint(double dx, double dy) {
 
 **Cost:** NOT reentrant (deadlock if re-acquired). Complex API (stamps must be tracked). Optimistic reads require re-reading on validation failure.
 
-| Aspect | synchronized | ReadWriteLock | StampedLock |
-| ------ | ------------ | ------------- | ----------- |
-| Read overhead | Full lock | Shared atomic | Zero (optimistic) |
-| Reentrant | Yes | Yes | NO |
-| Complexity | Low | Medium | High |
-| Best for | Simple | Read-heavy | Extreme read-heavy |
+| Aspect        | synchronized | ReadWriteLock | StampedLock        |
+| ------------- | ------------ | ------------- | ------------------ |
+| Read overhead | Full lock    | Shared atomic | Zero (optimistic)  |
+| Reentrant     | Yes          | Yes           | NO                 |
+| Complexity    | Low          | Medium        | High               |
+| Best for      | Simple       | Read-heavy    | Extreme read-heavy |
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Extreme read contention (>100 concurrent readers).
 - Reads are short and can be retried on validation failure.
 - Need maximum read throughput (lock-free happy path).
 
 **AVOID WHEN:**
+
 - Need reentrancy (StampedLock deadlocks on re-acquire).
 - Reads are expensive (retry on validation failure doubles cost).
 
 **PREFER ReadWriteLock WHEN:**
+
 - Moderate read contention (ReadWriteLock is simpler and reentrant).
 - Reads are expensive (cannot afford retry).
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "StampedLock replaces ReadWriteLock" | Only for extreme read-heavy cases. It is NOT reentrant, harder to use correctly, and overkill for most workloads. |
-| 2 | "Optimistic read is always valid" | Under write contention, validation frequently fails. You MUST have the fallback path. |
-| 3 | "I can use StampedLock in recursive code" | No. Any re-entrant lock acquisition = instant deadlock. |
+| #   | Misconception                             | Reality                                                                                                           |
+| --- | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| 1   | "StampedLock replaces ReadWriteLock"      | Only for extreme read-heavy cases. It is NOT reentrant, harder to use correctly, and overkill for most workloads. |
+| 2   | "Optimistic read is always valid"         | Under write contention, validation frequently fails. You MUST have the fallback path.                             |
+| 3   | "I can use StampedLock in recursive code" | No. Any re-entrant lock acquisition = instant deadlock.                                                           |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - ReadWriteLock - the simpler read/write separation
 - Atomicity, Visibility, Ordering - optimistic read relies on memory visibility
 
 **THIS:** StampedLock
 
 **Next steps:**
+
 - Lock-Free Algorithms (CAS) - similar optimistic retry philosophy
 - False Sharing and Cache Lines - why read lock atomics cause cache bouncing
 
@@ -658,47 +675,52 @@ if (instance == null) {
 
 **Cost:** abstract model (not intuitive). Easy to THINK code is correct based on timing rather than formal happens-before.
 
-| Mechanism | Happens-before established by |
-| --------- | ----------------------------- |
-| synchronized | unlock -> next lock |
-| volatile | write -> subsequent read |
-| Thread.start() | caller -> new thread |
-| Thread.join() | thread end -> caller returns |
-| final fields | constructor end -> reader |
+| Mechanism      | Happens-before established by |
+| -------------- | ----------------------------- |
+| synchronized   | unlock -> next lock           |
+| volatile       | write -> subsequent read      |
+| Thread.start() | caller -> new thread          |
+| Thread.join()  | thread end -> caller returns  |
+| final fields   | constructor end -> reader     |
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Reasoning about multi-threaded correctness.
 - Choosing between volatile, synchronized, or atomics.
 - Reviewing code for potential visibility bugs.
 
 **AVOID REASONING WITHOUT HB WHEN:**
+
 - Never rely on "it worked in testing" for concurrent code.
 - Never rely on timing ("A runs first so B sees it").
 
 **ESTABLISH HB VIA:**
+
 - synchronized blocks (most common, easiest)
 - volatile fields (lightweight single-variable visibility)
 - java.util.concurrent classes (internally establish HB)
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "If A runs before B in time, B sees A's writes" | NO. Time ordering != happens-before. Only specific actions (lock, volatile, etc.) create HB. |
-| 2 | "volatile makes the variable atomic" | volatile only gives visibility + ordering. A non-atomic read-modify-write (i++) on volatile is STILL a race. |
-| 3 | "I only need volatile on the flag variable" | volatile write makes ALL prior writes visible. But the flag itself must be the synchronization point. |
+| #   | Misconception                                   | Reality                                                                                                      |
+| --- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| 1   | "If A runs before B in time, B sees A's writes" | NO. Time ordering != happens-before. Only specific actions (lock, volatile, etc.) create HB.                 |
+| 2   | "volatile makes the variable atomic"            | volatile only gives visibility + ordering. A non-atomic read-modify-write (i++) on volatile is STILL a race. |
+| 3   | "I only need volatile on the flag variable"     | volatile write makes ALL prior writes visible. But the flag itself must be the synchronization point.        |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - Atomicity, Visibility, Ordering - the three concerns HB addresses
 - volatile Keyword - one mechanism for establishing HB
 
 **THIS:** Happens-Before Relationship
 
 **Next steps:**
+
 - Java Memory Model Working Rules - practical HB application
 - JSR 133 - the formal specification
 
@@ -826,45 +848,50 @@ if (published) { // volatile read: refreshes ALL
 
 **Cost:** developer must actively think about visibility; "working on my machine" is meaningless for concurrency correctness.
 
-| Hardware | Reordering freedom |
-| -------- | ------------------ |
-| x86/x64 | Weak (store-load only) |
+| Hardware   | Reordering freedom                |
+| ---------- | --------------------------------- |
+| x86/x64    | Weak (store-load only)            |
 | ARM/RISC-V | Strong (all reorderings possible) |
-| JMM | Platform-independent guarantees |
+| JMM        | Platform-independent guarantees   |
 
 ### ⚡ Decision Snap
 
 **USE THESE RULES WHEN:**
+
 - Writing any multi-threaded code without j.u.c abstractions.
 - Debugging "works on my machine, fails in prod."
 - Reviewing concurrent code for correctness.
 
 **SAFE DEFAULTS:**
+
 - Share data via j.u.c classes (they handle memory barriers internally).
 - Use volatile for simple flags / status indicators.
 - Use synchronized for multi-variable consistency.
 
 **DANGER ZONE:**
+
 - Sharing non-volatile, non-synchronized fields between threads.
 - Assuming "Thread A runs first therefore B sees it."
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "x86 is strongly ordered so my code is safe" | ARM/RISC-V reorder more aggressively. Code must be correct per JMM, not per x86. JDK runs on ARM too. |
-| 2 | "I see the bug in testing = code is broken" | NOT seeing the bug in testing != code is correct. JMM bugs are probabilistic - may only manifest under specific timing/load/architecture. |
-| 3 | "Adding volatile everywhere fixes everything" | volatile is for single-variable visibility. Compound operations (check-then-act) still need synchronized. |
+| #   | Misconception                                 | Reality                                                                                                                                   |
+| --- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | "x86 is strongly ordered so my code is safe"  | ARM/RISC-V reorder more aggressively. Code must be correct per JMM, not per x86. JDK runs on ARM too.                                     |
+| 2   | "I see the bug in testing = code is broken"   | NOT seeing the bug in testing != code is correct. JMM bugs are probabilistic - may only manifest under specific timing/load/architecture. |
+| 3   | "Adding volatile everywhere fixes everything" | volatile is for single-variable visibility. Compound operations (check-then-act) still need synchronized.                                 |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - Happens-Before Relationship - the formal ordering rules
 - volatile Keyword - one mechanism for memory barriers
 
 **THIS:** Java Memory Model - Working Rules
 
 **Next steps:**
+
 - Double-Checked Locking Anti-Pattern - classic JMM bug
 - JSR 133 - Java Memory Model Specification - the formal document
 
@@ -999,44 +1026,49 @@ public static Singleton get() {
 
 **Cost:** volatile read on EVERY access (slight overhead); complexity; easy to get wrong.
 
-| Approach | Thread-safe | Lazy | Overhead |
-| -------- | ----------- | ---- | -------- |
-| DCL + volatile | Yes | Yes | volatile read per access |
-| Lazy holder | Yes | Yes | None after init |
-| enum singleton | Yes | No (eager) | None |
-| synchronized | Yes | Yes | Lock per access |
+| Approach       | Thread-safe | Lazy       | Overhead                 |
+| -------------- | ----------- | ---------- | ------------------------ |
+| DCL + volatile | Yes         | Yes        | volatile read per access |
+| Lazy holder    | Yes         | Yes        | None after init          |
+| enum singleton | Yes         | No (eager) | None                     |
+| synchronized   | Yes         | Yes        | Lock per access          |
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Lazy singleton that cannot use holder idiom (needs constructor args).
 - Instance field (not static) requiring lazy init.
 
 **AVOID WHEN:**
+
 - Static singleton (use lazy holder idiom - simpler, zero overhead).
 - Enum can represent the singleton (simplest, serialization-safe).
 
 **PREFER Lazy Holder Idiom WHEN:**
+
 - No-arg static singleton (most cases).
 - Want zero-overhead after initialization.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "DCL works without volatile on x86" | It may APPEAR to work on x86 (strong ordering) but is still broken per JMM. Fails on ARM, under JIT, or under load. |
-| 2 | "synchronized alone fixes it" | The first null check is OUTSIDE synchronized. Without volatile, the reader bypasses synchronization entirely. |
-| 3 | "This bug is theoretical" | Real production bugs from DCL were reported in multiple frameworks pre-JDK5. Spring Framework fixed their singleton factories specifically for this. |
+| #   | Misconception                       | Reality                                                                                                                                              |
+| --- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | "DCL works without volatile on x86" | It may APPEAR to work on x86 (strong ordering) but is still broken per JMM. Fails on ARM, under JIT, or under load.                                  |
+| 2   | "synchronized alone fixes it"       | The first null check is OUTSIDE synchronized. Without volatile, the reader bypasses synchronization entirely.                                        |
+| 3   | "This bug is theoretical"           | Real production bugs from DCL were reported in multiple frameworks pre-JDK5. Spring Framework fixed their singleton factories specifically for this. |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - Happens-Before Relationship - why volatile fixes DCL
 - Java Memory Model Working Rules - reordering freedom
 
 **THIS:** Double-Checked Locking Anti-Pattern
 
 **Next steps:**
+
 - Immutability as Concurrency Strategy - avoid the problem entirely
 - Thread Confinement as Design Pattern - another avoidance strategy
 
@@ -1165,44 +1197,49 @@ if (!lock.tryLock(100, MILLISECONDS)) {
 
 **Cost (fairness):** significantly lower throughput (FIFO ordering prevents locality optimization); priority inversion still possible at OS level even with fair Java locks.
 
-| Strategy | Prevents starvation | Performance cost |
-| -------- | ------------------- | ---------------- |
-| Fair lock | Yes | ~2x slower |
-| Lock timeout | Detect (not prevent) | Minimal |
-| Minimize lock time | Reduces probability | None |
-| Lock-free (CAS) | Yes (no lock = no starvation) | Spinning cost |
+| Strategy           | Prevents starvation           | Performance cost |
+| ------------------ | ----------------------------- | ---------------- |
+| Fair lock          | Yes                           | ~2x slower       |
+| Lock timeout       | Detect (not prevent)          | Minimal          |
+| Minimize lock time | Reduces probability           | None             |
+| Lock-free (CAS)    | Yes (no lock = no starvation) | Spinning cost    |
 
 ### ⚡ Decision Snap
 
 **USE FAIR LOCK WHEN:**
+
 - Starvation is observed in production (metrics show threads waiting indefinitely).
 - Contractual requirement for bounded waiting time.
 
 **AVOID FAIR LOCK WHEN:**
+
 - No starvation observed (default unfair is faster).
 - Performance-critical path where 2x slowdown is unacceptable.
 
 **PREFER lock-free (Atomic/CAS) WHEN:**
+
 - Single-variable operations where starvation from locks is a concern.
 - Need guaranteed progress without fairness overhead.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "Java thread priorities prevent starvation" | Thread.setPriority() is a HINT. Most JVMs on Linux ignore it entirely. Do not rely on priorities for correctness. |
-| 2 | "Priority inversion cannot happen in Java" | It can if the OS schedules threads with priorities (Windows does map Java priorities to OS priorities). |
-| 3 | "Starvation only affects low-priority threads" | Any thread can starve under unfair locking - even high-priority ones (if others continuously acquire the lock first). |
+| #   | Misconception                                  | Reality                                                                                                               |
+| --- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| 1   | "Java thread priorities prevent starvation"    | Thread.setPriority() is a HINT. Most JVMs on Linux ignore it entirely. Do not rely on priorities for correctness.     |
+| 2   | "Priority inversion cannot happen in Java"     | It can if the OS schedules threads with priorities (Windows does map Java priorities to OS priorities).               |
+| 3   | "Starvation only affects low-priority threads" | Any thread can starve under unfair locking - even high-priority ones (if others continuously acquire the lock first). |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - ReentrantLock vs synchronized - fairness option
 - Thread Lifecycle and States - BLOCKED vs WAITING
 
 **THIS:** Thread Starvation and Priority Inversion
 
 **Next steps:**
+
 - Lock Contention Profiling - detect starvation in production
 - ForkJoinPool.commonPool Saturation - a form of starvation
 
@@ -1320,45 +1357,50 @@ boolean start() {
 
 **Cost:** higher CPU usage under contention (spinning); complex to implement correctly; ABA problem; harder to debug.
 
-| Aspect | Lock-based | Lock-free (CAS) | Wait-free |
-| ------ | ---------- | --------------- | --------- |
-| Progress | Blocking | System-wide | Per-thread |
-| Contention cost | Thread parking | CPU spinning | None |
-| Complexity | Low | High | Very high |
-| ABA problem | N/A | Yes (need stamps) | Yes |
+| Aspect          | Lock-based     | Lock-free (CAS)   | Wait-free  |
+| --------------- | -------------- | ----------------- | ---------- |
+| Progress        | Blocking       | System-wide       | Per-thread |
+| Contention cost | Thread parking | CPU spinning      | None       |
+| Complexity      | Low            | High              | Very high  |
+| ABA problem     | N/A            | Yes (need stamps) | Yes        |
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Need guaranteed progress (one slow thread must not stall system).
 - Low-latency systems where lock blocking is unacceptable.
 - Simple single-pointer structures (stack, queue head/tail).
 
 **AVOID WHEN:**
+
 - Complex multi-variable invariants (CAS works on one word).
 - Team cannot verify correctness (lock-free bugs are subtle).
 
 **PREFER locks WHEN:**
+
 - Simpler code is more important than lock-free guarantees.
 - Contention is low (locks are equally fast uncontended).
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "Lock-free = faster" | Under low contention, locks are equally fast. Lock-free shines under contention/preemption scenarios. |
-| 2 | "CAS is one instruction = safe" | The ALGORITHM around CAS must be correct. A wrong retry loop = data corruption. |
-| 3 | "I should write my own lock-free structures" | Almost never. Use j.u.c (ConcurrentLinkedQueue, etc.). Lock-free code is extremely hard to verify. |
+| #   | Misconception                                | Reality                                                                                               |
+| --- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| 1   | "Lock-free = faster"                         | Under low contention, locks are equally fast. Lock-free shines under contention/preemption scenarios. |
+| 2   | "CAS is one instruction = safe"              | The ALGORITHM around CAS must be correct. A wrong retry loop = data corruption.                       |
+| 3   | "I should write my own lock-free structures" | Almost never. Use j.u.c (ConcurrentLinkedQueue, etc.). Lock-free code is extremely hard to verify.    |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - AtomicInteger and Atomic Classes - CAS at the single-variable level
 - Happens-Before Relationship - CAS establishes happens-before
 
 **THIS:** Lock-Free Algorithms (CAS)
 
 **Next steps:**
+
 - The ABA Problem and Solutions - subtle CAS failure mode
 - VarHandle and Memory Fences - low-level CAS access in modern Java
 
@@ -1478,45 +1520,50 @@ if ((boolean) READY.getAcquire(this)) {
 
 **Cost:** verbose API; complex mental model (4 ordering modes); rarely needed outside libraries.
 
-| Aspect | volatile field | VarHandle volatile | VarHandle acquire/release |
-| ------ | -------------- | ------------------ | ------------------------- |
-| Ordering | Full fence | Full fence | One-directional |
-| Performance | Baseline | Same | Slightly better (ARM) |
-| Flexibility | None | Full API (CAS, etc.) | Full API |
-| Use case | Application code | Library code | Extreme optimization |
+| Aspect      | volatile field   | VarHandle volatile   | VarHandle acquire/release |
+| ----------- | ---------------- | -------------------- | ------------------------- |
+| Ordering    | Full fence       | Full fence           | One-directional           |
+| Performance | Baseline         | Same                 | Slightly better (ARM)     |
+| Flexibility | None             | Full API (CAS, etc.) | Full API                  |
+| Use case    | Application code | Library code         | Extreme optimization      |
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Need CAS on non-atomic fields (library/framework code).
 - Need weaker-than-volatile ordering for performance (rare, measure first).
 - Migrating from sun.misc.Unsafe.
 
 **AVOID WHEN:**
+
 - Application code (use AtomicInteger or volatile - simpler).
 - You cannot articulate WHY you need weaker ordering.
 
 **PREFER AtomicInteger/volatile WHEN:**
+
 - Standard atomic operations suffice (most code).
 - Team maintainability is more important than marginal performance.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "VarHandle is faster than AtomicInteger" | Same underlying operations. VarHandle gives MORE options (relaxed modes) but the volatile mode is equally costly. |
-| 2 | "I should use acquire/release everywhere for speed" | On x86, acquire/release has SAME cost as volatile (x86 provides acquire/release for free). Only benefits ARM/RISC-V. |
-| 3 | "weakCompareAndSet is just CAS" | It can SPURIOUSLY FAIL (return false even if expected matches). Must always be in a retry loop. |
+| #   | Misconception                                       | Reality                                                                                                              |
+| --- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| 1   | "VarHandle is faster than AtomicInteger"            | Same underlying operations. VarHandle gives MORE options (relaxed modes) but the volatile mode is equally costly.    |
+| 2   | "I should use acquire/release everywhere for speed" | On x86, acquire/release has SAME cost as volatile (x86 provides acquire/release for free). Only benefits ARM/RISC-V. |
+| 3   | "weakCompareAndSet is just CAS"                     | It can SPURIOUSLY FAIL (return false even if expected matches). Must always be in a retry loop.                      |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - AtomicInteger and Atomic Classes - CAS without VarHandle
 - Happens-Before Relationship - what the ordering modes enforce
 
 **THIS:** VarHandle and Memory Fences
 
 **Next steps:**
+
 - False Sharing and Cache Lines - why memory layout matters with VarHandle
 - Hardware Memory Models - the hardware VarHandle abstracts
 
@@ -1653,45 +1700,50 @@ java -jar target/jcstress.jar -t ".*MyTest.*"
 
 **Cost:** slow (millions of iterations); requires specific test structure (@Actor/@Arbiter); cannot test application-level logic (only low-level primitives).
 
-| Aspect | JUnit + loops | jcstress | TLA+/model checking |
-| ------ | ------------- | -------- | ------------------- |
-| Coverage | Low (timing-dependent) | High (statistical) | Complete (exhaustive) |
-| Speed | Fast | Slow (minutes) | Very slow |
-| Scope | Any test | JMM-level | Algorithm design |
-| False confidence | High | Low | None |
+| Aspect           | JUnit + loops          | jcstress           | TLA+/model checking   |
+| ---------------- | ---------------------- | ------------------ | --------------------- |
+| Coverage         | Low (timing-dependent) | High (statistical) | Complete (exhaustive) |
+| Speed            | Fast                   | Slow (minutes)     | Very slow             |
+| Scope            | Any test               | JMM-level          | Algorithm design      |
+| False confidence | High                   | Low                | None                  |
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Building custom lock-free data structures.
 - Verifying memory ordering assumptions.
 - Proving a race condition exists (to justify fix).
 
 **AVOID WHEN:**
+
 - Testing application business logic (use normal tests).
 - Testing thread-safe j.u.c classes (already tested).
 
 **PREFER WHEN:**
+
 - Writing library-level concurrency primitives.
 - Migrating from Unsafe to VarHandle (verify equivalence).
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "If jcstress passes, my code is correct" | jcstress is probabilistic. It may miss extremely rare interleavings. For formal proofs: use model checking (TLA+). |
-| 2 | "I can test my whole application with jcstress" | jcstress tests SMALL units (2-3 actor methods). It is for primitive/algorithm verification, not integration testing. |
-| 3 | "Running on x86 is enough" | x86 has strong ordering. Run on ARM (or use `-XX:-TieredCompilation` to vary JIT) for broader coverage. |
+| #   | Misconception                                   | Reality                                                                                                              |
+| --- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| 1   | "If jcstress passes, my code is correct"        | jcstress is probabilistic. It may miss extremely rare interleavings. For formal proofs: use model checking (TLA+).   |
+| 2   | "I can test my whole application with jcstress" | jcstress tests SMALL units (2-3 actor methods). It is for primitive/algorithm verification, not integration testing. |
+| 3   | "Running on x86 is enough"                      | x86 has strong ordering. Run on ARM (or use `-XX:-TieredCompilation` to vary JIT) for broader coverage.              |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - Java Memory Model Working Rules - what jcstress tests
 - Happens-Before Relationship - what FORBIDDEN outcomes violate
 
 **THIS:** Testing Concurrent Code (jcstress)
 
 **Next steps:**
+
 - Lock-Free Algorithms (CAS) - primary target for jcstress testing
 - JFR Thread and Lock Events - production observability
 
@@ -1828,46 +1880,51 @@ TaskExecutor taskExecutor(MeterRegistry registry) {
 
 **Cost:** metric collection overhead (negligible for gauges); dashboard/alerting setup effort; metric cardinality if many pools.
 
-| Metric | Purpose | Alert threshold |
-| ------ | ------- | --------------- |
-| queue.size | Saturation signal | > 80% capacity |
-| active/max | Thread exhaustion | == max for 5min |
-| rejected | Overload proven | > 0 |
+| Metric      | Purpose             | Alert threshold |
+| ----------- | ------------------- | --------------- |
+| queue.size  | Saturation signal   | > 80% capacity  |
+| active/max  | Thread exhaustion   | == max for 5min |
+| rejected    | Overload proven     | > 0             |
 | completed/s | Throughput baseline | < 50% of normal |
 
 ### ⚡ Decision Snap
 
 **ALWAYS MONITOR WHEN:**
+
 - Any thread pool in production. No exceptions.
 - Pools handling user-facing requests.
 - Pools processing background work (failed silently = invisible).
 
 **ALERT ON:**
+
 - Queue depth approaching capacity (80%).
 - Any rejection (indicates pool at maximum + queue full).
 - Active == max sustained (all threads busy, no spare capacity).
 
 **OPTIONAL:**
+
 - Task execution time histograms (detect slow tasks blocking pool).
 - Thread state breakdown (RUNNABLE vs WAITING vs BLOCKED).
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "Monitoring adds overhead" | Gauge reads (getActiveCount, getQueue().size()) are O(1) volatile reads. Negligible overhead. |
-| 2 | "I will check logs when there's a problem" | By the time you check logs, the pool recovered or crashed. Metrics + alerts give REAL-TIME visibility. |
-| 3 | "One dashboard for all pools" | Each pool has different SLOs. A batch-processing pool at 90% queue is fine; a request-handling pool at 90% is critical. |
+| #   | Misconception                              | Reality                                                                                                                 |
+| --- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| 1   | "Monitoring adds overhead"                 | Gauge reads (getActiveCount, getQueue().size()) are O(1) volatile reads. Negligible overhead.                           |
+| 2   | "I will check logs when there's a problem" | By the time you check logs, the pool recovered or crashed. Metrics + alerts give REAL-TIME visibility.                  |
+| 3   | "One dashboard for all pools"              | Each pool has different SLOs. A batch-processing pool at 90% queue is fine; a request-handling pool at 90% is critical. |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - ThreadPoolExecutor Configuration - what the pool parameters mean
 - Unbounded Queue Anti-Pattern - why monitoring queue depth matters
 
 **THIS:** Monitoring Thread Pools in Production
 
 **Next steps:**
+
 - Lock Contention Profiling - deeper diagnostics when pool is slow
 - JFR Thread and Lock Events - JVM-level thread observability
 
@@ -1991,48 +2048,53 @@ BlockingQueue<Event> q = new ArrayBlockingQueue<>(1000);
 
 ### ⚖️ Trade-offs
 
-| Collection | Locking | Best for | Avoid when |
-| ---------- | ------- | -------- | ---------- |
-| synchronizedMap | Global | Low contention | High contention |
-| ConcurrentHashMap | Per-bin | High concurrency | Need nulls |
-| CopyOnWriteArrayList | Copy | Read-heavy lists | Write-heavy |
-| synchronizedList | Global | Low contention | High reads |
-| ConcurrentLinkedQueue | Lock-free | Non-blocking | Need blocking |
-| ArrayBlockingQueue | Two-lock | Producer-consumer | Unbounded |
+| Collection            | Locking   | Best for          | Avoid when      |
+| --------------------- | --------- | ----------------- | --------------- |
+| synchronizedMap       | Global    | Low contention    | High contention |
+| ConcurrentHashMap     | Per-bin   | High concurrency  | Need nulls      |
+| CopyOnWriteArrayList  | Copy      | Read-heavy lists  | Write-heavy     |
+| synchronizedList      | Global    | Low contention    | High reads      |
+| ConcurrentLinkedQueue | Lock-free | Non-blocking      | Need blocking   |
+| ArrayBlockingQueue    | Two-lock  | Producer-consumer | Unbounded       |
 
 ### ⚡ Decision Snap
 
 **USE synchronized collections WHEN:**
+
 - 1-3 threads with low contention.
 - Need null keys/values.
 - Need fail-fast iterators.
 - Simplicity over throughput.
 
 **USE concurrent collections WHEN:**
+
 - 4+ threads with meaningful contention.
 - Need atomic compound operations (computeIfAbsent).
 - Read throughput critical.
 
 **MEASURE FIRST WHEN:**
+
 - Unsure about contention level. Profile before switching.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "Always use ConcurrentHashMap" | For 2-thread low-contention: synchronizedMap is equivalent and simpler (supports nulls). |
-| 2 | "synchronizedList iteration is safe" | Iterator itself is NOT synchronized. Must externally lock during iteration. |
-| 3 | "ConcurrentHashMap.size() is exact" | It is an estimate under concurrent modification. |
+| #   | Misconception                        | Reality                                                                                  |
+| --- | ------------------------------------ | ---------------------------------------------------------------------------------------- |
+| 1   | "Always use ConcurrentHashMap"       | For 2-thread low-contention: synchronizedMap is equivalent and simpler (supports nulls). |
+| 2   | "synchronizedList iteration is safe" | Iterator itself is NOT synchronized. Must externally lock during iteration.              |
+| 3   | "ConcurrentHashMap.size() is exact"  | It is an estimate under concurrent modification.                                         |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - ConcurrentHashMap - how concurrent map works
 - CopyOnWriteArrayList - how copy-on-write works
 
 **THIS:** Synchronized vs Concurrent Collections Decision
 
 **Next steps:**
+
 - Concurrency Utilities Selection Framework - broader selection
 - Monitoring Thread Pools in Production - observe contention
 
@@ -2175,12 +2237,12 @@ CompletableFuture.allOf(futures.toArray(new CF[0]))
 
 **Cost:** real problems often need combining primitives; framework is a starting point.
 
-| Selection Error | Consequence |
-| --------------- | ----------- |
-| Lock when should be queue | Reinventing, complex, buggy |
-| Atomic for multi-var | Race conditions |
-| CyclicBarrier when need Latch | Cannot reuse Latch |
-| TPE for I/O JDK21+ | Unnecessary vs virtual threads |
+| Selection Error               | Consequence                    |
+| ----------------------------- | ------------------------------ |
+| Lock when should be queue     | Reinventing, complex, buggy    |
+| Atomic for multi-var          | Race conditions                |
+| CyclicBarrier when need Latch | Cannot reuse Latch             |
+| TPE for I/O JDK21+            | Unnecessary vs virtual threads |
 
 ### ⚡ Decision Snap
 
@@ -2191,21 +2253,23 @@ CompletableFuture.allOf(futures.toArray(new CF[0]))
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "More advanced = better" | Simplest correct choice wins. synchronized beats StampedLock unless you NEED optimistic reads. |
-| 2 | "One primitive per problem" | Real systems combine 2-3 primitives. Design by composition. |
-| 3 | "Framework covers everything" | Edge cases exist. Covers 95% of cases. |
+| #   | Misconception                 | Reality                                                                                        |
+| --- | ----------------------------- | ---------------------------------------------------------------------------------------------- |
+| 1   | "More advanced = better"      | Simplest correct choice wins. synchronized beats StampedLock unless you NEED optimistic reads. |
+| 2   | "One primitive per problem"   | Real systems combine 2-3 primitives. Design by composition.                                    |
+| 3   | "Framework covers everything" | Edge cases exist. Covers 95% of cases.                                                         |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - All keywords in Locks and Coordination - know individual primitives
 - Java Concurrency Quick Recall Card - quick reference
 
 **THIS:** Concurrency Utilities Selection Framework
 
 **Next steps:**
+
 - Concurrency Strategy (Reactive vs Loom vs Pool) - architecture-level
 - Back-Pressure Architecture Patterns - system-level
 
@@ -2329,44 +2393,49 @@ r.process(); // safe: confined to consumer thread
 
 **Cost:** data duplication; limited to non-shared data; discipline needed.
 
-| Approach | Synchronization | Performance | Complexity |
-| -------- | --------------- | ----------- | ---------- |
-| Confinement | None | Maximum | Design effort |
-| Immutability | None | Maximum | Limited mutability |
-| Lock-based | Explicit | Contention | Medium |
-| Lock-free | CAS | Retry cost | High |
+| Approach     | Synchronization | Performance | Complexity         |
+| ------------ | --------------- | ----------- | ------------------ |
+| Confinement  | None            | Maximum     | Design effort      |
+| Immutability | None            | Maximum     | Limited mutability |
+| Lock-based   | Explicit        | Contention  | Medium             |
+| Lock-free    | CAS             | Retry cost  | High               |
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Data can be partitioned per-thread.
 - Event-loop architectures (Netty, Vert.x, Swing).
 - Ownership transferred cleanly via queues.
 
 **AVOID WHEN:**
+
 - Multiple threads MUST access same data simultaneously.
 - Data too large to duplicate per thread.
 
 **PREFER ALWAYS:**
+
 - Prefer confinement over synchronization when architecturally feasible.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "Confinement = no communication" | Threads communicate via queues. Confinement = no SHARED MUTABLE STATE. |
-| 2 | "Local variables always confined" | If a local holds a reference that escapes (passed to another thread), the object is NOT confined. |
-| 3 | "Ad-hoc confinement is safe" | Convention is not compiler-enforced. Breaks silently. Prefer structural (event loop, ThreadLocal). |
+| #   | Misconception                     | Reality                                                                                            |
+| --- | --------------------------------- | -------------------------------------------------------------------------------------------------- |
+| 1   | "Confinement = no communication"  | Threads communicate via queues. Confinement = no SHARED MUTABLE STATE.                             |
+| 2   | "Local variables always confined" | If a local holds a reference that escapes (passed to another thread), the object is NOT confined.  |
+| 3   | "Ad-hoc confinement is safe"      | Convention is not compiler-enforced. Breaks silently. Prefer structural (event loop, ThreadLocal). |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - The Shared Mutable State Problem - what confinement avoids
 - ThreadLocal - one implementation of confinement
 
 **THIS:** Thread Confinement as Design Pattern
 
 **Next steps:**
+
 - Immutability as Concurrency Strategy - complementary
 - Concurrent Chat Phase 3 - applies event-loop model
 
@@ -2476,44 +2545,49 @@ config = new Config("new-host", 8080);
 
 **Cost:** allocation per update; not for large frequently-changing state.
 
-| Strategy | Synchronization | Allocation | Simplicity |
-| -------- | --------------- | ---------- | ---------- |
-| Immutable | None | Per update | High |
-| ThreadLocal | None | Per thread | Medium |
-| synchronized | Lock/access | None | Medium |
-| Atomic | CAS/access | None | Medium |
+| Strategy     | Synchronization | Allocation | Simplicity |
+| ------------ | --------------- | ---------- | ---------- |
+| Immutable    | None            | Per update | High       |
+| ThreadLocal  | None            | Per thread | Medium     |
+| synchronized | Lock/access     | None       | Medium     |
+| Atomic       | CAS/access      | None       | Medium     |
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - State read far more than written.
 - Small objects (config, DTOs, value objects).
 - Want simplest thread safety.
 
 **AVOID WHEN:**
+
 - Large state changed frequently (100MB+ arrays).
 - Need in-place mutation for performance.
 
 **PREFER records WHEN:**
+
 - JDK 16+ for automatic immutable value objects.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "Final field = immutable object" | If final field holds a mutable List, contents can be mutated. Defensive copy required. |
-| 2 | "Immutability is expensive" | Modern JVMs optimize short-lived objects (escape analysis, young-gen GC). Often cheaper than synchronization. |
-| 3 | "String field makes class immutable" | YOUR class must also be immutable. One mutable field breaks everything. |
+| #   | Misconception                        | Reality                                                                                                       |
+| --- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| 1   | "Final field = immutable object"     | If final field holds a mutable List, contents can be mutated. Defensive copy required.                        |
+| 2   | "Immutability is expensive"          | Modern JVMs optimize short-lived objects (escape analysis, young-gen GC). Often cheaper than synchronization. |
+| 3   | "String field makes class immutable" | YOUR class must also be immutable. One mutable field breaks everything.                                       |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - The Shared Mutable State Problem - what immutability eliminates
 - volatile Keyword - for publishing immutable references
 
 **THIS:** Immutability as Concurrency Strategy
 
 **Next steps:**
+
 - Thread Confinement as Design Pattern - complementary
 - Double-Checked Locking - why final fields matter
 
@@ -2626,45 +2700,50 @@ class ImmutableConfig {
 
 ### ⚖️ Trade-offs
 
-| Aspect | Pre-JSR 133 | Post-JSR 133 |
-| ------ | ----------- | ------------ |
-| DCL | Broken | Works (volatile) |
-| Final fields | No guarantee | Guaranteed |
-| Volatile | Atomicity only | Full HB ordering |
-| Formal model | Vague | Precise HB |
+| Aspect       | Pre-JSR 133    | Post-JSR 133     |
+| ------------ | -------------- | ---------------- |
+| DCL          | Broken         | Works (volatile) |
+| Final fields | No guarantee   | Guaranteed       |
+| Volatile     | Atomicity only | Full HB ordering |
+| Formal model | Vague          | Precise HB       |
 
 ### ⚡ Decision Snap
 
 **KNOW JSR 133 WHEN:**
+
 - Writing lock-free code or using volatile.
 - Reasoning about safe publication.
 - Understanding why old patterns are broken.
 
 **RELY ON (without internals) WHEN:**
+
 - Using j.u.c classes (correct internally).
 - Using immutable objects with final fields.
 
 **READ THE SPEC WHEN:**
+
 - Building concurrency libraries.
 - Debugging subtle visibility issues.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "JSR 133 is only for old code" | It IS the current memory model. All modern Java runs under JSR 133 rules. |
-| 2 | "I don't need JMM if I use j.u.c" | Correct for most code. But volatile/manual sync requires JMM knowledge. |
-| 3 | "JMM prevents all reordering" | No. JMM ALLOWS maximum reordering unless HB constrains it. Permissive by default. |
+| #   | Misconception                     | Reality                                                                           |
+| --- | --------------------------------- | --------------------------------------------------------------------------------- |
+| 1   | "JSR 133 is only for old code"    | It IS the current memory model. All modern Java runs under JSR 133 rules.         |
+| 2   | "I don't need JMM if I use j.u.c" | Correct for most code. But volatile/manual sync requires JMM knowledge.           |
+| 3   | "JMM prevents all reordering"     | No. JMM ALLOWS maximum reordering unless HB constrains it. Permissive by default. |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - Happens-Before Relationship - central JSR 133 concept
 - Java Memory Model Working Rules - practical application
 
 **THIS:** JSR 133 - Java Memory Model Specification
 
 **Next steps:**
+
 - JMM Formal Semantics (Manson Pugh Adve 2005) - academic paper
 - Hardware Memory Models - what JSR 133 abstracts
 
@@ -2775,12 +2854,12 @@ Data d = map.get("key"); // happens-after put
 
 ### ⚖️ Trade-offs
 
-| Level | Audience | Strength | Weakness |
-| ----- | -------- | -------- | -------- |
-| 1 | Beginners | Accessible | Imprecise |
-| 2 | Engineers | Actionable | Incomplete |
-| 3 | Library authors | Rigorous | Abstract |
-| 4 | Perf engineers | Concrete | Platform-specific |
+| Level | Audience        | Strength   | Weakness          |
+| ----- | --------------- | ---------- | ----------------- |
+| 1     | Beginners       | Accessible | Imprecise         |
+| 2     | Engineers       | Actionable | Incomplete        |
+| 3     | Library authors | Rigorous   | Abstract          |
+| 4     | Perf engineers  | Concrete   | Platform-specific |
 
 ### ⚡ Decision Snap
 
@@ -2791,21 +2870,23 @@ Data d = map.get("key"); // happens-after put
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "Happens-before = happens-before in time" | NO. It is a VISIBILITY guarantee, not temporal ordering. |
-| 2 | "I only need one level" | Write at L2. Debug at L3. Optimize at L4. All needed eventually. |
-| 3 | "x86 needs no barriers" | x86 still needs StoreLoad (volatile write). Only stronger for LL/SS. |
+| #   | Misconception                             | Reality                                                              |
+| --- | ----------------------------------------- | -------------------------------------------------------------------- |
+| 1   | "Happens-before = happens-before in time" | NO. It is a VISIBILITY guarantee, not temporal ordering.             |
+| 2   | "I only need one level"                   | Write at L2. Debug at L3. Optimize at L4. All needed eventually.     |
+| 3   | "x86 needs no barriers"                   | x86 still needs StoreLoad (volatile write). Only stronger for LL/SS. |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - Happens-Before Relationship - single-level explanation
 - volatile Keyword - mechanism for establishing HB
 
 **THIS:** Explain Happens-Before at Every Level
 
 **Next steps:**
+
 - JMM Formal Semantics (Manson Pugh Adve 2005) - deepest treatment
 - Hardware Memory Models - Level 4 in depth
 
@@ -2940,42 +3021,46 @@ Why it's right: reuse, bounded queue, blocking take, shutdown via interrupt.
 
 ### ⚖️ Trade-offs
 
-| Aspect | Custom SimplePool | ThreadPoolExecutor |
-| ------ | ----------------- | ------------------ |
-| Dynamic sizing | No | Yes |
-| Future support | No | Yes |
-| Rejection | No (blocks) | Configurable |
-| Monitoring | No | getActiveCount() |
-| Production-ready | No | Yes |
+| Aspect           | Custom SimplePool | ThreadPoolExecutor |
+| ---------------- | ----------------- | ------------------ |
+| Dynamic sizing   | No                | Yes                |
+| Future support   | No                | Yes                |
+| Rejection        | No (blocks)       | Configurable       |
+| Monitoring       | No                | getActiveCount()   |
+| Production-ready | No                | Yes                |
 
 ### ⚡ Decision Snap
 
 **BUILD FROM SCRATCH WHEN:**
+
 - Learning pool internals.
 - Teaching concurrency.
 - Understanding TPE parameters.
 
 **NEVER IN PRODUCTION:**
+
 - Always use ThreadPoolExecutor or virtual threads.
 - Missing features are critical for production.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "My simple pool is production-ready" | Missing: Future, monitoring, sizing, rejection. Use TPE. |
-| 2 | "Interrupt = task stops" | Interrupt sets a FLAG. Task must check or catch. Blocking I/O may not respond. |
-| 3 | "shutdown = kill immediately" | Graceful: stop accepting, finish in-flight, then interrupt. |
+| #   | Misconception                        | Reality                                                                        |
+| --- | ------------------------------------ | ------------------------------------------------------------------------------ |
+| 1   | "My simple pool is production-ready" | Missing: Future, monitoring, sizing, rejection. Use TPE.                       |
+| 2   | "Interrupt = task stops"             | Interrupt sets a FLAG. Task must check or catch. Blocking I/O may not respond. |
+| 3   | "shutdown = kill immediately"        | Graceful: stop accepting, finish in-flight, then interrupt.                    |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - BlockingQueue Implementations - the queue workers take from
 - Thread Lifecycle and States - WAITING at take()
 
 **THIS:** Build a Thread Pool from Scratch Exercise
 
 **Next steps:**
+
 - ThreadPoolExecutor Configuration - production pool
 - Monitoring Thread Pools in Production - observe behavior
 
@@ -3084,44 +3169,49 @@ readLoop(channel, buffer)
 
 ### ⚖️ Trade-offs
 
-| Aspect | Phase 2 (blocking) | Phase 3 (async) | Phase 4 (virtual) |
-| ------ | ------------------ | --------------- | ------------------ |
-| Threads/client | 1 (blocked) | Shared | 1 (lightweight) |
-| Code style | Imperative | Callbacks | Imperative |
-| Max connections | Pool size | 10K-100K | 1M+ |
-| Debugging | Easy | Hard | Easy |
+| Aspect          | Phase 2 (blocking) | Phase 3 (async) | Phase 4 (virtual) |
+| --------------- | ------------------ | --------------- | ----------------- |
+| Threads/client  | 1 (blocked)        | Shared          | 1 (lightweight)   |
+| Code style      | Imperative         | Callbacks       | Imperative        |
+| Max connections | Pool size          | 10K-100K        | 1M+               |
+| Debugging       | Easy               | Hard            | Easy              |
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Need high connections with few threads (pre-JDK 21).
 - Event-driven architecture required.
 - Team comfortable with callbacks.
 
 **AVOID WHEN:**
+
 - JDK 21+ (virtual threads simpler + equally efficient).
 - Team finds chains unreadable.
 
 **PREFER Virtual Threads WHEN:**
+
 - JDK 21+ (imperative + lightweight = best of both).
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "Async = always faster" | Async has overhead. For low connections: blocking is simpler and equal speed. |
-| 2 | "CF handles backpressure" | No built-in backpressure. Must add manual limits. |
-| 3 | "Recursive thenCompose overflows stack" | No - heap-allocated futures, not stack frames. But creates GC pressure. |
+| #   | Misconception                           | Reality                                                                       |
+| --- | --------------------------------------- | ----------------------------------------------------------------------------- |
+| 1   | "Async = always faster"                 | Async has overhead. For low connections: blocking is simpler and equal speed. |
+| 2   | "CF handles backpressure"               | No built-in backpressure. Must add manual limits.                             |
+| 3   | "Recursive thenCompose overflows stack" | No - heap-allocated futures, not stack frames. But creates GC pressure.       |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - CompletableFuture Composition - the tool used
 - Concurrent Chat Phase 2 - blocking version
 
 **THIS:** Concurrent Chat - Phase 3 (CompletableFuture)
 
 **Next steps:**
+
 - Concurrent Chat Phase 4 (Virtual Threads) - simplest scalability
 - Reactive Streams vs Virtual Threads Decision
 
@@ -3240,36 +3330,39 @@ Why it's right: AtomicInteger for RMW; volatile only for single writes.
 
 ### ⚖️ Trade-offs
 
-| Score | Interpretation | Action |
-| ----- | -------------- | ------ |
-| F shaky | Foundations incomplete | Study Foundations |
-| I shaky | Intermediate gaps | Study Locks file |
-| A shaky | Advanced gaps | Study Async file |
-| All solid | Ready | Proceed to Complex |
+| Score     | Interpretation         | Action             |
+| --------- | ---------------------- | ------------------ |
+| F shaky   | Foundations incomplete | Study Foundations  |
+| I shaky   | Intermediate gaps      | Study Locks file   |
+| A shaky   | Advanced gaps          | Study Async file   |
+| All solid | Ready                  | Proceed to Complex |
 
 ### ⚡ Decision Snap
 
 **TAKE WHEN:**
+
 - Before advanced topics.
 - After each study file (verify retention).
 - Before concurrency interviews.
 
 **RETAKE WHEN:**
+
 - 30 days later (test retention).
 - After a production concurrency bug.
 - When JDK adds new concurrency features.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "I use j.u.c so I can skip foundations" | Misusing j.u.c = bugs. Must understand underlying model. |
-| 2 | "Passing once = permanent knowledge" | Reassess quarterly. Intuition degrades without practice. |
-| 3 | "100% correct = production-ready" | Assessment tests understanding. Production requires applying under pressure. |
+| #   | Misconception                           | Reality                                                                      |
+| --- | --------------------------------------- | ---------------------------------------------------------------------------- |
+| 1   | "I use j.u.c so I can skip foundations" | Misusing j.u.c = bugs. Must understand underlying model.                     |
+| 2   | "Passing once = permanent knowledge"    | Reassess quarterly. Intuition degrades without practice.                     |
+| 3   | "100% correct = production-ready"       | Assessment tests understanding. Production requires applying under pressure. |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - All Foundations keywords - tested by F1-F5
 - All Locks and Coordination keywords - tested by I1-I5
 - All Async and Patterns keywords - tested by A1-A5
@@ -3277,6 +3370,7 @@ Why it's right: AtomicInteger for RMW; volatile only for single writes.
 **THIS:** Concurrency Self-Assessment
 
 **Next steps:**
+
 - Virtual Threads and Diagnostics - only if assessment passes
 - Architecture and META - only if assessment passes
 

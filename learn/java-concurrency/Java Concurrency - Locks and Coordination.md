@@ -160,45 +160,50 @@ void cleanup() {
 
 **Cost:** configuration complexity (core/max/queue/policy), hidden queue memory, harder to reason about per-task thread identity.
 
-| Aspect | ExecutorService | Raw Thread | Virtual Threads |
-| ------ | --------------- | ---------- | --------------- |
-| Resource bound | Yes (configurable) | No | JVM-managed |
-| Lifecycle | Managed (shutdown) | Manual (join) | Automatic |
-| Overhead | Pool overhead | 1MB/thread | ~few KB/thread |
-| Backpressure | Queue + policy | None | None built-in |
+| Aspect         | ExecutorService    | Raw Thread    | Virtual Threads |
+| -------------- | ------------------ | ------------- | --------------- |
+| Resource bound | Yes (configurable) | No            | JVM-managed     |
+| Lifecycle      | Managed (shutdown) | Manual (join) | Automatic       |
+| Overhead       | Pool overhead      | 1MB/thread    | ~few KB/thread  |
+| Backpressure   | Queue + policy     | None          | None built-in   |
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - You need bounded concurrency for CPU-bound or mixed workloads.
 - JDK < 21 and need thread management.
 - You require explicit queue sizing and rejection policies.
 
 **AVOID WHEN:**
+
 - JDK 21+ with I/O-bound work (virtual threads are simpler).
 - Single background task (overkill - just use a single thread).
 
 **PREFER Virtual Threads WHEN:**
+
 - I/O-bound work on JDK 21+ (no pool sizing needed).
 - You want thread-per-task simplicity without resource exhaustion.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "Executors.newCachedThreadPool() is safe for production" | It creates unlimited threads under load - same as raw threads. Always use bounded pools. |
-| 2 | "shutdown() stops running tasks" | shutdown() stops accepting NEW tasks. Running tasks continue. shutdownNow() interrupts them. |
-| 3 | "The pool size should equal the number of CPUs" | Only for CPU-bound work. I/O-bound work needs larger pools (threads mostly wait). |
+| #   | Misconception                                            | Reality                                                                                      |
+| --- | -------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| 1   | "Executors.newCachedThreadPool() is safe for production" | It creates unlimited threads under load - same as raw threads. Always use bounded pools.     |
+| 2   | "shutdown() stops running tasks"                         | shutdown() stops accepting NEW tasks. Running tasks continue. shutdownNow() interrupts them. |
+| 3   | "The pool size should equal the number of CPUs"          | Only for CPU-bound work. I/O-bound work needs larger pools (threads mostly wait).            |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - Thread and Runnable - understand what the pool executes
 - The Shared Mutable State Problem - why pooled threads still need synchronization
 
 **THIS:** Executor Framework and ExecutorService
 
 **Next steps:**
+
 - ThreadPoolExecutor Configuration - tune core/max/queue/policy
 - Future and Callable - retrieve results from submitted tasks
 
@@ -322,45 +327,50 @@ new ThreadPoolExecutor(
 
 **Cost:** complex parameter interaction; easy to misconfigure; requires load testing to validate.
 
-| Aspect | Small queue + high max | Large queue + low max | Unbounded queue |
-| ------ | --------------------- | -------------------- | --------------- |
-| Thread scaling | Aggressive | Conservative | Never scales |
-| Memory | Thread stacks | Queue entries | Unbounded heap |
-| Latency | Lower (more threads) | Higher (queued) | Grows unbounded |
-| Backpressure | Via rejection | Late (queue fills slowly) | None (OOM) |
+| Aspect         | Small queue + high max | Large queue + low max     | Unbounded queue |
+| -------------- | ---------------------- | ------------------------- | --------------- |
+| Thread scaling | Aggressive             | Conservative              | Never scales    |
+| Memory         | Thread stacks          | Queue entries             | Unbounded heap  |
+| Latency        | Lower (more threads)   | Higher (queued)           | Grows unbounded |
+| Backpressure   | Via rejection          | Late (queue fills slowly) | None (OOM)      |
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - You need predictable resource bounds in production.
 - Workload characteristics are known (I/O ratio, burst size).
 - You need explicit rejection handling.
 
 **AVOID WHEN:**
+
 - JDK 21+ with virtual threads (no pool sizing needed).
 - Simple fire-and-forget tasks (Executors.newSingleThreadExecutor suffices).
 
 **PREFER SynchronousQueue WHEN:**
+
 - You want threads to scale immediately (no queuing).
 - CachedThreadPool behavior but with a max cap.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "maxPoolSize controls thread ceiling" | Only if the queue is BOUNDED. Unbounded queue = max is dead code. |
-| 2 | "Larger queue = better throughput" | Larger queue = higher latency. Tasks wait longer before execution. |
-| 3 | "CallerRunsPolicy is just a fallback" | It is the best production default - provides natural backpressure by slowing the submitter. |
+| #   | Misconception                         | Reality                                                                                     |
+| --- | ------------------------------------- | ------------------------------------------------------------------------------------------- |
+| 1   | "maxPoolSize controls thread ceiling" | Only if the queue is BOUNDED. Unbounded queue = max is dead code.                           |
+| 2   | "Larger queue = better throughput"    | Larger queue = higher latency. Tasks wait longer before execution.                          |
+| 3   | "CallerRunsPolicy is just a fallback" | It is the best production default - provides natural backpressure by slowing the submitter. |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - Executor Framework and ExecutorService - the abstraction this configures
 - BlockingQueue Implementations - queue choice affects pool behavior
 
 **THIS:** ThreadPoolExecutor Configuration
 
 **Next steps:**
+
 - Unbounded Queue Anti-Pattern - deep dive on the #1 configuration mistake
 - Monitoring Thread Pools in Production - observe pool behavior at runtime
 
@@ -371,7 +381,7 @@ new ThreadPoolExecutor(
 ### 📇 Revision Card
 
 1. Queue must fill BEFORE threads grow beyond core - unbounded queue = max is never reached.
-2. Production formula for I/O-bound: core = CPUs, max = CPUs * (1 + wait/compute), queue = small bounded.
+2. Production formula for I/O-bound: core = CPUs, max = CPUs \* (1 + wait/compute), queue = small bounded.
 3. CallerRunsPolicy is the best production rejection policy - natural backpressure without data loss.
 
 ---
@@ -491,45 +501,50 @@ scheduler.scheduleAtFixedRate(() -> {
 
 **Cost:** slightly more complex setup than Timer; still requires manual exception handling within tasks.
 
-| Aspect | ScheduledExecutorService | Timer | @Scheduled (Spring) |
-| ------ | ----------------------- | ----- | ------------------- |
-| Fault isolation | Per-task | None (one thread) | Per-task |
-| Thread count | Configurable | 1 | Configurable |
-| Exception handling | Task cancelled if uncaught | Timer dies | Logged + continues |
-| Lifecycle | shutdown() | cancel() | Container-managed |
+| Aspect             | ScheduledExecutorService   | Timer             | @Scheduled (Spring) |
+| ------------------ | -------------------------- | ----------------- | ------------------- |
+| Fault isolation    | Per-task                   | None (one thread) | Per-task            |
+| Thread count       | Configurable               | 1                 | Configurable        |
+| Exception handling | Task cancelled if uncaught | Timer dies        | Logged + continues  |
+| Lifecycle          | shutdown()                 | cancel()          | Container-managed   |
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Need periodic background tasks with fault isolation.
 - Need delay-based execution (retry after X seconds).
 - Need finer control than framework schedulers provide.
 
 **AVOID WHEN:**
+
 - Spring environment (use `@Scheduled` for simplicity and container lifecycle).
 - Distributed scheduling needed (use Quartz, db-scheduler).
 
 **PREFER @Scheduled WHEN:**
+
 - Spring Boot application with simple cron/fixedRate requirements.
 - Want container-managed lifecycle without manual shutdown.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "ScheduledExecutorService catches exceptions for me" | No - uncaught exceptions cancel that task's future executions silently. Always wrap in try-catch. |
-| 2 | "fixedRate guarantees exact intervals" | If a task takes longer than the period, next execution is immediate (no overlap) but intervals drift. |
-| 3 | "One scheduler thread is enough" | If a task blocks, other tasks on the same thread are delayed. Use pool size >= number of concurrent tasks. |
+| #   | Misconception                                        | Reality                                                                                                    |
+| --- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| 1   | "ScheduledExecutorService catches exceptions for me" | No - uncaught exceptions cancel that task's future executions silently. Always wrap in try-catch.          |
+| 2   | "fixedRate guarantees exact intervals"               | If a task takes longer than the period, next execution is immediate (no overlap) but intervals drift.      |
+| 3   | "One scheduler thread is enough"                     | If a task blocks, other tasks on the same thread are delayed. Use pool size >= number of concurrent tasks. |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - Executor Framework and ExecutorService - the parent abstraction
 - Thread Lifecycle and States - understand TIMED_WAITING state
 
 **THIS:** ScheduledExecutorService
 
 **Next steps:**
+
 - CompletableFuture Composition - async chaining beyond scheduling
 - Monitoring Thread Pools in Production - observe scheduler health
 
@@ -651,45 +666,50 @@ try {
 
 **Cost:** get() blocks the caller (thread consumed while waiting); no composition (cannot chain futures).
 
-| Aspect | Future | CompletableFuture | Reactive (Mono) |
-| ------ | ------ | ----------------- | --------------- |
-| Blocking | get() blocks | Non-blocking callbacks | Non-blocking |
-| Composition | None | thenApply/thenCompose | map/flatMap |
-| Exception | ExecutionException | handle/exceptionally | onError |
-| Cancellation | cancel(interrupt) | cancel + completeExceptionally | Disposable |
+| Aspect       | Future             | CompletableFuture              | Reactive (Mono) |
+| ------------ | ------------------ | ------------------------------ | --------------- |
+| Blocking     | get() blocks       | Non-blocking callbacks         | Non-blocking    |
+| Composition  | None               | thenApply/thenCompose          | map/flatMap     |
+| Exception    | ExecutionException | handle/exceptionally           | onError         |
+| Cancellation | cancel(interrupt)  | cancel + completeExceptionally | Disposable      |
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Simple async tasks where you need the result at a defined point.
 - JDK 5-7 code without CompletableFuture access.
 - You will get() in a known location with a timeout.
 
 **AVOID WHEN:**
+
 - You need to chain transformations on results (use CompletableFuture).
 - Blocking get() would consume a thread you cannot afford.
 
 **PREFER CompletableFuture WHEN:**
+
 - You need non-blocking composition (thenApply, thenCompose).
 - Multiple futures depend on each other (fan-out/fan-in).
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "future.get() is non-blocking" | get() BLOCKS the calling thread until the result is ready or timeout fires. |
-| 2 | "Cancel means the task stops immediately" | cancel(true) sets the interrupt flag. The task must CHECK Thread.interrupted() to actually stop. |
-| 3 | "Exceptions are lost if I don't call get()" | True - if you never call get(), exceptions are swallowed silently. Always retrieve or log. |
+| #   | Misconception                               | Reality                                                                                          |
+| --- | ------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| 1   | "future.get() is non-blocking"              | get() BLOCKS the calling thread until the result is ready or timeout fires.                      |
+| 2   | "Cancel means the task stops immediately"   | cancel(true) sets the interrupt flag. The task must CHECK Thread.interrupted() to actually stop. |
+| 3   | "Exceptions are lost if I don't call get()" | True - if you never call get(), exceptions are swallowed silently. Always retrieve or log.       |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - Executor Framework and ExecutorService - where you submit Callables
 - Thread and Runnable - Callable is Runnable with a return value
 
 **THIS:** Future and Callable
 
 **Next steps:**
+
 - CompletableFuture Composition - non-blocking future chaining
 - ThreadPoolExecutor Configuration - tune the pool running your Callables
 
@@ -804,47 +824,52 @@ Condition notEmpty = lock.newCondition();
 
 **Cost:** verbose (try-finally required), easy to forget unlock (bug), cannot use with try-with-resources (Lock is not AutoCloseable in standard JDK).
 
-| Aspect | synchronized | ReentrantLock |
-| ------ | ------------ | ------------- |
-| Syntax | Block scoped (auto unlock) | Explicit lock/unlock |
-| Timeout | No | Yes (tryLock) |
-| Interrupt | No | Yes (lockInterruptibly) |
-| Fairness | No | Optional (fair=true) |
-| Conditions | One per object | Multiple per lock |
-| Leak risk | None | Forget unlock = deadlock |
+| Aspect     | synchronized               | ReentrantLock            |
+| ---------- | -------------------------- | ------------------------ |
+| Syntax     | Block scoped (auto unlock) | Explicit lock/unlock     |
+| Timeout    | No                         | Yes (tryLock)            |
+| Interrupt  | No                         | Yes (lockInterruptibly)  |
+| Fairness   | No                         | Optional (fair=true)     |
+| Conditions | One per object             | Multiple per lock        |
+| Leak risk  | None                       | Forget unlock = deadlock |
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - You need timeout, try-lock, or interruptible locking.
 - You need multiple conditions (producer-consumer with separate signals).
 - Fairness ordering is required (FIFO lock acquisition).
 
 **AVOID WHEN:**
+
 - Simple critical sections where synchronized suffices.
 - Team is not disciplined about try-finally unlock patterns.
 
 **PREFER synchronized WHEN:**
+
 - No advanced features needed (simpler, safer, auto-release on exceptions).
 - Block-scoped protection is sufficient.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "ReentrantLock is faster than synchronized" | Since JDK 6, synchronized performance matches ReentrantLock for uncontended locks. Choose by FEATURES, not speed. |
-| 2 | "Fair lock = better" | Fair lock (FIFO) has significantly higher throughput cost (~2x slower). Use only when starvation is proven. |
-| 3 | "I can skip the finally block if I am careful" | Never. Any exception between lock() and unlock() leaks the lock permanently. Always use try-finally. |
+| #   | Misconception                                  | Reality                                                                                                           |
+| --- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| 1   | "ReentrantLock is faster than synchronized"    | Since JDK 6, synchronized performance matches ReentrantLock for uncontended locks. Choose by FEATURES, not speed. |
+| 2   | "Fair lock = better"                           | Fair lock (FIFO) has significantly higher throughput cost (~2x slower). Use only when starvation is proven.       |
+| 3   | "I can skip the finally block if I am careful" | Never. Any exception between lock() and unlock() leaks the lock permanently. Always use try-finally.              |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - synchronized Keyword - the built-in mechanism ReentrantLock extends
 - Deadlock - lock ordering applies to ReentrantLock too
 
 **THIS:** ReentrantLock vs synchronized
 
 **Next steps:**
+
 - ReadWriteLock - separate read and write lock paths
 - StampedLock - optimistic locking for read-heavy workloads
 
@@ -984,45 +1009,50 @@ try {
 
 **Cost:** write acquisition slower (must wait for all readers). Lock overhead higher than plain synchronized for low-reader-count scenarios.
 
-| Aspect | synchronized | ReadWriteLock | StampedLock |
-| ------ | ------------ | ------------- | ----------- |
-| Reader concurrency | None | Full | Full + optimistic |
-| Writer starvation | N/A | Possible (non-fair) | Possible |
-| Complexity | Low | Medium | High |
-| Best for | Write-heavy or simple | Read-heavy (>10:1 read:write) | Very read-heavy |
+| Aspect             | synchronized          | ReadWriteLock                 | StampedLock       |
+| ------------------ | --------------------- | ----------------------------- | ----------------- |
+| Reader concurrency | None                  | Full                          | Full + optimistic |
+| Writer starvation  | N/A                   | Possible (non-fair)           | Possible          |
+| Complexity         | Low                   | Medium                        | High              |
+| Best for           | Write-heavy or simple | Read-heavy (>10:1 read:write) | Very read-heavy   |
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Read:write ratio exceeds 10:1.
 - Read operations are non-trivial (expensive enough that serialization hurts).
 - You cannot use ConcurrentHashMap (which has built-in read concurrency).
 
 **AVOID WHEN:**
+
 - Read operations are trivial (nanoseconds) - lock overhead dominates.
 - Write frequency is similar to read frequency (no reader concurrency benefit).
 
 **PREFER ConcurrentHashMap WHEN:**
+
 - The data structure IS a map (built-in lock striping, no external lock needed).
 - Reads and writes are to different keys (natural concurrency without ReadWriteLock).
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "ReadWriteLock is always faster for reads" | Lock acquire/release has overhead. For trivial reads (HashMap.get on small map), synchronized can be faster. |
-| 2 | "You can upgrade read lock to write lock" | No. Attempting to acquire write lock while holding read lock = DEADLOCK. You must release read first. |
-| 3 | "Non-fair is always fine" | Under sustained read load, non-fair ReadWriteLock can starve writers indefinitely. Consider fair=true or StampedLock. |
+| #   | Misconception                              | Reality                                                                                                               |
+| --- | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| 1   | "ReadWriteLock is always faster for reads" | Lock acquire/release has overhead. For trivial reads (HashMap.get on small map), synchronized can be faster.          |
+| 2   | "You can upgrade read lock to write lock"  | No. Attempting to acquire write lock while holding read lock = DEADLOCK. You must release read first.                 |
+| 3   | "Non-fair is always fine"                  | Under sustained read load, non-fair ReadWriteLock can starve writers indefinitely. Consider fair=true or StampedLock. |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - ReentrantLock vs synchronized - understand explicit locking
 - synchronized Keyword - the simpler alternative
 
 **THIS:** ReadWriteLock
 
 **Next steps:**
+
 - StampedLock - optimistic reads for even higher throughput
 - ConcurrentHashMap - built-in read concurrency without external locks
 
@@ -1139,45 +1169,50 @@ if (!ready.await(30, SECONDS)) {
 
 **Cost:** single-use (cannot reset); no way to increase count after creation; no failure signaling built in.
 
-| Aspect | CountDownLatch | CyclicBarrier | Phaser |
-| ------ | -------------- | ------------- | ------ |
-| Reusable | No | Yes (resets after trip) | Yes |
-| Parties | Any thread can countDown | Fixed participating threads | Dynamic |
-| Waiting | One side waits, other counts | All parties wait | All parties wait |
-| Use case | "Wait for N events" | "All meet at barrier" | "Phased computation" |
+| Aspect   | CountDownLatch               | CyclicBarrier               | Phaser               |
+| -------- | ---------------------------- | --------------------------- | -------------------- |
+| Reusable | No                           | Yes (resets after trip)     | Yes                  |
+| Parties  | Any thread can countDown     | Fixed participating threads | Dynamic              |
+| Waiting  | One side waits, other counts | All parties wait            | All parties wait     |
+| Use case | "Wait for N events"          | "All meet at barrier"       | "Phased computation" |
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - One or more threads must wait for N events to occur.
 - Events come from different sources (not necessarily N threads).
 - Single-use synchronization point (initialization, test coordination).
 
 **AVOID WHEN:**
+
 - You need to reuse the barrier (use CyclicBarrier).
 - N is not known at creation time (use Phaser with dynamic registration).
 
 **PREFER CyclicBarrier WHEN:**
+
 - All parties are peers (each arrives AND waits, not one-sided).
 - You need to reuse the rendezvous point across iterations.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "I can reset a CountDownLatch" | No. It is single-use. For reusable barriers, use CyclicBarrier or Phaser. |
-| 2 | "Forgetting countDown just means a longer wait" | If a thread fails without calling countDown(), await() blocks forever (or until timeout). Always countDown in finally. |
-| 3 | "CountDownLatch replaces join()" | It is more flexible than join() but they solve different problems. Latch counts events; join waits for thread death. |
+| #   | Misconception                                   | Reality                                                                                                                |
+| --- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 1   | "I can reset a CountDownLatch"                  | No. It is single-use. For reusable barriers, use CyclicBarrier or Phaser.                                              |
+| 2   | "Forgetting countDown just means a longer wait" | If a thread fails without calling countDown(), await() blocks forever (or until timeout). Always countDown in finally. |
+| 3   | "CountDownLatch replaces join()"                | It is more flexible than join() but they solve different problems. Latch counts events; join waits for thread death.   |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - Thread Lifecycle and States - understand WAITING state
 - Executor Framework and ExecutorService - typical context where latches coordinate
 
 **THIS:** CountDownLatch
 
 **Next steps:**
+
 - CyclicBarrier and Phaser - reusable barriers for iterative coordination
 - CompletableFuture Composition - more expressive async coordination
 
@@ -1297,46 +1332,51 @@ phaser.arriveAndAwaitAdvance(); // wait for all
 
 **Cost:** if one party fails/hangs, entire barrier is stuck (CyclicBarrier becomes BROKEN).
 
-| Aspect | CyclicBarrier | Phaser | CountDownLatch |
-| ------ | ------------- | ------ | -------------- |
-| Reusable | Yes | Yes | No |
-| Dynamic parties | No (fixed) | Yes | No |
-| Broken on failure | Yes (BrokenBarrierException) | Graceful deregister | N/A |
-| Phases | Implicit (auto-reset) | Explicit (getPhase()) | N/A |
+| Aspect            | CyclicBarrier                | Phaser                | CountDownLatch |
+| ----------------- | ---------------------------- | --------------------- | -------------- |
+| Reusable          | Yes                          | Yes                   | No             |
+| Dynamic parties   | No (fixed)                   | Yes                   | No             |
+| Broken on failure | Yes (BrokenBarrierException) | Graceful deregister   | N/A            |
+| Phases            | Implicit (auto-reset)        | Explicit (getPhase()) | N/A            |
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Fixed set of threads that must synchronize at each iteration.
 - Parallel simulations, batch processing in rounds.
 - Need a reusable rendezvous point.
 
 **AVOID WHEN:**
+
 - One-shot coordination (use CountDownLatch - simpler).
 - Parties need to join/leave dynamically (use Phaser instead).
 
 **PREFER Phaser WHEN:**
+
 - Party count changes between phases.
 - Need explicit phase numbering (getPhase()).
 - Want graceful handling of party failure.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "A crashed thread just means others wait longer" | If a party never arrives, CyclicBarrier is permanently BROKEN. All await() calls throw BrokenBarrierException. |
-| 2 | "Barrier parties must be separate threads" | A single thread can call await() from different code paths, but this is confusing and fragile. |
-| 3 | "Phaser replaces CyclicBarrier always" | Phaser has higher overhead. For fixed-party fixed-round scenarios, CyclicBarrier is simpler and faster. |
+| #   | Misconception                                    | Reality                                                                                                        |
+| --- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| 1   | "A crashed thread just means others wait longer" | If a party never arrives, CyclicBarrier is permanently BROKEN. All await() calls throw BrokenBarrierException. |
+| 2   | "Barrier parties must be separate threads"       | A single thread can call await() from different code paths, but this is confusing and fragile.                 |
+| 3   | "Phaser replaces CyclicBarrier always"           | Phaser has higher overhead. For fixed-party fixed-round scenarios, CyclicBarrier is simpler and faster.        |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - CountDownLatch - simpler one-shot version of barrier coordination
 - Thread Lifecycle and States - understand WAITING state at barrier
 
 **THIS:** CyclicBarrier and Phaser
 
 **Next steps:**
+
 - ForkJoinPool and Work-Stealing - barrier-like synchronization in divide-and-conquer
 - Semaphore - another coordination primitive (bounded permits)
 
@@ -1459,44 +1499,49 @@ if (permits.tryAcquire(2, TimeUnit.SECONDS)) {
 
 **Cost:** no ownership tracking (any thread can release); manual acquire/release pairing; cannot enforce WHICH resource a thread uses.
 
-| Aspect | Semaphore | synchronized | Rate limiter |
-| ------ | --------- | ------------ | ------------ |
-| Concurrent access | N (configurable) | 1 | Per-time-window |
-| Use case | Resource pool bounding | Mutual exclusion | Request rate control |
-| Ownership | None (any thread can release) | Thread that acquired | N/A |
+| Aspect            | Semaphore                     | synchronized         | Rate limiter         |
+| ----------------- | ----------------------------- | -------------------- | -------------------- |
+| Concurrent access | N (configurable)              | 1                    | Per-time-window      |
+| Use case          | Resource pool bounding        | Mutual exclusion     | Request rate control |
+| Ownership         | None (any thread can release) | Thread that acquired | N/A                  |
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Bounding concurrent access to a shared resource (connection pools, file handles, APIs).
 - Need more than mutual exclusion but less than full pool implementation.
 - Implementing leaky-bucket or bounded parallelism patterns.
 
 **AVOID WHEN:**
+
 - You need mutual exclusion (Semaphore(1) works but synchronized is simpler).
 - Resource already has built-in pooling (HikariCP, HTTP client pools).
 
 **PREFER connection pool library WHEN:**
+
 - Managing database connections (HikariCP handles lifecycle, validation, metrics).
 - Need health checks and connection validation (Semaphore does not validate resources).
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "Semaphore tracks which thread holds the permit" | No. Any thread can release(). Releasing without acquiring INCREASES permits beyond initial count (corrupts state). |
-| 2 | "Semaphore(1) is the same as a lock" | Similar behavior but no ownership. Semaphore(1) allows thread A to acquire and thread B to release - a lock requires the same thread. |
-| 3 | "Fair semaphore is always better" | Fair=true adds overhead (FIFO ordering). Use only if starvation is observed. |
+| #   | Misconception                                    | Reality                                                                                                                               |
+| --- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | "Semaphore tracks which thread holds the permit" | No. Any thread can release(). Releasing without acquiring INCREASES permits beyond initial count (corrupts state).                    |
+| 2   | "Semaphore(1) is the same as a lock"             | Similar behavior but no ownership. Semaphore(1) allows thread A to acquire and thread B to release - a lock requires the same thread. |
+| 3   | "Fair semaphore is always better"                | Fair=true adds overhead (FIFO ordering). Use only if starvation is observed.                                                          |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - synchronized Keyword - understand mutual exclusion (Semaphore generalizes it)
 - Executor Framework and ExecutorService - common context for semaphore usage
 
 **THIS:** Semaphore
 
 **Next steps:**
+
 - Build a Producer-Consumer Exercise - uses Semaphore for bounded buffer
 - BlockingQueue Implementations - alternative to manual semaphore-based bounding
 
@@ -1612,46 +1657,51 @@ map.compute(key, (k, existing) -> {
 
 **Cost:** weakly consistent iterators (may not reflect concurrent modifications); size() is approximate under contention; no global lock for multi-key atomic operations.
 
-| Aspect | ConcurrentHashMap | synchronizedMap | HashMap |
-| ------ | ----------------- | --------------- | ------- |
-| Thread-safe | Yes (per-bin) | Yes (global lock) | No |
-| Read concurrency | Full (lock-free) | Serialized | N/A |
-| Write concurrency | Per-bin | Serialized | N/A |
-| Iteration | Weakly consistent | Snapshot (if locked) | Fail-fast |
-| Null keys/values | No | Yes | Yes |
+| Aspect            | ConcurrentHashMap | synchronizedMap      | HashMap   |
+| ----------------- | ----------------- | -------------------- | --------- |
+| Thread-safe       | Yes (per-bin)     | Yes (global lock)    | No        |
+| Read concurrency  | Full (lock-free)  | Serialized           | N/A       |
+| Write concurrency | Per-bin           | Serialized           | N/A       |
+| Iteration         | Weakly consistent | Snapshot (if locked) | Fail-fast |
+| Null keys/values  | No                | Yes                  | Yes       |
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Multi-threaded access to a map with high read+write concurrency.
 - Need atomic compound operations (computeIfAbsent, merge).
 - Default thread-safe map choice in Java.
 
 **AVOID WHEN:**
+
 - Single-threaded context (HashMap is simpler and faster).
 - Need null keys or values (ConcurrentHashMap rejects null).
 
 **PREFER synchronizedMap WHEN:**
+
 - You need to lock across multiple operations atomically (rare).
 - Legacy code compatibility requirement.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "size() is exact" | Under concurrent modification, size() is an ESTIMATE. For exact count, you need external synchronization. |
-| 2 | "containsKey + put is safe" | It is NOT atomic. Use computeIfAbsent for safe check-then-act. |
-| 3 | "ConcurrentHashMap allows null values" | No. Null key or value throws NullPointerException. This is by design (null is ambiguous: absent vs present-with-null). |
+| #   | Misconception                          | Reality                                                                                                                |
+| --- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 1   | "size() is exact"                      | Under concurrent modification, size() is an ESTIMATE. For exact count, you need external synchronization.              |
+| 2   | "containsKey + put is safe"            | It is NOT atomic. Use computeIfAbsent for safe check-then-act.                                                         |
+| 3   | "ConcurrentHashMap allows null values" | No. Null key or value throws NullPointerException. This is by design (null is ambiguous: absent vs present-with-null). |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - The Shared Mutable State Problem - why thread-safe maps exist
 - Race Condition - check-then-act races that ConcurrentHashMap solves
 
 **THIS:** ConcurrentHashMap
 
 **Next steps:**
+
 - CopyOnWriteArrayList - another concurrent collection (optimized for reads)
 - Synchronized vs Concurrent Collections Decision - when to choose which
 
@@ -1768,45 +1818,50 @@ for (EventListener l : listeners) {
 
 **Cost:** O(n) memory + time on every write; stale reads during iteration (snapshot, not real-time); memory pressure from temporary array copies.
 
-| Aspect | CopyOnWriteArrayList | synchronizedList | ConcurrentLinkedQueue |
-| ------ | -------------------- | ---------------- | --------------------- |
-| Read lock | None (lock-free) | Readers block | None (lock-free) |
-| Write cost | O(n) copy | O(1) + lock | O(1) CAS |
-| Iterator safety | Snapshot (never CME) | Must externally sync | Weakly consistent |
-| Best for | Read-heavy, write-rare | Balanced read/write | Queue patterns |
+| Aspect          | CopyOnWriteArrayList   | synchronizedList     | ConcurrentLinkedQueue |
+| --------------- | ---------------------- | -------------------- | --------------------- |
+| Read lock       | None (lock-free)       | Readers block        | None (lock-free)      |
+| Write cost      | O(n) copy              | O(1) + lock          | O(1) CAS              |
+| Iterator safety | Snapshot (never CME)   | Must externally sync | Weakly consistent     |
+| Best for        | Read-heavy, write-rare | Balanced read/write  | Queue patterns        |
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Read/iterate frequency >> write frequency (100:1 or more).
 - Listener/observer registries, configuration lists, routing tables.
 - Need iterator that never throws ConcurrentModificationException.
 
 **AVOID WHEN:**
+
 - Writes are frequent (>1% of operations are mutations).
 - List is large (>1000 elements) AND writes are not extremely rare.
 
 **PREFER ConcurrentHashMap WHEN:**
+
 - Need both read AND write concurrency on a map structure.
 - Modifications happen regularly under load.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "Copy-on-write = fast for all concurrent access" | Only fast for READS. Writes copy the entire array. Frequent writes = catastrophic performance. |
-| 2 | "Iterator reflects real-time state" | Iterator sees a SNAPSHOT from creation time. Changes after iterator creation are invisible to it. |
-| 3 | "Good for general concurrent lists" | No. It is a specialized structure for read-heavy/write-rare patterns only. |
+| #   | Misconception                                    | Reality                                                                                           |
+| --- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| 1   | "Copy-on-write = fast for all concurrent access" | Only fast for READS. Writes copy the entire array. Frequent writes = catastrophic performance.    |
+| 2   | "Iterator reflects real-time state"              | Iterator sees a SNAPSHOT from creation time. Changes after iterator creation are invisible to it. |
+| 3   | "Good for general concurrent lists"              | No. It is a specialized structure for read-heavy/write-rare patterns only.                        |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - Race Condition - why unprotected ArrayList fails under concurrency
 - ConcurrentHashMap - another concurrent collection with different trade-offs
 
 **THIS:** CopyOnWriteArrayList
 
 **Next steps:**
+
 - Synchronized vs Concurrent Collections Decision - choosing the right collection
 - Immutability as Concurrency Strategy - copy-on-write is one form of immutability
 
@@ -1917,45 +1972,50 @@ while (true) {
 
 **Cost:** blocking means threads are consumed while waiting; bounded queue means producers may stall.
 
-| Aspect | ArrayBlockingQueue | LinkedBlockingQueue | SynchronousQueue |
-| ------ | ------------------ | ------------------- | ---------------- |
-| Capacity | Fixed (array) | Optional bound (linked) | Zero |
-| Memory | Pre-allocated | Per-node allocation | None |
-| Throughput | Single lock | Two locks (put/take) | Direct handoff |
-| Best for | Bounded buffer | High throughput P/C | Thread pool handoff |
+| Aspect     | ArrayBlockingQueue | LinkedBlockingQueue     | SynchronousQueue    |
+| ---------- | ------------------ | ----------------------- | ------------------- |
+| Capacity   | Fixed (array)      | Optional bound (linked) | Zero                |
+| Memory     | Pre-allocated      | Per-node allocation     | None                |
+| Throughput | Single lock        | Two locks (put/take)    | Direct handoff      |
+| Best for   | Bounded buffer     | High throughput P/C     | Thread pool handoff |
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Implementing producer-consumer patterns.
 - Need built-in backpressure (bounded queue).
 - Thread pool work queues (ThreadPoolExecutor uses BlockingQueue).
 
 **AVOID WHEN:**
+
 - Single-threaded processing (no blocking needed).
 - Need priority + bounded (PriorityBlockingQueue is unbounded by default).
 
 **PREFER ArrayBlockingQueue WHEN:**
+
 - Fixed capacity known upfront and memory predictability is important.
 - Lower GC pressure needed (no per-element node allocation).
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "LinkedBlockingQueue is bounded by default" | No - default capacity is Integer.MAX_VALUE (effectively unbounded). Always pass explicit capacity. |
-| 2 | "offer() and put() are the same" | offer() returns false if full (non-blocking). put() BLOCKS until space. Different contract. |
-| 3 | "Larger queue = better performance" | Larger queue = higher memory + higher latency (items wait longer). Size queue for acceptable latency. |
+| #   | Misconception                               | Reality                                                                                               |
+| --- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| 1   | "LinkedBlockingQueue is bounded by default" | No - default capacity is Integer.MAX_VALUE (effectively unbounded). Always pass explicit capacity.    |
+| 2   | "offer() and put() are the same"            | offer() returns false if full (non-blocking). put() BLOCKS until space. Different contract.           |
+| 3   | "Larger queue = better performance"         | Larger queue = higher memory + higher latency (items wait longer). Size queue for acceptable latency. |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - wait, notify, notifyAll - what BlockingQueue uses internally (condition variables)
 - Executor Framework and ExecutorService - ThreadPoolExecutor uses BlockingQueue
 
 **THIS:** BlockingQueue Implementations
 
 **Next steps:**
+
 - Unbounded Queue Anti-Pattern - why unbounded is dangerous
 - Build a Producer-Consumer Exercise - apply BlockingQueue practically
 
@@ -2061,46 +2121,51 @@ public boolean start() {
 
 **Cost:** under HIGH contention, CAS retry loops burn CPU (spinning); only works for single-variable operations (no multi-variable atomicity).
 
-| Aspect | AtomicInteger | synchronized | LongAdder |
-| ------ | ------------- | ------------ | --------- |
-| Mechanism | CAS (lock-free) | Monitor lock | Striped CAS |
-| Contention | Retry spin | Thread park | Distributed |
-| Best for | Moderate contention | Complex critical sections | High-contention counters |
-| Multi-variable | No | Yes | No |
+| Aspect         | AtomicInteger       | synchronized              | LongAdder                |
+| -------------- | ------------------- | ------------------------- | ------------------------ |
+| Mechanism      | CAS (lock-free)     | Monitor lock              | Striped CAS              |
+| Contention     | Retry spin          | Thread park               | Distributed              |
+| Best for       | Moderate contention | Complex critical sections | High-contention counters |
+| Multi-variable | No                  | Yes                       | No                       |
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Single-variable atomic operations (counters, flags, references).
 - Moderate contention (< 16 threads typically competing).
 - Need lock-free guarantees (real-time systems, interrupt handlers).
 
 **AVOID WHEN:**
+
 - Need atomicity across MULTIPLE variables (use synchronized or locks).
 - Very high contention (> 32 threads hammering one counter) - use LongAdder.
 
 **PREFER LongAdder WHEN:**
+
 - Counter-only use case (no get-and-compute patterns).
 - Very high write contention from many threads.
 - Read (sum) is infrequent relative to writes.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "Atomic is always faster than synchronized" | Under zero contention, synchronized is equally fast (~20ns). Under extreme contention, CAS spinning wastes CPU while synchronized parks threads. |
-| 2 | "AtomicInteger replaces all synchronization" | Only for SINGLE variable. `if (a.get() > 0) b.set(x)` is NOT atomic even with two AtomicIntegers. |
-| 3 | "CAS never blocks" | Correct - it never blocks. But it SPINS (retries) under contention, burning CPU instead of sleeping. |
+| #   | Misconception                                | Reality                                                                                                                                          |
+| --- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | "Atomic is always faster than synchronized"  | Under zero contention, synchronized is equally fast (~20ns). Under extreme contention, CAS spinning wastes CPU while synchronized parks threads. |
+| 2   | "AtomicInteger replaces all synchronization" | Only for SINGLE variable. `if (a.get() > 0) b.set(x)` is NOT atomic even with two AtomicIntegers.                                                |
+| 3   | "CAS never blocks"                           | Correct - it never blocks. But it SPINS (retries) under contention, burning CPU instead of sleeping.                                             |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - Atomicity, Visibility, Ordering - understand what atomicity means at hardware level
 - volatile Keyword - atomics provide visibility + atomicity (volatile only provides visibility)
 
 **THIS:** AtomicInteger and Atomic Classes
 
 **Next steps:**
+
 - Lock-Free Algorithms (CAS) - build data structures with CAS
 - VarHandle and Memory Fences - modern low-level atomic access (JDK 9+)
 
@@ -2209,45 +2274,50 @@ try {
 
 **Cost:** memory leak risk in thread pools (values persist across task boundaries). Hidden coupling (implicit context passing).
 
-| Aspect | ThreadLocal | synchronized | Atomic |
-| ------ | ----------- | ------------ | ------ |
-| Strategy | Eliminate sharing | Allow sharing safely | Allow sharing lock-free |
-| Overhead | Memory per thread | Lock per access | CAS per access |
-| Leak risk | High (pools) | None | None |
-| Debugging | Hard (hidden state) | Explicit | Explicit |
+| Aspect    | ThreadLocal         | synchronized         | Atomic                  |
+| --------- | ------------------- | -------------------- | ----------------------- |
+| Strategy  | Eliminate sharing   | Allow sharing safely | Allow sharing lock-free |
+| Overhead  | Memory per thread   | Lock per access      | CAS per access          |
+| Leak risk | High (pools)        | None                 | None                    |
+| Debugging | Hard (hidden state) | Explicit             | Explicit                |
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Thread-unsafe objects that are expensive to create (formatters, parsers, buffers).
 - Per-request context (user, transaction ID) in thread-per-request models.
 - Eliminating contention by eliminating sharing entirely.
 
 **AVOID WHEN:**
+
 - Using virtual threads (millions of threads = millions of ThreadLocal copies = OOM). Use ScopedValues instead.
 - Thread pool tasks where cleanup is not guaranteed.
 
 **PREFER ScopedValues (JDK 21+) WHEN:**
+
 - Virtual threads context (inheritable, bounded lifetime).
 - Need immutable per-scope values without leak risk.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "ThreadLocal values are garbage collected when the task ends" | No - the thread holds a strong reference. In pools, threads live forever -> values leak forever unless removed. |
-| 2 | "ThreadLocal is free" | Each ThreadLocal adds a map entry per thread. 1000 ThreadLocals * 200 threads = 200K map entries + values. |
-| 3 | "InheritableThreadLocal works with thread pools" | Child threads inherit, but pool threads are NOT child threads of the submitter. Values do not propagate. |
+| #   | Misconception                                                 | Reality                                                                                                         |
+| --- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| 1   | "ThreadLocal values are garbage collected when the task ends" | No - the thread holds a strong reference. In pools, threads live forever -> values leak forever unless removed. |
+| 2   | "ThreadLocal is free"                                         | Each ThreadLocal adds a map entry per thread. 1000 ThreadLocals \* 200 threads = 200K map entries + values.     |
+| 3   | "InheritableThreadLocal works with thread pools"              | Child threads inherit, but pool threads are NOT child threads of the submitter. Values do not propagate.        |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - The Shared Mutable State Problem - ThreadLocal solves it by eliminating sharing
 - Executor Framework and ExecutorService - where ThreadLocal leaks happen
 
 **THIS:** ThreadLocal
 
 **Next steps:**
+
 - ThreadLocal Memory Leak in Thread Pools - the production failure mode
 - Scoped Values (JEP 464) - modern replacement for virtual threads
 
@@ -2367,45 +2437,50 @@ gauge("pool.active", tpe::getActiveCount);
 
 **Cost (bounded):** must handle rejection (complexity), may reject valid work during bursts.
 
-| Aspect | Unbounded queue | Bounded + rejection | Bounded + CallerRuns |
-| ------ | --------------- | ------------------- | -------------------- |
-| OOM risk | High (certain under sustained load) | None | None |
-| Data loss | All (on crash) | Rejected tasks only | None (caller executes) |
-| Backpressure | None | Explicit (exception) | Natural (caller slows) |
-| Latency signal | Hidden until too late | Immediate (rejection) | Immediate (caller blocked) |
+| Aspect         | Unbounded queue                     | Bounded + rejection   | Bounded + CallerRuns       |
+| -------------- | ----------------------------------- | --------------------- | -------------------------- |
+| OOM risk       | High (certain under sustained load) | None                  | None                       |
+| Data loss      | All (on crash)                      | Rejected tasks only   | None (caller executes)     |
+| Backpressure   | None                                | Explicit (exception)  | Natural (caller slows)     |
+| Latency signal | Hidden until too late               | Immediate (rejection) | Immediate (caller blocked) |
 
 ### ⚡ Decision Snap
 
 **USE BOUNDED QUEUE WHEN:**
+
 - Any production system (always). No exceptions.
 - Need predictable memory behavior under load.
 - Want early warning of overload (queue depth metric).
 
 **AVOID UNBOUNDED QUEUE WHEN:**
+
 - Always. The only valid use: known-finite producers that cannot produce faster than consumers.
 
 **PREFER CallerRunsPolicy WHEN:**
+
 - Cannot afford to lose any task.
 - Want automatic backpressure without custom rejection logic.
 - Submitting thread CAN afford to slow down.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "Executors.newFixedThreadPool is production-safe" | It uses an UNBOUNDED queue. Under sustained overload: guaranteed OOM. Never use in production without understanding internals. |
-| 2 | "We will never get that much traffic" | Traffic spikes, retry storms, and upstream failures ALL generate unexpected bursts. Bound queues defensively. |
-| 3 | "A bigger queue is better than rejection" | A bigger queue just delays the crash. The correct answer is backpressure (slow the producer, not buffer infinitely). |
+| #   | Misconception                                     | Reality                                                                                                                        |
+| --- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | "Executors.newFixedThreadPool is production-safe" | It uses an UNBOUNDED queue. Under sustained overload: guaranteed OOM. Never use in production without understanding internals. |
+| 2   | "We will never get that much traffic"             | Traffic spikes, retry storms, and upstream failures ALL generate unexpected bursts. Bound queues defensively.                  |
+| 3   | "A bigger queue is better than rejection"         | A bigger queue just delays the crash. The correct answer is backpressure (slow the producer, not buffer infinitely).           |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - ThreadPoolExecutor Configuration - understand queue-thread interaction
 - BlockingQueue Implementations - queue types and their bounds
 
 **THIS:** Unbounded Queue Anti-Pattern
 
 **Next steps:**
+
 - Back-Pressure Architecture Patterns - system-level backpressure design
 - Monitoring Thread Pools in Production - observing queue depth
 
@@ -2541,45 +2616,50 @@ executor.awaitTermination(30, SECONDS);
 
 **Cost:** complexity of shutdown coordination; poison pill pattern is fragile with multiple consumers; item loss risk during unclean shutdown.
 
-| Aspect | BlockingQueue P/C | Disruptor | Kafka (external) |
-| ------ | ----------------- | --------- | ---------------- |
-| Throughput | Good (millions/s) | Excellent (lock-free ring) | Network-limited |
-| Persistence | None (in-memory) | None | Durable |
-| Backpressure | put() blocks | Sequence barriers | Consumer lag |
-| Complexity | Low | Medium | High (ops) |
+| Aspect       | BlockingQueue P/C | Disruptor                  | Kafka (external) |
+| ------------ | ----------------- | -------------------------- | ---------------- |
+| Throughput   | Good (millions/s) | Excellent (lock-free ring) | Network-limited  |
+| Persistence  | None (in-memory)  | None                       | Durable          |
+| Backpressure | put() blocks      | Sequence barriers          | Consumer lag     |
+| Complexity   | Low               | Medium                     | High (ops)       |
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - In-process pipeline between stages with different throughput.
 - Learning concurrency fundamentals.
 - Need bounded in-memory buffering with backpressure.
 
 **AVOID WHEN:**
+
 - Cross-process communication (use message broker).
 - Need persistence/durability (use Kafka/RabbitMQ).
 
 **PREFER Disruptor WHEN:**
+
 - Need maximum single-node throughput (millions of events/s).
 - Can tolerate lock-free ring buffer complexity.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "One POISON pill is enough for multiple consumers" | Only if you re-enqueue the poison. Otherwise only ONE consumer sees it. Send N poisons for N consumers. |
-| 2 | "Bounded queue prevents all OOM" | Queue bounds COUNT, not SIZE. 100 items of 10MB each = 1GB. Bound by memory too. |
-| 3 | "InterruptedException means ignore" | It means STOP. Swallowing InterruptedException prevents graceful shutdown. Re-interrupt or exit. |
+| #   | Misconception                                      | Reality                                                                                                 |
+| --- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| 1   | "One POISON pill is enough for multiple consumers" | Only if you re-enqueue the poison. Otherwise only ONE consumer sees it. Send N poisons for N consumers. |
+| 2   | "Bounded queue prevents all OOM"                   | Queue bounds COUNT, not SIZE. 100 items of 10MB each = 1GB. Bound by memory too.                        |
+| 3   | "InterruptedException means ignore"                | It means STOP. Swallowing InterruptedException prevents graceful shutdown. Re-interrupt or exit.        |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - BlockingQueue Implementations - the queue used in this exercise
 - Thread Lifecycle and States - understand WAITING at put/take
 
 **THIS:** Build a Producer-Consumer Exercise
 
 **Next steps:**
+
 - Unbounded Queue Anti-Pattern - what happens without bounding
 - Concurrent Chat - Phase 2 (Executors) - producer-consumer in context of real application
 
@@ -2706,52 +2786,57 @@ log.info("Active: {}, Queue: {}, Completed: {}",
 
 **Cost:** connection queuing adds latency; fixed pool may underutilize resources for I/O-bound work; must handle rejection.
 
-| Aspect | Phase 1 (raw threads) | Phase 2 (Executors) | Phase 4 (virtual threads) |
-| ------ | -------------------- | ------------------- | ------------------------- |
-| Scalability | ~1K-5K clients | ~5K-50K (pooled) | ~1M+ (lightweight) |
-| Memory | 1MB per client | Bounded by pool | ~few KB per client |
-| Complexity | Low | Medium | Low |
-| Shutdown | Manual join() | pool.shutdown() | Automatic (structured) |
+| Aspect      | Phase 1 (raw threads) | Phase 2 (Executors) | Phase 4 (virtual threads) |
+| ----------- | --------------------- | ------------------- | ------------------------- |
+| Scalability | ~1K-5K clients        | ~5K-50K (pooled)    | ~1M+ (lightweight)        |
+| Memory      | 1MB per client        | Bounded by pool     | ~few KB per client        |
+| Complexity  | Low                   | Medium              | Low                       |
+| Shutdown    | Manual join()         | pool.shutdown()     | Automatic (structured)    |
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - JDK < 21 and need scalable connection handling.
 - Need explicit control over concurrency level.
 - Learning executor patterns before virtual threads.
 
 **AVOID WHEN:**
+
 - JDK 21+ is available (virtual threads are simpler and scale further).
 - Connection count is always low (< 100) - raw threads suffice.
 
 **PREFER Virtual Threads (Phase 4) WHEN:**
+
 - I/O-bound workload (chat is I/O-bound: socket read/write).
 - JDK 21+ available.
 - Want thread-per-client simplicity without resource exhaustion.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "Pool of 10 means only 10 simultaneous clients" | The pool handles 10 clients ACTIVELY. Others wait in the queue (100 more). Total connected: 110. |
-| 2 | "shutdownNow() is instant" | shutdownNow() sends interrupt. Tasks must CHECK interrupted flag. Blocking I/O (socket read) may not respond to interrupt. |
-| 3 | "CallerRunsPolicy works for accept loop" | If the accept thread runs a client handler (CallerRuns), it cannot accept NEW connections during that time. May need AbortPolicy + retry instead. |
+| #   | Misconception                                   | Reality                                                                                                                                           |
+| --- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | "Pool of 10 means only 10 simultaneous clients" | The pool handles 10 clients ACTIVELY. Others wait in the queue (100 more). Total connected: 110.                                                  |
+| 2   | "shutdownNow() is instant"                      | shutdownNow() sends interrupt. Tasks must CHECK interrupted flag. Blocking I/O (socket read) may not respond to interrupt.                        |
+| 3   | "CallerRunsPolicy works for accept loop"        | If the accept thread runs a client handler (CallerRuns), it cannot accept NEW connections during that time. May need AbortPolicy + retry instead. |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - Concurrent Chat - Phase 1 (Raw Threads) - understand the scaling problem this solves
 - Executor Framework and ExecutorService - the abstraction used here
 
 **THIS:** Concurrent Chat - Phase 2 (Executors)
 
 **Next steps:**
+
 - Concurrent Chat - Phase 3 (CompletableFuture) - async I/O without blocking threads
 - ThreadPoolExecutor Configuration - tune the pool for production
 
 ### 💡 The Surprising Truth
 
-For a chat server (I/O-bound: 99% time waiting on socket.read()), a pool of 10 threads can handle 10,000 "connected" clients if you use non-blocking I/O or if messages are infrequent. The key insight: a thread is only needed when a message ARRIVES. With 10K clients each sending 1 msg/s and 1ms processing each, you need only 10 threads (10K * 1ms / 1000ms = 10). Phase 3 (async) and Phase 4 (virtual threads) exploit this insight further.
+For a chat server (I/O-bound: 99% time waiting on socket.read()), a pool of 10 threads can handle 10,000 "connected" clients if you use non-blocking I/O or if messages are infrequent. The key insight: a thread is only needed when a message ARRIVES. With 10K clients each sending 1 msg/s and 1ms processing each, you need only 10 threads (10K \* 1ms / 1000ms = 10). Phase 3 (async) and Phase 4 (virtual threads) exploit this insight further.
 
 ### 📇 Revision Card
 
@@ -2871,43 +2956,48 @@ ready.await(); // wait for all 3 ready
 
 | Decision Factor | Lower complexity | Higher capability |
 | --------------- | ---------------- | ----------------- |
-| Locking | synchronized | ReentrantLock |
-| Counter | AtomicInteger | LongAdder |
-| Coordination | CountDownLatch | Phaser |
-| Collection | synchronizedMap | ConcurrentHashMap |
+| Locking         | synchronized     | ReentrantLock     |
+| Counter         | AtomicInteger    | LongAdder         |
+| Coordination    | CountDownLatch   | Phaser            |
+| Collection      | synchronizedMap  | ConcurrentHashMap |
 
 ### ⚡ Decision Snap
 
 **USE THIS CARD WHEN:**
+
 - Designing a concurrent component and choosing primitives.
 - Interview: asked "which would you use for X?"
 - Code review: verifying correct primitive selection.
 
 **AUGMENT WITH DEEP KNOWLEDGE WHEN:**
+
 - Problem requires combining multiple primitives.
 - Edge cases or failure modes need understanding.
 
 **UPDATE WHEN:**
+
 - New JDK features arrive (virtual threads, ScopedValues).
 - You discover a pattern not covered here.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | "One primitive per problem" | Real solutions often combine 2-3 primitives (executor + queue + latch). |
-| 2 | "Fancier = better" | Simplest correct choice wins. synchronized beats ReentrantLock unless you NEED its features. |
-| 3 | "I can memorize this once" | Revisit quarterly. JDK 21 changed the landscape (virtual threads, ScopedValues). |
+| #   | Misconception               | Reality                                                                                      |
+| --- | --------------------------- | -------------------------------------------------------------------------------------------- |
+| 1   | "One primitive per problem" | Real solutions often combine 2-3 primitives (executor + queue + latch).                      |
+| 2   | "Fancier = better"          | Simplest correct choice wins. synchronized beats ReentrantLock unless you NEED its features. |
+| 3   | "I can memorize this once"  | Revisit quarterly. JDK 21 changed the landscape (virtual threads, ScopedValues).             |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - All keywords in this file (Locks and Coordination) - must know each primitive individually
 - Executor Framework and ExecutorService - the most common starting point
 
 **THIS:** Java Concurrency Quick Recall Card
 
 **Next steps:**
+
 - Concurrency Utilities Selection Framework - deeper decision methodology
 - CompletableFuture Composition - async patterns beyond this recall card
 
