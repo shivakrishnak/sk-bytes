@@ -605,7 +605,7 @@ Sections in exact order:
 Per-section rules:
 
   S2 TL;DR:
-    Single sentence. <= 20 words. Captures what + why.
+    Single sentence. <= 50 words. Captures what + why.
     Format:  **TL;DR** - [sentence]
 
   S3 What it is:
@@ -691,7 +691,7 @@ Sections in exact order:
 Per-section rules:
 
   S2 TL;DR:
-    Single sentence. <= 25 words.
+    Single sentence. <= 50 words.
 
   S3 Problem in One Paragraph:
     80-160 words. Concrete scenario showing the pain.
@@ -790,7 +790,7 @@ Sections in exact order:
 
 Per-section rules:
 
-  S2 TL;DR:           <= 30 words.
+  S2 TL;DR:           <= 50 words.
 
   S3 Problem Statement:
     100-200 words. What breaks at scale without this.

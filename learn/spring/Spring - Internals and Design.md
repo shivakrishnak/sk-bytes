@@ -5917,7 +5917,6 @@ Gap: I forgot the three fix strategies.
 Action: Re-read SPR-056 fix section only.
 ```
 
-
 ### ⚖️ Trade-offs
 
 | Gain                               | Cost                               |
