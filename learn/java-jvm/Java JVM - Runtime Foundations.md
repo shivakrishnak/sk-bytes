@@ -10,7 +10,7 @@ category: Java JVM
 code: JVM
 folder: learn/java-jvm/
 difficulty_range: easy
-status: in-progress
+status: complete
 version: 1
 generated_from: LEARN_KEYWORD_GENERATOR.md v1.0
 archetype: INFRASTRUCTURE

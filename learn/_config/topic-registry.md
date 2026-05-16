@@ -81,13 +81,13 @@ relatedness and must be self-sufficient.
 
 ### Spring Ecosystem (spring/)
 
-| File                                                                                              | Keywords | Levels         | Status |
-| ------------------------------------------------------------------------------------------------- | -------- | -------------- | ------ |
-| [Spring - Core and Foundations](../spring/Spring%20-%20Core%20and%20Foundations.md)               | 23       | L0 + L1        | stub   |
-| [Spring - Web and Data](../spring/Spring%20-%20Web%20and%20Data.md)                               | 20       | L2             | stub   |
-| [Spring - Internals and Design](../spring/Spring%20-%20Internals%20and%20Design.md)               | 26       | L3             | stub   |
-| [Spring - Production and Cloud](../spring/Spring%20-%20Production%20and%20Cloud.md)               | 20       | L4             | stub   |
-| [Spring - Architecture and META](../spring/Spring%20-%20Architecture%20and%20META.md)             | 26       | L5 + L6 + META | stub   |
+| File                                                                                  | Keywords | Levels         | Status |
+| ------------------------------------------------------------------------------------- | -------- | -------------- | ------ |
+| [Spring - Core and Foundations](../spring/Spring%20-%20Core%20and%20Foundations.md)   | 23       | L0 + L1        | stub   |
+| [Spring - Web and Data](../spring/Spring%20-%20Web%20and%20Data.md)                   | 20       | L2             | stub   |
+| [Spring - Internals and Design](../spring/Spring%20-%20Internals%20and%20Design.md)   | 26       | L3             | stub   |
+| [Spring - Production and Cloud](../spring/Spring%20-%20Production%20and%20Cloud.md)   | 20       | L4             | stub   |
+| [Spring - Architecture and META](../spring/Spring%20-%20Architecture%20and%20META.md) | 26       | L5 + L6 + META | stub   |
 
 ---
 

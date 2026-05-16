@@ -1173,6 +1173,7 @@ Before starters, adding JPA support meant manually declaring Hibernate, a JDBC d
 ### ✏️ Minimal Example
 
 **BAD:**
+
 ```xml
 <!-- Manual: 5 dependencies, 5 versions -->
 <dependency>
@@ -1187,9 +1188,11 @@ Before starters, adding JPA support meant manually declaring Hibernate, a JDBC d
 </dependency>
 <!-- + spring-orm, spring-tx, JDBC driver -->
 ```
+
 Why it's wrong: manual version coordination, easy to create incompatible combinations.
 
 **GOOD:**
+
 ```xml
 <!-- One starter, zero version declarations -->
 <dependency>
@@ -1199,15 +1202,18 @@ Why it's wrong: manual version coordination, easy to create incompatible combina
   </artifactId>
 </dependency>
 ```
+
 Why it's right: BOM manages all versions; auto-configuration wires the DataSource, EntityManager, and TransactionManager.
 
 ### ⚡ When to use / Not to use
 
 **Use when:**
+
 - Adding any standard capability to a Spring Boot project (web, data, security, test)
 - You want guaranteed version compatibility without manual management
 
 **Avoid when:**
+
 - You need a specific older version of a library that conflicts with Boot's BOM (override carefully)
 - Building a library that should not pull in Spring Boot's opinionated stack
 
@@ -1255,6 +1261,7 @@ Hardcoding a database URL or server port in Java source means recompiling to cha
 ### ✏️ Minimal Example
 
 **BAD:**
+
 ```java
 @RestController
 public class DbController {
@@ -1262,9 +1269,11 @@ public class DbController {
   String url = "jdbc:postgresql://prod:5432/db";
 }
 ```
+
 Why it's wrong: the production URL is baked into the class file. Changing it requires recompilation and redeployment.
 
 **GOOD:**
+
 ```properties
 # application.properties
 spring.datasource.url=\
@@ -1272,20 +1281,24 @@ spring.datasource.url=\
 server.port=8081
 logging.level.root=INFO
 ```
+
 ```java
 // No hardcoded values in code
 @Value("${spring.datasource.url}")
 private String dbUrl;
 ```
+
 Why it's right: change the URL per environment without touching code. Override with `--spring.datasource.url=...` at runtime.
 
 ### ⚡ When to use / Not to use
 
 **Use when:**
+
 - Configuring anything that changes between environments (URLs, ports, credentials, feature flags)
 - You prefer YAML's nested structure (use `application.yml`) or flat key-value (use `.properties`)
 
 **Avoid when:**
+
 - Storing secrets in plain text (use environment variables, Vault, or Spring Cloud Config instead)
 - Defining behavior that belongs in code (business rules are not configuration)
 
@@ -1333,6 +1346,7 @@ Without auto-configuration, every Spring application would need explicit `@Bean`
 ### ✏️ Minimal Example
 
 **BAD:**
+
 ```java
 // Manually configuring what Boot does
 // automatically
@@ -1347,9 +1361,11 @@ public class JacksonConfig {
 }
 // Redundant - Boot already does this
 ```
+
 Why it's wrong: Boot auto-configures `ObjectMapper` with `JavaTimeModule` if Jackson is on the classpath. This duplicates effort and may conflict.
 
 **GOOD:**
+
 ```properties
 # Override just the part you want to change
 spring.jackson.serialization.\
@@ -1357,15 +1373,18 @@ spring.jackson.serialization.\
 spring.jackson.default-property-inclusion=\
   non_null
 ```
+
 Why it's right: use properties to tune the auto-configured bean rather than replacing it entirely.
 
 ### ⚡ When to use / Not to use
 
 **Use when:**
+
 - Starting any Spring Boot application (it is on by default)
 - You want sensible defaults without manual configuration
 
 **Avoid when:**
+
 - You need full control over a bean's creation (define your own `@Bean` - auto-config backs off)
 - You want to exclude specific auto-configurations (`@SpringBootApplication(exclude = ...)`)
 
@@ -1413,35 +1432,42 @@ Traditional deployment meant installing Tomcat on a server, configuring it separ
 ### ✏️ Minimal Example
 
 **BAD:**
+
 ```xml
 <!-- Packaging as WAR for external Tomcat -->
 <packaging>war</packaging>
 <!-- Requires: install Tomcat, configure
      server.xml, deploy WAR to webapps/ -->
 ```
+
 Why it's wrong: two deployment artifacts, external server management, harder containerization.
 
 **GOOD:**
+
 ```xml
 <!-- Default: executable JAR with embedded
      Tomcat -->
 <packaging>jar</packaging>
 <!-- Run: java -jar target/app.jar -->
 ```
+
 ```properties
 # Tune the embedded server via properties
 server.port=9090
 server.tomcat.threads.max=200
 ```
+
 Why it's right: single artifact, single command to run, configurable via properties.
 
 ### ⚡ When to use / Not to use
 
 **Use when:**
+
 - Building microservices, containerized apps, or any cloud-native deployment
 - You want a single self-contained deployable artifact
 
 **Avoid when:**
+
 - Your organization mandates a shared, centrally managed Tomcat (WAR deployment still supported via `SpringBootServletInitializer`)
 - You need features only available in a full Tomcat installation (rare)
 
@@ -1489,6 +1515,7 @@ Manually creating a Spring Boot project from scratch requires writing a `pom.xml
 ### ✏️ Minimal Example
 
 **BAD:**
+
 ```xml
 <!-- Hand-written pom.xml with typos -->
 <parent>
@@ -1499,9 +1526,11 @@ Manually creating a Spring Boot project from scratch requires writing a `pom.xml
   <version>3.2.5</version>
 </parent>
 ```
+
 Why it's wrong: manual pom.xml writing invites typos, wrong versions, and missing plugins.
 
 **GOOD:**
+
 ```bash
 # CLI equivalent of start.spring.io
 curl https://start.spring.io/starter.zip \
@@ -1511,15 +1540,18 @@ curl https://start.spring.io/starter.zip \
   -o my-app.zip
 unzip my-app.zip
 ```
+
 Why it's right: zero typos, correct BOM version, proper directory structure, ready to run.
 
 ### ⚡ When to use / Not to use
 
 **Use when:**
+
 - Starting any new Spring Boot project (always)
 - You want to quickly prototype with specific starters
 
 **Avoid when:**
+
 - Your organization has a custom project template/archetype (use that instead)
 - You are adding features to an existing project (add starters to the existing build file)
 
@@ -1567,6 +1599,7 @@ When developers cannot explain where a bean came from, they lose confidence and 
 ### ✏️ Minimal Example
 
 **BAD:**
+
 ```java
 // "I don't know where this DataSource
 //  came from"
@@ -1574,9 +1607,11 @@ When developers cannot explain where a bean came from, they lose confidence and 
 // Developer cannot debug connection issues
 // because they don't know who configured it
 ```
+
 Why it's wrong: ignorance of auto-configuration leads to helplessness when things break.
 
 **GOOD:**
+
 ```bash
 # Run with --debug to see the truth
 java -jar app.jar --debug
@@ -1587,15 +1622,18 @@ java -jar app.jar --debug
 #   - @ConditionalOnMissingBean did not
 #     find DataSource bean
 ```
+
 Why it's right: the report shows exactly which class configured the DataSource and which conditions were met.
 
 ### ⚡ When to use / Not to use
 
 **Use when:**
+
 - Debugging unexpected bean creation or missing beans
 - Onboarding new team members who are confused by auto-configuration
 
 **Avoid when:**
+
 - You have already memorized the common auto-configuration classes (but `--debug` remains useful for edge cases)
 - The issue is in your own explicit configuration, not auto-configuration
 
@@ -1643,6 +1681,7 @@ Hardcoding is the fastest way to make something work locally. But the moment the
 ### ✏️ Minimal Example
 
 **BAD:**
+
 ```java
 @Service
 public class NotificationService {
@@ -1653,9 +1692,11 @@ public class NotificationService {
   private boolean enabled = true;
 }
 ```
+
 Why it's wrong: three values that will differ across environments, all requiring recompilation to change.
 
 **GOOD:**
+
 ```java
 @Service
 public class NotificationService {
@@ -1667,21 +1708,25 @@ public class NotificationService {
   private boolean enabled;
 }
 ```
+
 ```properties
 # application-prod.properties
 notification.api.url=\
   https://api.prod.notify.com/v2
 notification.timeout-ms=3000
 ```
+
 Why it's right: values externalized, defaults provided with `:`, overridable per environment.
 
 ### ⚡ When to use / Not to use
 
 **Use when:**
+
 - Any value that differs between dev, staging, and production environments
 - Feature flags, timeouts, URLs, rate limits, retry counts
 
 **Avoid when:**
+
 - True constants that are invariant across all environments (e.g., `Math.PI`)
 - Internal algorithm parameters that are not configurable by operators
 
@@ -1729,14 +1774,17 @@ Spring interviews follow predictable patterns. Interviewers probe whether candid
 ### ✏️ Minimal Example
 
 **BAD:**
+
 ```text
 Q: What is Spring IoC?
 A: "Spring manages objects for you."
 // Too vague - shows no understanding
 ```
+
 Why it's wrong: no mechanism, no why, no contrast with the alternative.
 
 **GOOD:**
+
 ```text
 Q: What is Spring IoC?
 A: "Instead of classes creating their
@@ -1747,15 +1795,18 @@ A: "Instead of classes creating their
    implementations, making them testable
    and swappable."
 ```
+
 Why it's right: explains what, how, and why in four sentences.
 
 ### ⚡ When to use / Not to use
 
 **Use when:**
+
 - Preparing for a Spring-focused technical interview
 - Reviewing foundational Spring knowledge before learning advanced topics
 
 **Avoid when:**
+
 - Interviewing for a staff/principal role (deeper topics expected: AOP, proxy mechanism, custom auto-configuration)
 - You already have extensive Spring production experience
 
@@ -1803,6 +1854,7 @@ Without DevTools, every code change requires manually stopping the app, rebuildi
 ### ✏️ Minimal Example
 
 **BAD:**
+
 ```xml
 <!-- DevTools in production -->
 <dependency>
@@ -1811,9 +1863,11 @@ Without DevTools, every code change requires manually stopping the app, rebuildi
   <!-- No scope - included in prod JAR -->
 </dependency>
 ```
+
 Why it's wrong: DevTools in production causes unexpected restarts and security risks.
 
 **GOOD:**
+
 ```xml
 <dependency>
   <groupId>org.springframework.boot</groupId>
@@ -1823,15 +1877,18 @@ Why it's wrong: DevTools in production causes unexpected restarts and security r
 </dependency>
 <!-- Auto-disabled in packaged JARs -->
 ```
+
 Why it's right: `optional=true` prevents transitive inclusion. Boot automatically disables DevTools when running from a packaged JAR.
 
 ### ⚡ When to use / Not to use
 
 **Use when:**
+
 - Active development with frequent code-test cycles
 - You want browser auto-refresh during UI or API development
 
 **Avoid when:**
+
 - Production deployment (it auto-disables, but verify)
 - You use JRebel or DCEVM for true hot-swap without restart
 
@@ -1879,6 +1936,7 @@ REST APIs are the most common output of Spring Boot applications. Every Spring d
 ### ✏️ Minimal Example
 
 **BAD:**
+
 ```java
 @RestController
 public class OrderController {
@@ -1889,9 +1947,11 @@ public class OrderController {
   }
 }
 ```
+
 Why it's wrong: returns nothing to the client, prints to console instead of responding, no status code control.
 
 **GOOD:**
+
 ```java
 @RestController
 @RequestMapping("/api/orders")
@@ -1920,15 +1980,18 @@ public class OrderController {
   }
 }
 ```
+
 Why it's right: proper HTTP verbs, path variables, status codes (200/201/404), constructor injection.
 
 ### ⚡ When to use / Not to use
 
 **Use when:**
+
 - Building any HTTP API with Spring Boot
 - Learning the request-response cycle of Spring MVC
 
 **Avoid when:**
+
 - You need GraphQL or gRPC (different Spring modules)
 - The endpoint is a server-side rendered HTML page (`@Controller` with Thymeleaf instead)
 
@@ -1976,15 +2039,18 @@ Toolchain problems discovered mid-project are costly and demoralizing. A develop
 ### ✏️ Minimal Example
 
 **BAD:**
+
 ```bash
 # Skipping verification
 mvn spring-boot:run
 # "It started? Good enough."
 # No test run, no JAR packaging verified
 ```
+
 Why it's wrong: partial verification misses packaging issues, test classpath problems, or port conflicts.
 
 **GOOD:**
+
 ```bash
 # Full verification pipeline
 mvn clean package
@@ -1996,15 +2062,18 @@ kill %1
 mvn test
 # Expect: BUILD SUCCESS, all tests pass
 ```
+
 Why it's right: validates build, package, run, endpoint, and test execution end to end.
 
 ### ⚡ When to use / Not to use
 
 **Use when:**
+
 - Setting up Spring Boot for the first time on a new machine
 - After upgrading JDK, Maven/Gradle, or IDE versions
 
 **Avoid when:**
+
 - You have a CI pipeline that validates this on every commit (but still useful for local dev changes)
 - You are working in an existing, proven project
 
