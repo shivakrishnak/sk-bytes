@@ -243,6 +243,106 @@ PRINCIPLE 20: EXAMPLES TEACH INTUITION, NOT SYNTAX  [NEW]
   hello-world. No API-doc-in-disguise.
 
 ================================================================
+SECTION 1.5: QUALITY GATE (NON-NEGOTIABLE)
+================================================================
+
+Content quality MUST be world-class / masterclass-level. Not
+optional. Not best-effort. Every keyword must feel like a
+senior principal engineer teaching a curious engineer after
+surviving real production failures - not an LLM summarizing
+Wikipedia.
+
+----------------------------------------------------------------
+EIGHT QUALITY TESTS (all must pass per keyword)
+----------------------------------------------------------------
+
+Before finalizing any keyword, run ALL checks:
+
+  | # | Test             | Question                              | FAIL if |
+  | - | ---------------- | ------------------------------------- | ------- |
+  | 1 | Search Again     | Would an engineer still search        | YES     |
+  |   |                  | elsewhere to understand this?         |         |
+  | 2 | Feynman          | Could a smart beginner follow         | NO      |
+  |   |                  | without confusion?                    |         |
+  | 3 | Senior Engineer  | Would a senior engineer learn         | NO      |
+  |   |                  | something useful?                     |         |
+  | 4 | Staff Engineer   | Would a staff/principal engineer      | NO      |
+  |   |                  | respect this explanation?             |         |
+  | 5 | Production       | Could someone diagnose a real         | NO      |
+  |   |                  | production issue from this?           |         |
+  | 6 | Retention        | Will the reader remember this         | NO      |
+  |   |                  | next month?                           |         |
+  | 7 | Decision         | Could the reader decide when to       | NO      |
+  |   |                  | use or avoid this?                    |         |
+  | 8 | Scale            | Does it address what changes at       | NO      |
+  |   |                  | 10x / 100x / 1000x?                  |         |
+
+----------------------------------------------------------------
+BENCHMARK CALIBER
+----------------------------------------------------------------
+
+  Explanation quality comparable to:
+    Feynman, Josh Bloch, Martin Fowler, Rich Hickey,
+    Leslie Lamport, Martin Kleppmann, Brendan Gregg,
+    John Ousterhout, Bret Victor.
+
+  Engineering depth comparable to:
+    Google / Netflix / Uber / Cloudflare engineering blogs,
+    AWS architecture docs, JVM performance experts.
+
+  Pedagogical quality comparable to:
+    MIT / Stanford-level clarity and rigor.
+
+----------------------------------------------------------------
+TEN MANDATORY PILLARS (depth scales with tier)
+----------------------------------------------------------------
+
+  Every non-trivial explanation covers all ten. SIMPLE keywords
+  touch them lightly; COMPLEX keywords develop them fully.
+
+  1. INTUITION   - Why this exists. The pain before.
+  2. MECHANISM   - How it actually works inside.
+  3. TRADE-OFF   - What you gain vs sacrifice.
+  4. FAILURE     - How it breaks.
+  5. DIAGNOSIS   - How experts debug it.
+  6. SCALE       - What changes under load.
+  7. DECISION    - When to use or avoid it.
+  8. MEMORY      - Make it unforgettable.
+  9. TRANSFER    - Connect to broader engineering principles.
+  10. REALITY    - Production truth over textbook theory.
+
+----------------------------------------------------------------
+FORBIDDEN PATTERNS
+----------------------------------------------------------------
+
+  NEVER GENERATE:
+  - Generic textbook definitions without insight.
+  - API documentation disguised as explanation.
+  - Syntax-only or hello-world code examples.
+  - Toy examples without production relevance.
+  - Vague advice ("it depends") without decision framework.
+  - Fabricated benchmarks, CVEs, or production stories.
+  - Surface-level explanations that skip WHY.
+  - "Best practice" claims without reasoning.
+  - Repetition across sections within a keyword.
+  - Walls of prose without structure.
+  - Formulaic sentence patterns repeated across keywords.
+  - Overly academic content disconnected from reality.
+
+----------------------------------------------------------------
+FINAL HARD GATE
+----------------------------------------------------------------
+
+  Before outputting a keyword, ask:
+
+  "Would an experienced engineer say: 'This is genuinely
+   excellent. I finally understand this deeply.'?"
+
+  If uncertain: rewrite.
+  Good enough = FAIL. Excellent = minimum.
+  Masterclass = target. World-class = expected.
+
+================================================================
 SECTION 2: FILE FORMAT & FOLDER STRUCTURE
 ================================================================
 

@@ -178,3 +178,32 @@ git commit -m "feat: <Topic> - <Subtopic>"
 - UTF-8 no BOM via `[System.Text.UTF8Encoding]::new($false)`.
 - Python: `$env:USERPROFILE\.local\bin\python3.14.exe` if present,
   otherwise `python`.
+
+## 10. Quality standard (non-negotiable)
+
+Every keyword's content must pass all eight tests before the
+keyword is considered done. Structural correctness (sections,
+word count, diagrams) is necessary but not sufficient.
+
+| #   | Test            | FAIL if answer is                                 |
+| --- | --------------- | ------------------------------------------------- |
+| 1   | Search Again    | a serious engineer would still search elsewhere   |
+| 2   | Feynman         | a smart beginner could not follow                 |
+| 3   | Senior Engineer | a senior engineer learns nothing new              |
+| 4   | Staff Engineer  | a staff/principal engineer would not respect this |
+| 5   | Production      | no one could diagnose a real issue from this      |
+| 6   | Retention       | the reader will forget within a month             |
+| 7   | Decision        | the reader cannot decide when to use or avoid     |
+| 8   | Scale           | 10x / 100x / 1000x behavior is not addressed      |
+
+**Ten pillars (depth scales with tier):** INTUITION, MECHANISM,
+TRADE-OFF, FAILURE, DIAGNOSIS, SCALE, DECISION, MEMORY,
+TRANSFER, REALITY.
+
+**Forbidden patterns:** generic textbook-only definitions,
+API-doc disguised as explanation, syntax-only / hello-world
+examples, toy code without production relevance, "it depends"
+without decision framework, fabricated benchmarks or stories,
+surface-level explanations that skip WHY, "best practice"
+without reasoning, formulaic repetition across keywords,
+walls of prose without structure.

@@ -105,6 +105,42 @@ the tier from the actual section markers.
   `jcmd PID GC.heap_info`) over invented metric names.
 - Cite primary sources in COMPLEX Further Reading.
 
+## Quality gate (pre-output, non-negotiable)
+
+Before finalizing ANY keyword's content, run all eight tests
+mentally. If any test fails, rewrite before moving on.
+
+| #   | Test            | Question                                            | FAIL if |
+| --- | --------------- | --------------------------------------------------- | ------- |
+| 1   | Search Again    | Would a serious engineer still search elsewhere?    | YES     |
+| 2   | Feynman         | Could a smart beginner follow without confusion?    | NO      |
+| 3   | Senior Engineer | Would a senior engineer learn something new?        | NO      |
+| 4   | Staff Engineer  | Would a staff/principal engineer respect this?      | NO      |
+| 5   | Production      | Could someone diagnose a real production issue?     | NO      |
+| 6   | Retention       | Will the reader remember this next month?           | NO      |
+| 7   | Decision        | Could the reader decide when to use or avoid this?  | NO      |
+| 8   | Scale           | Does it address what changes at 10x / 100x / 1000x? | NO      |
+
+**Benchmark caliber:** Feynman / Josh Bloch / Martin Fowler /
+Rich Hickey / Martin Kleppmann / Brendan Gregg explanation
+quality. Google / Netflix / Uber / Cloudflare engineering depth.
+
+**Ten pillars per keyword (depth scales with tier):**
+INTUITION, MECHANISM, TRADE-OFF, FAILURE, DIAGNOSIS, SCALE,
+DECISION, MEMORY, TRANSFER, REALITY.
+
+**Forbidden:** generic textbook-only definitions, syntax-only
+examples, toy code without production relevance, "it depends"
+without decision framework, fabricated benchmarks or stories,
+surface explanations that skip WHY, "best practice" without
+reasoning, formulaic sentence patterns repeated across keywords,
+walls of prose, repetition across sections.
+
+**Final hard gate:** before outputting, ask: "Would an
+experienced engineer say 'this is genuinely excellent - I
+finally understand this deeply'?" If uncertain: rewrite.
+Good enough = FAIL. Excellent = minimum. Masterclass = target.
+
 ## Output style (every reply)
 
 - Concise. One short status line per file written.

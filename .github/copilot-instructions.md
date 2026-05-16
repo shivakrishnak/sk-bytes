@@ -97,3 +97,52 @@ git commit -m "feat: <description>"
   through `learn/_config/LEARN_KEYWORD_GENERATOR.md` v1.0 and
   carry `GENERATED_FROM: LEARN_KEYWORD_GENERATOR.md v1.0` plus
   `ARCHETYPE`, `MODE`, and `PROVENANCE` in its header.
+
+## Quality standard (non-negotiable)
+
+Content quality MUST be world-class / masterclass-level.
+Not optional. Not best-effort. Every output must feel like
+a senior principal engineer teaching a curious engineer
+after surviving real production failures - not an LLM
+summarizing Wikipedia.
+
+### Eight quality tests (all must pass)
+
+| #   | Test            | Question                                                   | FAIL if |
+| --- | --------------- | ---------------------------------------------------------- | ------- |
+| 1   | Search Again    | Would a serious engineer still need to search elsewhere?   | YES     |
+| 2   | Feynman         | Could a smart beginner understand without confusion?       | NO      |
+| 3   | Senior Engineer | Would a senior engineer learn something useful?            | NO      |
+| 4   | Staff Engineer  | Would a staff/principal engineer respect this explanation? | NO      |
+| 5   | Production      | Could someone diagnose a real production issue from this?  | NO      |
+| 6   | Retention       | Will the reader remember this next month?                  | NO      |
+| 7   | Decision        | Could the reader decide when to use or avoid this?         | NO      |
+| 8   | Scale           | Does it address what changes at 10x / 100x / 1000x?        | NO      |
+
+### Benchmark caliber
+
+- Explanation quality: Feynman, Josh Bloch, Martin Fowler,
+  Rich Hickey, Martin Kleppmann, Brendan Gregg.
+- Engineering depth: Google / Netflix / Uber / Cloudflare
+  engineering blogs, AWS architecture docs.
+- Pedagogical quality: MIT / Stanford-level clarity and rigor.
+
+### Ten mandatory pillars (depth scales with tier)
+
+Every non-trivial explanation covers: INTUITION, MECHANISM,
+TRADE-OFF, FAILURE, DIAGNOSIS, SCALE, DECISION, MEMORY,
+TRANSFER, REALITY.
+
+### Forbidden patterns
+
+- Generic textbook definitions without insight.
+- API documentation disguised as explanation.
+- Syntax-only or hello-world code examples.
+- Toy examples without production relevance.
+- Vague advice ("it depends") without decision framework.
+- Fabricated benchmarks, CVEs, or production stories.
+- Surface-level explanations that skip WHY.
+- "Best practice" claims without reasoning.
+- Repetition across sections within a keyword.
+- Walls of prose without structure.
+- Formulaic sentence patterns repeated across keywords.

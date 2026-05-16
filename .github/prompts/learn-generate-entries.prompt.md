@@ -39,6 +39,7 @@ L4, L5, L6, META  -> COMPLEX       16 sections, 1,400-2,000 words
 5. Apply per-section rules from LEARN_PROMPT.md Section 3
    (3.A / 3.B / 3.C). Apply Section 3a Code Example Taxonomy.
 6. Quality gates after writing each keyword:
+   **Structural (validator-enforced):**
    - Word count within tier target.
    - TL;DR within tier word cap (20/25/30).
    - Wrong-vs-Right BAD->GOOD pair present.
@@ -49,6 +50,22 @@ L4, L5, L6, META  -> COMPLEX       16 sections, 1,400-2,000 words
    - INTERMEDIATE S11 / COMPLEX S15: Prereq + Next titles
      resolve to real corpus keywords.
    - No em dashes. Code <=70 chars/line. ASCII <=59 chars.
+     **Content quality (all 8 must pass per keyword):**
+   - Search Again: engineer would NOT need to search elsewhere.
+   - Feynman: smart beginner CAN follow without confusion.
+   - Senior Engineer: learns something non-obvious.
+   - Staff Engineer: would respect this explanation.
+   - Production: could diagnose a real issue from this.
+   - Retention: memorable analogy, mental model, memory hook.
+   - Decision: clear when to use, avoid, prefer alternative.
+   - Scale: addresses 10x/100x/1000x behavior changes.
+     **Ten pillars per keyword (depth scales with tier):**
+     INTUITION, MECHANISM, TRADE-OFF, FAILURE, DIAGNOSIS,
+     SCALE, DECISION, MEMORY, TRANSFER, REALITY.
+     **Forbidden:** generic textbook-only definitions, syntax
+     demos, toy examples, "it depends" without framework,
+     fabricated stories, surface explanations, formulaic
+     sentence patterns repeated across keywords.
 7. Preserve double-rule separator between blocks:
    blank-line / `---` / blank-line / `---` / blank-line.
 8. Run validator:
