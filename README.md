@@ -72,17 +72,73 @@ sk-learn/
 
 1. Install Jekyll: `bundle install`
 2. Local preview: `bundle exec jekyll serve`
-3. To author content: invoke the `/learn` agent in Copilot Chat,
-   or use `@learn-generate-entries` / `@learn-generate-keywords`.
-   The agent reads `keywords:` from each file's YAML frontmatter
-   and writes content tier-by-tier.
+3. Author content via the `/learn` agent or `@learn-*` prompts
+   (see below).
 4. Validate before commit:
    `python learn/_config/validate-learn.py path/to/file.md`
+
+## Using the `/learn` agent
+
+The agent is a single entry point that routes work to the right
+prompt and enforces every spec. Invoke it in Copilot Chat:
+
+```
+/learn <request in plain English>
+```
+
+Examples:
+
+- `/learn add a new topic for Kafka, levels L0..L4`
+- `/learn fill keywords in learn/java/Java - Collections.md`
+- `/learn validate everything under learn/java/`
+- `/learn turn this JD into a roadmap: <paste JD>`
+
+What the agent does on every turn:
+
+1. Reads [.github/agents/learn.agent.md](.github/agents/learn.agent.md)
+   and follows the **source of truth refusal protocol**: before
+   emitting any keyword / sub-topic / roadmap list, it loads
+   [learn/\_config/LEARN_KEYWORD_GENERATOR.md](learn/_config/LEARN_KEYWORD_GENERATOR.md)
+   v1.0 end to end. Wrong version or missing file = HALT.
+2. Picks the matching `@learn-*` prompt for your intent.
+3. Auto-routes each keyword to its tier template (SIMPLE /
+   INTERMEDIATE / COMPLEX) based on level.
+4. Stops for your approval before destructive or shared-state
+   actions (git push, large rewrites, deletions).
+
+## Using `@learn-*` prompts directly
+
+Use a prompt when you know exactly which step you want. Each
+prompt is in `.github/prompts/` and runs in Copilot Chat by
+typing `@<name>`:
+
+| Prompt                                                                          | Purpose                                                                                                                                                                                                                              |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [`@learn-generate-keywords`](.github/prompts/learn-generate-keywords.prompt.md) | Generate the keyword / roadmap list for a topic, language, framework, CS concept, free-text blob, or job description. Loads `LEARN_KEYWORD_GENERATOR.md` v1.0 and emits `GENERATED_FROM`, `ARCHETYPE`, `MODE`, `PROVENANCE` headers. |
+| [`@learn-generate-entries`](.github/prompts/learn-generate-entries.prompt.md)   | Fill content for each keyword in a file, routing per tier template per `LEARN_PROMPT.md` v1.0.                                                                                                                                       |
+| [`@learn-scaffold`](.github/prompts/learn-scaffold.prompt.md)                   | Emit optional `[FILL:]` placeholder previews before full generation.                                                                                                                                                                 |
+| [`@learn-build-ladder`](.github/prompts/learn-build-ladder.prompt.md)           | Build / refresh a topic's `learning-path.md` ladder from the existing keywords.                                                                                                                                                      |
+| [`@learn-validate`](.github/prompts/learn-validate.prompt.md)                   | Run the tri-template validator on one file, a topic, or the whole `learn/` tree and report issues.                                                                                                                                   |
+
+Typical authoring flow for a new topic:
+
+```
+@learn-generate-keywords    # produce the keyword list and stub files
+@learn-scaffold             # (optional) preview [FILL:] placeholders
+@learn-generate-entries     # fill each keyword tier-by-tier
+@learn-build-ladder         # emit learning-path.md
+@learn-validate             # final check before commit
+```
+
+Non-negotiable: any list of concepts, sub-topics, keywords,
+roadmap nodes, or learning paths MUST come through
+`@learn-generate-keywords` (which loads
+`LEARN_KEYWORD_GENERATOR.md` v1.0). No ad-hoc lists, no shortcuts.
 
 ## Conventions (shared with sister systems)
 
 - UTF-8 without BOM. File starts at byte 0 with `---`.
-- No em dashes. Regular hyphens only.
+- No em dashes (U+2014). No en dashes (U+2013). ASCII hyphens only.
 - Code lines max 70 chars. ASCII diagrams max 59 chars wide.
 - Every mandatory diagram uses DUAL format: ASCII first, then
   equivalent Mermaid block.
