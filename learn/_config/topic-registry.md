@@ -38,6 +38,7 @@
 | Java Language    | java/             | JLG  | LANGUAGE       | JLG-001..JLG-062 | 62    | JLG                | scaffolded | The Java language proper: syntax, types, generics, collections, modern features. |
 | Java JVM         | java-jvm/         | JVM  | INFRASTRUCTURE | JVM-001..JVM-132 | 132   | JVM                | scaffolded | Runtime: classloader, bytecode, JIT, GC, JFR, diagnostics, tuning.               |
 | Java Concurrency | java-concurrency/ | JCC  | CS-CONCEPT     | JCC-001..JCC-092 | 92    | JCC                | scaffolded | Threading, synchronization, virtual threads, Loom, concurrent collections.       |
+| Spring Ecosystem | spring/           | SPR  | FRAMEWORK      | SPR-001..SPR-115 | 115   | SPR                | scaffolded | Spring Framework, Boot, Data, Security, Cloud, WebFlux, Batch.                   |
 
 ---
 
@@ -77,6 +78,16 @@ relatedness and must be self-sufficient.
 | [Java Concurrency - Async and Patterns](../java-concurrency/Java%20Concurrency%20-%20Async%20and%20Patterns.md)                             | 20       | L3             | stub   |
 | [Java Concurrency - Virtual Threads and Diagnostics](../java-concurrency/Java%20Concurrency%20-%20Virtual%20Threads%20and%20Diagnostics.md) | 16       | L4             | stub   |
 | [Java Concurrency - Architecture and META](../java-concurrency/Java%20Concurrency%20-%20Architecture%20and%20META.md)                       | 17       | L5 + L6 + META | stub   |
+
+### Spring Ecosystem (spring/)
+
+| File                                                                                              | Keywords | Levels         | Status |
+| ------------------------------------------------------------------------------------------------- | -------- | -------------- | ------ |
+| [Spring - Core and Foundations](../spring/Spring%20-%20Core%20and%20Foundations.md)               | 23       | L0 + L1        | stub   |
+| [Spring - Web and Data](../spring/Spring%20-%20Web%20and%20Data.md)                               | 20       | L2             | stub   |
+| [Spring - Internals and Design](../spring/Spring%20-%20Internals%20and%20Design.md)               | 26       | L3             | stub   |
+| [Spring - Production and Cloud](../spring/Spring%20-%20Production%20and%20Cloud.md)               | 20       | L4             | stub   |
+| [Spring - Architecture and META](../spring/Spring%20-%20Architecture%20and%20META.md)             | 26       | L5 + L6 + META | stub   |
 
 ---
 

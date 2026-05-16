@@ -32,6 +32,7 @@ COMPLEX) based on its level. Word targets:
 | [Java Language](java/)                | JLG  | LANGUAGE       | scaffolded (62 kw, stubs)  | `learn/java/`             |
 | [Java JVM](java-jvm/)                 | JVM  | INFRASTRUCTURE | scaffolded (132 kw, stubs) | `learn/java-jvm/`         |
 | [Java Concurrency](java-concurrency/) | JCC  | CS-CONCEPT     | scaffolded (92 kw, stubs)  | `learn/java-concurrency/` |
+| [Spring Ecosystem](spring/)            | SPR  | FRAMEWORK      | scaffolded (115 kw, stubs) | `learn/spring/`           |
 
 ## Spec
 
