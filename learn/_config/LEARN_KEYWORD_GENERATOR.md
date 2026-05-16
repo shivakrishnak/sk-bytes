@@ -140,6 +140,26 @@ LEVEL OVERVIEW:
   L6   🔬    Creator          - Theory, specification, and invention
   META 🧠    Meta-Skills      - Transferable god-level thinking patterns
 
+TEMPLATE TIER MAPPING (LEARN_PROMPT.md v1.0):
+  Every keyword auto-routes to a content template tier based on its
+  level. The keyword generator MUST declare the tier via Rule 23.
+
+  | Level | Icon | Template Tier | Sections | Word Target |
+  | ----- | ---- | ------------- | -------- | ----------- |
+  | L0    | 🌱   | SIMPLE        | 9        | 400-700     |
+  | L1    | ★☆☆  | SIMPLE        | 9        | 400-700     |
+  | L2    | ★★☆  | INTERMEDIATE  | 13       | 900-1,300   |
+  | L3    | ★★☆+ | INTERMEDIATE  | 13       | 900-1,300   |
+  | L4    | ★★★  | COMPLEX       | 16       | 1,400-2,000 |
+  | L5    | 🔥   | COMPLEX       | 16       | 1,400-2,000 |
+  | L6    | 🔬   | COMPLEX       | 16       | 1,400-2,000 |
+  | META  | 🧠   | COMPLEX       | 16       | 1,400-2,000 |
+
+  Why three tiers (not seven): teaching depth changes in discrete
+  jumps, not linearly with level. Adjacent levels share the same
+  cognitive load profile (L0-L1 = vocabulary, L2-L3 = working
+  trade-offs, L4+ = systems-level reasoning).
+
 ─────────────────────────────────────────────────────────────────────────
 LEVEL 0 - ORIENTATION  🌱
 ─────────────────────────────────────────────────────────────────────────
@@ -1055,6 +1075,83 @@ RULE 22: INTERVIEW READINESS KEYWORDS AT EVERY LEVEL
     - Higher-level interview keywords MUST include
       system design and architecture scenarios
 
+─────────────────────────────────────────────────────────────────────────
+RULE 23: EVERY KEYWORD DECLARES ITS TEMPLATE TIER
+─────────────────────────────────────────────────────────────────────────
+
+  Every keyword row MUST carry an explicit `template:` field in the
+  output (Section 3.2), derived deterministically from its level:
+
+    L0, L1                  ->  template: SIMPLE
+    L2, L3                  ->  template: INTERMEDIATE
+    L4, L5, L6, META        ->  template: COMPLEX
+
+  The keyword generator NEVER assigns a tier that contradicts the
+  level. If a keyword feels too shallow/deep for its assigned tier,
+  the FIX is to change its level (and re-justify it), not to
+  override the tier mapping.
+
+  Rationale: the content writer (LEARN_PROMPT.md v1.0) selects the
+  9 / 13 / 16-section template from this field. The validator
+  rejects any file whose keyword block section count does not match
+  the declared tier.
+
+─────────────────────────────────────────────────────────────────────────
+RULE 24 (CATEGORY): UNLEARN / MISCONCEPTION-KILLER KEYWORDS
+─────────────────────────────────────────────────────────────────────────
+
+  Every category MUST include at least 2 keywords whose ONLY job
+  is to dismantle a common, sticky misconception that beginners
+  bring INTO the domain from outside it (or that practitioners
+  hold long after they should know better).
+
+  These are tagged 💥 (unlearn) in the output table.
+
+  Format:
+    "[Misconception] is Wrong - [Correct Mental Model]"
+    "Why [Common Belief] Breaks at Scale"
+    "What [Beginners/Seniors] Get Wrong About [Concept]"
+
+  Placement:
+    - At least 1 at L1 (kills tutorial-grade misconception)
+    - At least 1 at L3 or L4 (kills production-grade myth)
+    - Additional ones spread across L2-L5 as needed
+
+  An unlearn keyword is NOT a regular anti-pattern keyword (Rule
+  10). Anti-patterns describe wrong CODE. Unlearn keywords correct
+  wrong BELIEFS - the upstream mental model that produces the
+  anti-pattern.
+
+  Examples:
+    Java:    "String == is Wrong - Identity vs Equality"
+             "HashMap is Not Thread-Safe Even for Reads"
+    Caching: "Cache Hit Rate Is Not Cache Effectiveness"
+             "TTL Is Not Cache Invalidation"
+    DB:      "Indexes Are Not Always Faster"
+             "Foreign Keys Are Not Just Documentation"
+
+─────────────────────────────────────────────────────────────────────────
+RULE 25 (META): CROSS-DOMAIN TRANSFER KEYWORDS
+─────────────────────────────────────────────────────────────────────────
+
+  Every category MUST include AT LEAST 2 META keywords (🧠) that
+  explicitly transfer a thinking pattern from another domain.
+
+  Format:
+    "What [Other Domain] Teaches Us About [This Domain]"
+    "[Pattern] in [This Domain] vs [Other Domain]"
+    "Transferable Pattern: [Pattern Name] Across Systems"
+
+  The two META keywords must cite DIFFERENT source domains (e.g.
+  one from networking and one from biology - never both from the
+  same parent domain). This forces genuine transfer learning and
+  prevents META from collapsing into in-domain summary keywords.
+
+  Examples (for the Caching category):
+    "What CPU Cache Hierarchies Teach Distributed Caching"
+    "Browser Cache vs CDN Cache vs DB Cache: The Common Pattern"
+    "Cache as Materialized View - Lessons from Databases"
+
 ═══════════════════════════════════════════════════════════════════════════
 SECTION 3: OUTPUT FORMAT - 12 COMPONENTS
 ═══════════════════════════════════════════════════════════════════════════
@@ -1743,599 +1840,157 @@ diagnostic commands, or checklists
 ☐ At least 30% of anti-patterns have severity
 critical or major (not all minor)
 
-═══════════════════════════════════════════════════════════════════════════
-SECTION 5: INVOCATION - HOW TO USE THIS PROMPT
-═══════════════════════════════════════════════════════════════════════════
+CHECK 18 - TEMPLATE TIER DECLARATION (Rule 23):
+☐ Every keyword row in Section 3.2 carries a `template:`
+field set to SIMPLE / INTERMEDIATE / COMPLEX
+☐ Tier matches level deterministically:
+L0,L1 = SIMPLE | L2,L3 = INTERMEDIATE | L4+ = COMPLEX
+☐ Zero rows have a tier inconsistent with their level
+☐ Tier mapping table appears once at top of Section 1
 
-─────────────────────────────────────────────────────────────────────────
-NEW CATEGORY - ALL LEVELS:
-─────────────────────────────────────────────────────────────────────────
+CHECK 19 - UNLEARN COVERAGE (Rule 24):
+☐ At least 2 💥 unlearn keywords per category
+☐ At least 1 at L1 (tutorial-grade misconception)
+☐ At least 1 at L3 or L4 (production-grade myth)
+☐ Each unlearn keyword names the wrong belief AND
+the correct mental model in the title
+☐ Unlearn keywords are NOT just duplicates of anti-pattern
+keywords - they correct beliefs, not code
 
-Generate complete keyword list for category:
-
-    Category:    [Category Name]
-    Code:        [3-LETTER CODE]
-    Tier:        [tier-N-name]
-    Folder:      [CODE-folder-name]
-    Starting ID: [CODE]-001
-
-Cover ALL levels:
-L0 - Orientation (🌱)
-L1 - Foundational (★☆☆)
-L2 - Working (★★☆)
-L3 - Intermediate (★★☆+)
-L4 - Expert (★★★)
-L5 - Architect (🔥)
-L6 - Creator (🔬)
-META - Meta-Skills (🧠)
-
-Follow Category Keyword Generator v1.0 exactly.
-Apply all 22 rules from Section 2.`nUse all 12 output components from Section 3.`nRun all 17 quality checks from Section 4.
-Update category index.md per Section 3.10.
-
-─────────────────────────────────────────────────────────────────────────
-EXTEND EXISTING CATEGORY - ADD MISSING LEVELS:
-─────────────────────────────────────────────────────────────────────────
-
-Extend keyword list for category:
-
-    Category:      [Category Name]
-    Code:          [CODE]
-    Last ID used:  [CODE]-NNN
-    Next ID:       [CODE]-NNN
-
-Already covered: [list existing levels]
-Generate ONLY: [list missing levels]
-
-Continue sequential IDs from [CODE]-NNN.
-Follow Category Keyword Generator v1.0 exactly.
-Update category index.md per Section 3.10.
-
-─────────────────────────────────────────────────────────────────────────
-SINGLE LEVEL GENERATION:
-─────────────────────────────────────────────────────────────────────────
-
-Generate [Level Name] keywords only for:
-
-    Category:    [Category Name]
-    Code:        [CODE]
-    Last ID:     [CODE]-NNN
-    Next ID:     [CODE]-NNN
-
-Generate ONLY [level] keywords.
-Continue sequential IDs from [CODE]-NNN.
-Follow Category Keyword Generator v1.0 exactly.
-Update category index.md per Section 3.10.
-
-─────────────────────────────────────────────────────────────────────────
-GAP ANALYSIS - FIND MISSING KEYWORDS:
-─────────────────────────────────────────────────────────────────────────
-
-Analyse existing keyword list for category:
-
-    Category: [Category Name] ([CODE])
-
-[paste existing keyword list here]
-
-Identify: 1. Which levels are well covered? 2. Which levels have gaps? 3. What specific keywords are missing at each level? 4. Which of the 22 rules have violations? 5. What cross-category dependencies are missing? 6. What confusion pairs are undocumented? 7. What decision frameworks are missing? 8. What practice keywords are missing? 9. Is there a project evolution thread? 10. Are retention structures present?
-
-Output: gap analysis + missing keywords with IDs + rule violation list + index.md update instructions per Section 3.10.
-
-─────────────────────────────────────────────────────────────────────────
-MIGRATION AUDIT - EVOLUTION/VERSIONING GAPS:
-─────────────────────────────────────────────────────────────────────────
-
-Audit existing keyword list for:
-
-    Category: [Category Name] ([CODE])
-
-[paste keyword list]
-
-Find: - Which major version migrations are undocumented? - Which deprecated features are unlisted? - What breaking changes between versions
-are missing from the list? - What migration keywords should be added and at
-which level (L3 / L4 / L5)?
-
-Output: migration keyword gaps + suggested new IDs.
-
-─────────────────────────────────────────────────────────────────────────
-CROSS-TECHNOLOGY CATEGORY:
-─────────────────────────────────────────────────────────────────────────
-
-Generate complete keyword list for category:
-
-    Category:    System Design
-    Code:        SYD
-    Tier:        tier-5-distributed-architecture
-    Note:        This category spans multiple
-                 technology domains. Include
-                 keywords for each domain
-                 (databases, networking, caching,
-                 compute, storage) at each level.
-
-Cover ALL levels.
-Include domain-specific sub-sections within
-each level using Section 3.3 clustering.
-Follow Category Keyword Generator v1.0 exactly.
-Update category index.md per Section 3.10.
-
-─────────────────────────────────────────────────────────────────────────
-INDEX.MD SAFE UPDATE - ADD NEW KEYWORDS TO EXISTING CATEGORY:
-
-─────────────────────────────────────────────────────────────────────────
-
-Add newly generated keywords to category index.md:
-
-    Category:       [Category Name]
-    Code:           [CODE]
-    Tier:           [tier-N-name]
-    Folder:         [CODE-folder-name]
-    Index file:     dictionary/[tier]/[FOLDER]/index.md
-
-NEW KEYWORDS TO ADD:
-[paste generated keyword table here]
-
-PROCEDURE: 1. Read existing index.md 2. Parse existing keyword table rows 3. Find highest existing ID 4. Verify no ID collisions with new keywords 5. Append new rows AFTER last existing row 6. Update **Keywords:** count line 7. DO NOT modify any existing content 8. Run Check 16 (Index.md Integrity)
-
-Follow Section 3.10 exactly.
-Apply all 10 safety rules from Section 3.10.
-
-─────────────────────────────────────────────────────────────────────────
-TRIAGE KEYWORD GENERATION - INCIDENT RESPONSE:
-─────────────────────────────────────────────────────────────────────────
-
-Generate ONLY triage keywords (🚨) for an existing category:
-
-    Category:     [Category Name] ([CODE])
-    Existing IDs: [CODE]-001 to [CODE]-NNN
-    Next ID:      [CODE]-[NNN+1]
-
-Generate 5-10 triage keywords (tagged 🚨) that answer:
-
-- "What do I check first when X breaks?"
-- "How do I diagnose Y in production?"
-- "What are the top 5 failure modes of Z?"
-
-Triage keywords MUST be:
-
-- At L3 or L4 difficulty
-- Formatted as questions or diagnostic commands
-- Focused on DIAGNOSIS, not theory
-- Actionable within 15 minutes of incident start
-
-Output: triage keyword table + index.md update per Section 3.10.
-Follow Category Keyword Generator v1.0 exactly.
+CHECK 20 - META CROSS-DOMAIN TRANSFER (Rule 25):
+☐ At least 2 META 🧠 keywords cite a DIFFERENT source
+domain in their title
+☐ The two source domains are not from the same parent
+domain (e.g. not both "networking")
+☐ Each META keyword names a transferable pattern, not
+a duplicate of an in-domain summary
 
 ═══════════════════════════════════════════════════════════════════════════
-SECTION 6: LEVEL DISTRIBUTION GUIDELINES
+APPENDIX A: WORKED EXAMPLE - CACHING (full L0..L6 + META)
 ═══════════════════════════════════════════════════════════════════════════
 
-For a TYPICAL rich technology category:
-
-L0 Orientation: 5–10 keywords
-(context, history, domain placement)
-
-L1 Foundational: 15–25 keywords
-(core vocabulary, building blocks)
-
-L2 Working: 20–35 keywords
-(usage patterns, common features)
-
-L3 Intermediate: 25–40 keywords
-(internals, design choices, trade-offs)
-
-L4 Expert: 25–40 keywords
-(production, scale, failure modes, incidents)
-
-L5 Architect: 10–20 keywords
-(strategy, governance, migration, extension)
-
-L6 Creator: 10–20 keywords
-(theory, specification, research)
-
-META Meta-Skills: 3–5 keywords
-(transferable thinking patterns)
-
-TOTAL: 113–195 keywords
-
-For NARROW or FOCUSED categories:
-(e.g. npm, Git, Document Generation)
-Each level: 3–12 keywords. Total: 30–70 keywords.
-
-For BROAD cross-domain categories:
-(e.g. System Design, Distributed Systems, Security)
-Each level: 30–60 keywords. Total: 200–350 keywords.
-
-─────────────────────────────────────────────────────────────────────────
-LEVEL DISTRIBUTION BY CATEGORY TYPE:
-─────────────────────────────────────────────────────────────────────────
-
-RUNTIME / ENGINE (JVM, V8, Node.js):
-L4 and L6 are largest; L5 is substantial
-(deep internals + fleet architecture dominate)
-
-FRAMEWORK (Spring, React, Angular):
-L2 and L3 are largest
-(usage patterns and design choices dominate)
-
-PROTOCOL / STANDARD (HTTP, TCP, SQL):
-L1 and L6 are largest
-(fundamentals + specification dominate)
-
-INFRASTRUCTURE (Docker, K8s, Terraform):
-L2 and L4 are largest; L5 is significant
-(setup patterns + production ops + strategy dominate)
-
-DOMAIN (Financial Services, AI Agents):
-L3 and L4 are largest; L5 is significant
-(design decisions + production + governance dominate)
-
-SECURITY (as meta-domain):
-All levels roughly equal; L5 is the largest
-(security governance is uniquely organisational)
-
-═══════════════════════════════════════════════════════════════════════════
-SECTION 7: EXAMPLE OUTPUT (v1.0 Format, abbreviated)
-═══════════════════════════════════════════════════════════════════════════
-
-Input:
-Category: Security
-Code: SEC
-Tier: tier-2-networking-security
-Folder: SEC-security
-Start ID: SEC-001
-Version: v1.0
-
-─────────────────────────────────────────────────────────────────────────
-EXAMPLE OUTPUT (L0 full, L1 partial, L3 partial cluster, Confusion Pairs,
-Meta-Skills, Summary):
-─────────────────────────────────────────────────────────────────────────
+A fully worked, end-to-end example showing how the spec applies to
+the "Caching" category. Use as a reference when generating new
+categories. Tags shown for illustration; real categories may carry
+more tags per row.
 
 ════════════════════════════════════════════════════════
-CATEGORY: Security
-CODE: SEC
-TIER: tier-2-networking-security
-FOLDER: SEC-security
+CATEGORY: Caching
+CODE: CCH
+TIER: tier-2-systems
+FOLDER: CCH-caching
 LEVELS: L0 + L1 + L2 + L3 + L4 + L5 + L6 + META
-TOTAL: ~148 keywords across 8 components
+TOTAL: 58 keywords across 8 components
 GENERATED: v1.0
 ════════════════════════════════════════════════════════
 
-────────────────────────────────────────────────────────
-LEVEL 0 - ORIENTATION 🌱
-8 keywords
-────────────────────────────────────────────────────────
-
-| ID      | Keyword                               | Lv  | Diff | Tags |
-| ------- | ------------------------------------- | --- | ---- | ---- |
-| SEC-001 | The Security Problem in Software      | L0  | 🌱   |      |
-| SEC-002 | What Attackers Actually Do            | L0  | 🌱   |      |
-| SEC-003 | The Cost of a Data Breach             | L0  | 🌱   |      |
-| SEC-004 | Why Security Is Everyone's Job        | L0  | 🌱   |      |
-| SEC-005 | Security vs Privacy vs Safety         | L0  | 🌱   |      |
-| SEC-006 | The Security Ecosystem Map            | L0  | 🌱   | 🔧   |
-| SEC-007 | Attacker vs Defender Asymmetry        | L0  | 🌱   |      |
-| SEC-008 | Secure by Default vs Secure by Choice | L0  | 🌱   |      |
-
-┌───────────────────────────────────────────────────────┐
-│ MILESTONE - Level 0 Complete │
-│ │
-│ You can now: │
-│ ✓ Explain why security matters to a non-technical │
-│ stakeholder in 2 minutes │
-│ ✓ Describe the basic attacker/defender dynamic │
-│ ✓ Navigate the security tool landscape at high level │
-│ │
-│ Build This: Write a 3-paragraph explanation of why │
-│ your current project needs security and │
-│ what could go wrong without it. │
-│ │
-│ Self-Check: Can you explain the difference between │
-│ a vulnerability and a threat? │
-└───────────────────────────────────────────────────────┘
-
-────────────────────────────────────────────────────────
-LEVEL 1 - FOUNDATIONAL ★☆☆
-18 keywords
-────────────────────────────────────────────────────────
-
-── CLUSTER: Core Security Model ─────────────────────
-| ID | Keyword | Lv | Diff | Tags |
-|---------|----------------------------------|----|------|------|
-| SEC-009 | CIA Triad | L1 | ★☆☆ | 🎯 |
-| SEC-010 | Authentication vs Authorization | L1 | ★☆☆ | 🎯 |
-| SEC-011 | Threat vs Vulnerability vs Risk | L1 | ★☆☆ | |
-| SEC-012 | Attack Surface | L1 | ★☆☆ | |
-| SEC-013 | Principle of Least Privilege | L1 | ★☆☆ | 🎯 |
-
-── CLUSTER: Cryptography Fundamentals ───────────────
-| ID | Keyword | Lv | Diff | Tags |
-|---------|----------------------------------|----|------|------|
-| SEC-014 | Encoding vs Encryption vs Hashing| L1 | ★☆☆ | 🎯 |
-| SEC-015 | HTTPS Overview | L1 | ★☆☆ | |
-| SEC-016 | Password Security Basics | L1 | ★☆☆ | |
-
-── CLUSTER: Attacks & Threats (Awareness) ───────────
-| ID | Keyword | Lv | Diff | Tags |
-|---------|----------------------------------|----|------|------|
-| SEC-017 | Social Engineering | L1 | ★☆☆ | |
-| SEC-018 | Phishing | L1 | ★☆☆ | |
-| SEC-019 | Malware Overview | L1 | ★☆☆ | |
-| SEC-020 | Firewall (Conceptual) | L1 | ★☆☆ | 🔧 |
-| SEC-021 | Zero Trust (Conceptual) | L1 | ★☆☆ | |
-| SEC-022 | Security by Design | L1 | ★☆☆ | |
-| SEC-023 | Defense in Depth (Basic) | L1 | ★☆☆ | |
-| SEC-024 | Security Policy | L1 | ★☆☆ | |
-| SEC-025 | Hardcoded Credentials Anti-Pattern| L1 | ★☆☆ | ⚠️ |
-| SEC-026 | Security Through Obscurity | L1 | ★☆☆ | ⚠️ |
-
-[... L2, L4, L5, L6 tables continue in same format ...]
-
-── CLUSTER: OAuth & Identity (L3 example) ───────────
-| ID | Keyword | Lv | Diff | Tags |
-|---------|------------------------------------|-----|-------|-------|
-| SEC-071 | OAuth 2.0 Authorization Code Flow | L3 | ★★☆ | 🎯 |
-| SEC-072 | OAuth 2.0 Client Credentials Flow | L3 | ★★☆ | |
-| SEC-073 | OpenID Connect (OIDC) | L3 | ★★☆ | 🎯 |
-| SEC-074 | JWT Security Vulnerabilities | L3 | ★★☆ | |
-| SEC-075 | PKCE (OAuth 2.0 Extension) | L3 | ★★☆ | |
-| SEC-076 | OAuth 2.0 vs SAML Migration | L3 | ★★☆ | 🔄 |
-
-════════════════════════════════════════════════════════
-CONFUSION PAIRS - COMMONLY CONFLATED CONCEPTS
-════════════════════════════════════════════════════════
-
-| Concept A            | Concept B         | Level | Key Difference              |
-| -------------------- | ----------------- | ----- | --------------------------- |
-| Authentication       | Authorization     | L1    | Identity vs Permission      |
-| Encoding             | Encryption        | L1    | Reversible vs Keyed-Secret  |
-| Hashing              | Encryption        | L1    | One-way vs Reversible       |
-| OAuth 2.0            | OpenID Connect    | L3    | Authorization vs Identity   |
-| SAST                 | DAST              | L3    | Static vs Runtime Analysis  |
-| mTLS                 | JWT Auth          | L3    | Transport vs App Layer Auth |
-| Symmetric Crypto     | Asymmetric Crypto | L3    | Shared Key vs Key Pair      |
-| Zero Trust (concept) | Zero Trust (arch) | L1/L4 | Principle vs Implementation |
-
-════════════════════════════════════════════════════════
-META-SKILLS - GOD-LEVEL THINKING PATTERNS
-════════════════════════════════════════════════════════
-
-| ID      | Meta-Skill                            | Transfers To           |
-| ------- | ------------------------------------- | ---------------------- |
-| SEC-144 | Adversarial Thinking as Design Tool   | System Design, AI      |
-| SEC-145 | Trust Boundary Analysis               | Microservices, Cloud   |
-| SEC-146 | Assume-Breach Reasoning               | Incident Response, SRE |
-| SEC-147 | Threat Model as Architecture Review   | Any System Design      |
-| SEC-148 | Least-Privilege as Systemic Principle | OS, Cloud, Database    |
-
-════════════════════════════════════════════════════════
-SUMMARY
-════════════════════════════════════════════════════════
-
-| Level | Name             | Count | ID Range          |
-| ----- | ---------------- | ----- | ----------------- |
-| L0    | Orientation      | 8     | SEC-001 – SEC-008 |
-| L1    | Foundational     | 18    | SEC-009 – SEC-026 |
-| L2    | Working          | 22    | SEC-027 – SEC-048 |
-| L3    | Intermediate     | 35    | SEC-049 – SEC-083 |
-| L4    | Expert           | 34    | SEC-084 – SEC-117 |
-| L5    | Architect        | 15    | SEC-118 – SEC-132 |
-| L6    | Creator/Designer | 11    | SEC-133 – SEC-143 |
-| META  | Meta-Skills      | 5     | SEC-144 – SEC-148 |
-| TOTAL |                  | 148   | SEC-001 – SEC-148 |
-
-TAG COVERAGE:
-| Tag | Count | % of Total |
-|--------|-------|------------|
-| 🎯 ivw | 28 | 19% |
-| ⚠️anti | 14 | 9% |
-| 🔧tool | 18 | 12% |
-| 🔴 inc | 8 | 5% |
-| 🔄 mig | 10 | 7% |
-| 📋 cpl | 8 | 5% |
-| 🧪test | 6 | 4% |
-| 📊 obs | 6 | 4% |
-| ⚡perf | 5 | 3% |
-| 🧭 dec | 8 | 5% |
-| 🏋️prac | 10 | 7% |
-| 🔨proj | 5 | 3% |
-| 🎓teach| 4 | 3% |
-| 🔁 ret | 3 | 2% |
-
-════════════════════════════════════════════════════════
-LEARNING PATH
-════════════════════════════════════════════════════════
-
-PREREQUISITE CATEGORIES:
-NET (Networking) - TCP/IP, TLS basics
-API (HTTP & APIs) - HTTP, cookies, headers
-
-PARALLEL CATEGORIES:
-API (HTTP & APIs) - security and API design
-CSF (CS Fundamentals) - cryptography foundations
-
-NEXT CATEGORIES:
-MSV (Microservices) - distributed security
-K8S (Kubernetes) - container and cluster security
-AWS (Cloud) - IAM and secrets management
-
-ENTRY POINT FOR NEW LEARNERS:
-Start at SEC-001 - The Security Problem in Software
-
-JUMP IN FOR PRACTITIONERS:
-Start at SEC-049 - [First L3 Keyword Name]
-
-FAST TRACK FOR EXPERTS:
-Start at SEC-084 - [First L4 Keyword Name]
-
-═══════════════════════════════════════════════════════════════════════════
-SECTION 8: TRIAGE KEYWORDS - PRODUCTION INCIDENT RESPONSE
-═══════════════════════════════════════════════════════════════════════════
-
-For each category, the generator MUST output 5-10 keywords
-specifically designed for on-call engineers who need to
-debug a production issue NOW.
-
-These keywords answer: "Something is broken at 3am - what do I check?"
-
-TRIAGE KEYWORDS are:
-
-- Tagged with 🚨 in the output table
-- Placed at L3 or L4 levels (where production issues manifest)
-- Focused on DIAGNOSIS, not theory or design
-- Formatted as questions, diagnostic commands, or checklists
-- Actionable within 15 minutes of incident start
-
-─────────────────────────────────────────────────────────────────────────
-TRIAGE KEYWORD FORMATS:
-─────────────────────────────────────────────────────────────────────────
-
-FORMAT A - Diagnostic Question:
-"Why is [component] returning [error code]?"
-"How to tell if [failure mode] is happening?"
-"Is it [cause A] or [cause B]? Quick check"
-
-FORMAT B - Command / Action:
-"[Tool] command to check [metric]"
-"Steps to diagnose [failure scenario]"
-"Emergency [operation] procedure"
-
-FORMAT C - Decision Tree:
-"Top 5 things to check when [X] breaks"
-"[Component] not responding - triage flowchart"
-"[Error] vs [Error] - which is which?"
-
-─────────────────────────────────────────────────────────────────────────
-EXAMPLES BY DOMAIN:
-─────────────────────────────────────────────────────────────────────────
-
-Security:
-| ID | Keyword | Lv | Tags |
-|---------|---------------------------------------------|----|-----------|
-| SEC-149 | 403 Forbidden - Diagnosing Auth Failures | L3 | 🚨 🎯 |
-| SEC-150 | Why Is My JWT Invalid? Debug Steps | L3 | 🚨 🔧 |
-| SEC-151 | Certificate Expired - Emergency Rotation | L4 | 🚨 🔴 |
-
-Database:
-| ID | Keyword | Lv | Tags |
-|---------|---------------------------------------------|----|-----------|
-| DBF-080 | Query Slow? EXPLAIN ANALYZE Checklist | L3 | 🚨 ⚡ |
-| DBF-081 | Connection Pool Exhausted - What to Check | L3 | 🚨 📊 |
-| DBF-082 | Deadlock Victim - Find and Fix | L4 | 🚨 🔧 |
-
-Kubernetes:
-| ID | Keyword | Lv | Tags |
-|---------|---------------------------------------------|----|-----------|
-| K8S-090 | Pod CrashLoopBackOff - Debug Steps | L3 | 🚨 |
-| K8S-091 | Service Unreachable - Network Policy Check | L3 | 🚨 🔧 |
-| K8S-092 | Node NotReady - Diagnostic Checklist | L4 | 🚨 |
-
-─────────────────────────────────────────────────────────────────────────
-RULES FOR TRIAGE KEYWORDS:
-─────────────────────────────────────────────────────────────────────────
-
-1. MUST be at L3 or L4 (L5/L6 are too strategic for triage)
-2. MUST NOT require reading documentation to understand
-3. MUST be scannable in under 30 seconds
-4. Each triage keyword SHOULD reference 1-2 lower-level keywords
-   it depends on (for deeper understanding after the incident)
-5. The 🚨 tag is IN ADDITION to other relevant tags (🎯, 🔧, etc.)
-6. At least 5 triage keywords per category (minimum for on-call utility)
-7. Triage keywords are placed in the normal level tables (L3/L4)
-   AND summarized in a dedicated triage section after the level tables
-
-─────────────────────────────────────────────────────────────────────────
-TRIAGE SECTION IN OUTPUT (after level tables, before Summary):
-─────────────────────────────────────────────────────────────────────────
-
-════════════════════════════════════════════════════════
-TRIAGE KEYWORDS - PRODUCTION INCIDENT RESPONSE 🚨
-════════════════════════════════════════════════════════
-
-| ID         | Triage Keyword          | Level | Related Keywords   |
-| ---------- | ----------------------- | ----- | ------------------ |
-| [CODE]-NNN | "[Symptom] - Diagnosis" | L3    | CODE-NNN, CODE-NNN |
-
-QUICK REFERENCE FOR ON-CALL:
-When you see [symptom A], check [CODE]-NNN first.
-When you see [symptom B], check [CODE]-NNN first.
-When you see [symptom C], check [CODE]-NNN first.
-
-═══════════════════════════════════════════════════════════════════════════
-END OF CATEGORY KEYWORD GENERATOR PROMPT v1.0
-═══════════════════════════════════════════════════════════════════════════
-
-```
-
----
-
-## 💡 How to Invoke
-
-**Generate a complete new category (all levels):**
-```
-
-Generate complete keyword list for category:
-
-Category: Java & JVM Internals
-Code: JVM
-Tier: tier-3-java
-Folder: JVM-java-jvm-internals
-Starting ID: JVM-001
-
-Cover ALL levels: L0, L1, L2, L3, L4, L5, L6, META.
-Follow Category Keyword Generator v1.0 exactly.
-Apply all 22 rules. Use all 12 output components.
-Run all 17 quality checks.
-Update category index.md per Section 3.10.
-
-```
-
-**Extend existing category with new keywords:**
-```
-
-Extend keyword list for category:
-
-Category: React (RCT)
-Last ID used: RCT-024
-Next ID: RCT-025
-Index file: dictionary/tier-7-frontend/RCT-react/index.md
-
-Generate missing keywords for all levels.
-Continue sequential IDs from RCT-025.
-Follow Category Keyword Generator v1.0 exactly.
-Update category index.md per Section 3.10.
-DO NOT modify existing keywords RCT-001 through RCT-024.
-
-```
-
-**Gap analysis:**
-```
-
-Analyse this keyword list for category [Name] ([CODE])
-and identify coverage gaps:
-
-[paste existing keyword list]
-
-Output: which of the 22 rules have violations,
-what keywords are missing at each level,
-decision framework gaps, practice gaps,
-project evolution gaps, and suggested IDs.
-Update category index.md per Section 3.10.
-
-```
-
-**Migration audit:**
-```
-
-Audit migration/evolution keyword gaps for:
-
-Category: [Category Name] ([CODE])
-
-[paste keyword list]
-
-Identify undocumented version migrations,
-deprecated features, and breaking change keywords.
-Output: gap list + suggested IDs + index.md update per Section 3.10.
-
-```
-
-```
+────────────────────────────────────────────────────
+LEVEL 0 - ORIENTATION 🌱 (5 keywords)
+────────────────────────────────────────────────────
+
+| ID      | Keyword                         | Lv  | Diff | template | Tags |
+| ------- | ------------------------------- | --- | ---- | -------- | ---- |
+| CCH-001 | Why Caching Exists              | L0  | 🌱   | SIMPLE   |      |
+| CCH-002 | The Latency Pyramid             | L0  | 🌱   | SIMPLE   |      |
+| CCH-003 | Cache vs Buffer vs Memo vs Pool | L0  | 🌱   | SIMPLE   | 💥   |
+| CCH-004 | Where Caches Live in a Stack    | L0  | 🌱   | SIMPLE   |      |
+| CCH-005 | The Economics of a Cache Miss   | L0  | 🌱   | SIMPLE   |      |
+
+────────────────────────────────────────────────────
+LEVEL 1 - FOUNDATIONAL ★☆☆ (6 keywords)
+────────────────────────────────────────────────────
+
+| ID      | Keyword                            | Lv  | Diff | template | Tags |
+| ------- | ---------------------------------- | --- | ---- | -------- | ---- |
+| CCH-006 | Cache Hit and Cache Miss           | L1  | ★☆☆  | SIMPLE   | 🎯   |
+| CCH-007 | Hit Rate and Miss Penalty          | L1  | ★☆☆  | SIMPLE   |      |
+| CCH-008 | TTL and Expiration Basics          | L1  | ★☆☆  | SIMPLE   |      |
+| CCH-009 | Cache Eviction in One Picture      | L1  | ★☆☆  | SIMPLE   |      |
+| CCH-010 | TTL Is Not Cache Invalidation      | L1  | ★☆☆  | SIMPLE   | 💥   |
+| CCH-011 | Top 10 Caching Interview Questions | L1  | ★☆☆  | SIMPLE   | 🎯   |
+
+────────────────────────────────────────────────────
+LEVEL 2 - WORKING ★★☆ (8 keywords)
+────────────────────────────────────────────────────
+
+| ID      | Keyword                           | Lv  | Diff | template     | Tags |
+| ------- | --------------------------------- | --- | ---- | ------------ | ---- |
+| CCH-012 | Cache-Aside (Lazy Loading)        | L2  | ★★☆  | INTERMEDIATE | 🎯   |
+| CCH-013 | Read-Through Caching              | L2  | ★★☆  | INTERMEDIATE |      |
+| CCH-014 | Write-Through Caching             | L2  | ★★☆  | INTERMEDIATE |      |
+| CCH-015 | Write-Behind (Write-Back) Caching | L2  | ★★☆  | INTERMEDIATE | ⚠️   |
+| CCH-016 | LRU vs LFU vs FIFO                | L2  | ★★☆  | INTERMEDIATE | 🧭   |
+| CCH-017 | Local Cache (Caffeine, Guava)     | L2  | ★★☆  | INTERMEDIATE | 🔧   |
+| CCH-018 | Distributed Cache (Redis Basics)  | L2  | ★★☆  | INTERMEDIATE | 🔧   |
+| CCH-019 | Caching Recall Triggers           | L2  | ★★☆  | INTERMEDIATE | 🔁   |
+
+────────────────────────────────────────────────────
+LEVEL 3 - INTERMEDIATE ★★☆+ (8 keywords)
+────────────────────────────────────────────────────
+
+| ID      | Keyword                               | Lv  | Diff | template     | Tags |
+| ------- | ------------------------------------- | --- | ---- | ------------ | ---- |
+| CCH-020 | Choosing Cache-Aside vs Read-Through  | L3  | ★★☆  | INTERMEDIATE | 🧭   |
+| CCH-021 | Eviction Policy Decision Framework    | L3  | ★★☆  | INTERMEDIATE | 🧭   |
+| CCH-022 | Stale Reads and Inconsistency Windows | L3  | ★★☆  | INTERMEDIATE | ⚠️   |
+| CCH-023 | Negative Caching                      | L3  | ★★☆  | INTERMEDIATE |      |
+| CCH-024 | Cache Key Design                      | L3  | ★★☆  | INTERMEDIATE | ⚠️   |
+| CCH-025 | Cache Hit Rate Is Not Effectiveness   | L3  | ★★☆  | INTERMEDIATE | 💥   |
+| CCH-026 | Cache Sizing for a Working Set        | L3  | ★★☆  | INTERMEDIATE | 🏋️   |
+| CCH-027 | Caching Self-Assessment               | L3  | ★★☆  | INTERMEDIATE | 🔁   |
+
+────────────────────────────────────────────────────
+LEVEL 4 - EXPERT ★★★ (9 keywords)
+────────────────────────────────────────────────────
+
+| ID      | Keyword                                          | Lv  | Diff | template | Tags |
+| ------- | ------------------------------------------------ | --- | ---- | -------- | ---- |
+| CCH-028 | Thundering Herd and Stampede                     | L4  | ★★★  | COMPLEX  | 🚨🔴 |
+| CCH-029 | Cache Stampede Mitigation (Locks, Probabilistic) | L4  | ★★★  | COMPLEX  |      |
+| CCH-030 | Hot Key Problem                                  | L4  | ★★★  | COMPLEX  | 🚨   |
+| CCH-031 | Cache Coherence in Multi-Node Setups             | L4  | ★★★  | COMPLEX  |      |
+| CCH-032 | Consistent Hashing for Cache Sharding            | L4  | ★★★  | COMPLEX  |      |
+| CCH-033 | Negative Cache Poisoning                         | L4  | ★★★  | COMPLEX  | ⚠️💥 |
+| CCH-034 | Diagnosing a Bad Hit Rate                        | L4  | ★★★  | COMPLEX  | 📊   |
+| CCH-035 | Caching Mastery Verification                     | L4  | ★★★  | COMPLEX  | 🔁   |
+| CCH-036 | Top Caching Deep-Dive Questions                  | L4  | ★★★  | COMPLEX  | 🎯   |
+
+────────────────────────────────────────────────────
+LEVEL 5 - ARCHITECT 🔥 (4 keywords)
+────────────────────────────────────────────────────
+
+| ID      | Keyword                             | Lv  | Diff | template | Tags |
+| ------- | ----------------------------------- | --- | ---- | -------- | ---- |
+| CCH-037 | Multi-Tier Cache Architectures      | L5  | 🔥   | COMPLEX  |      |
+| CCH-038 | Cache Coherence Protocols Across DC | L5  | 🔥   | COMPLEX  |      |
+| CCH-039 | Cache Capacity Planning at Scale    | L5  | 🔥   | COMPLEX  | 🧭   |
+| CCH-040 | Caching Staff-Level Scenarios       | L5  | 🔥   | COMPLEX  | 🎯   |
+
+────────────────────────────────────────────────────
+LEVEL 6 - CREATOR 🔬 (2 keywords)
+────────────────────────────────────────────────────
+
+| ID      | Keyword                                       | Lv  | Diff | template | Tags |
+| ------- | --------------------------------------------- | --- | ---- | -------- | ---- |
+| CCH-041 | Cache as a CRDT - Eventual Consistency Theory | L6  | 🔬   | COMPLEX  |      |
+| CCH-042 | Designing a Cache from First Principles       | L6  | 🔬   | COMPLEX  |      |
+
+────────────────────────────────────────────────────
+META 🧠 (3 keywords)
+────────────────────────────────────────────────────
+
+| ID      | Keyword                                              | Lv   | Diff | template | Tags |
+| ------- | ---------------------------------------------------- | ---- | ---- | -------- | ---- |
+| CCH-043 | What CPU Cache Hierarchies Teach Distributed Caching | META | 🧠   | COMPLEX  |      |
+| CCH-044 | Browser / CDN / DB Cache: Common Pattern             | META | 🧠   | COMPLEX  |      |
+| CCH-045 | Cache as Materialized View - Lessons from Databases  | META | 🧠   | COMPLEX  |      |
+
+Notes on Caching example:
+
+- 4 unlearn 💥 keywords distributed L0-L4 (Rule 24).
+- 3 META keywords from 3 different source domains:
+  CPU architecture, web/CDN, databases (Rule 25).
+- Every row carries an explicit `template:` field (Rule 23).
+- Retention keywords 🔁 placed at end of L2/L3/L4.
+- Triage keywords 🚨 at L4 (stampede, hot key).
+- Decision-framework keywords 🧭 at L3 and L5.

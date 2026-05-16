@@ -5,34 +5,32 @@ nav_order: 1
 permalink: /
 ---
 
-# sk-bytes
+# sk-learn
 
-A learning ladder of byte-sized study units for software engineers.
+A learning ladder of bite-sized study units for software
+engineers. One atomic keyword per template tier; prereqs come
+first and every keyword (INTERMEDIATE and COMPLEX) points at
+what to read next.
 
-One byte = one atomic keyword, 600-1,500 words, organized so prereqs
-come first and every byte points at what to read next.
+[Browse Learn](/learn/){: .btn .btn-primary }
 
-[Browse Bytes](/bytes/){: .btn .btn-primary }
+## Three templates, one tier per keyword
 
-## What makes a byte different
+| Tier         | Levels        | Sections | Words       | Use for                      |
+| ------------ | ------------- | -------- | ----------- | ---------------------------- |
+| SIMPLE       | L0, L1        | 9        | 400-700     | Orientation + vocabulary     |
+| INTERMEDIATE | L2, L3        | 13       | 900-1,300   | Working trade-offs           |
+| COMPLEX      | L4,L5,L6,META | 16       | 1,400-2,000 | Failure modes + architecture |
 
-| Aspect        | Dictionary entry     | Byte                  |
-| ------------- | -------------------- | --------------------- |
-| Length        | 1.5k-12k wd          | 600-1.5k wd           |
-| Sections      | 24                   | 14                    |
-| Failure modes | 3-6                  | 1 (deep)              |
-| Progression   | Implicit via related | Explicit ladder graph |
-| Use case      | Reference / mastery  | Study sequence        |
+Every keyword hits the signals appropriate to its tier:
 
-Every byte hits four non-negotiable signals:
-
-- **First Principles** invariants + derived design + trade-off.
-- **Production Reality** one fully developed failure with real
-  diagnostic command.
-- **Gradual Depth Levels** scaled to difficulty (2 / 3 / 4 levels).
-- **Learning Ladder** explicit `Prereq -> THIS -> Next` IDs.
+- SIMPLE: Wrong-vs-Right example, one Gotcha, 3-line Revision Card.
+- INTERMEDIATE: ASCII+Mermaid diagram, Trade-offs, Decision Snap,
+  Learning Ladder.
+- COMPLEX: >=3 first-principles invariants, >=2 named failure
+  modes with diagnostic commands, primary-source Further Reading.
 
 ## Getting started
 
-See [the spec](/bytes/_config/BYTES_PROMPT/) or jump straight to a
+See [the spec](/learn/_config/LEARN_PROMPT/) or jump straight to a
 topic via the navigation sidebar.

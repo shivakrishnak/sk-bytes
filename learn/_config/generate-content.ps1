@@ -1,16 +1,16 @@
 <#
 .SYNOPSIS
-  Batch driver for byte content workflows.
+  Batch driver for learn content workflows.
 
 .DESCRIPTION
   Runs scaffold and validate operations over a folder. UTF-8 no BOM
   is preserved by Python tools. Requires pwsh 7+.
 
 .EXAMPLE
-  pwsh -File bytes/_config/generate-content.ps1 -Folder bytes/java
+  pwsh -File learn/_config/generate-content.ps1 -Folder learn/java
 
 .EXAMPLE
-  pwsh -File bytes/_config/generate-content.ps1 -Validate -Path bytes/java/
+  pwsh -File learn/_config/generate-content.ps1 -Validate -Path learn/java/
 #>
 [CmdletBinding()]
 param(
@@ -36,12 +36,12 @@ if (-not (Test-Path $python)) {
 }
 
 $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-$scaffold = Join-Path $PSScriptRoot "bytes_scaffold.py"
-$validator = Join-Path $PSScriptRoot "validate-byte.py"
+$scaffold = Join-Path $PSScriptRoot "learn_scaffold.py"
+$validator = Join-Path $PSScriptRoot "validate-learn.py"
 
 if ($Validate) {
   $target = if ($Path) { $Path } elseif ($Folder) { $Folder }
-            else { "bytes" }
+            else { "learn" }
   & $python $validator $target
   exit $LASTEXITCODE
 }

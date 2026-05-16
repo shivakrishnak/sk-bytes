@@ -1,36 +1,43 @@
-# GitHub Copilot - sk-bytes Workspace Instructions
+# GitHub Copilot - sk-learn Workspace Instructions
 
-This workspace is **sk-bytes**: a learning ladder of byte-sized study
-units. ONE atomic keyword per file, 600-1,500 words, depth-first and
-progression-first.
+This workspace is **sk-learn**: a learning ladder of bite-sized
+study units. One atomic keyword per template tier (SIMPLE /
+INTERMEDIATE / COMPLEX), depth-first and progression-first.
 
 ## How instructions load
 
 | Context                  | Loads                                        |
 | ------------------------ | -------------------------------------------- |
 | Any interaction          | This file (lean overview + shared rules)     |
-| Editing `bytes/**` files | `.github/instructions/bytes.instructions.md` |
-| Using `/bytes` agent     | Agent instructions + reads spec on demand    |
-| Using `@bytes-*` prompts | Prompt-specific instructions                 |
+| Editing `learn/**` files | `.github/instructions/learn.instructions.md` |
+| Using `/learn` agent     | Agent instructions + reads spec on demand    |
+| Using `@learn-*` prompts | Prompt-specific instructions                 |
 
 ## Quick reference
 
 | Item                | Location                                            |
 | ------------------- | --------------------------------------------------- |
-| Content spec (v1.0) | `bytes/_config/BYTES_PROMPT.md`                     |
-| Keyword spec (v1.0) | `bytes/_config/BYTES_KEYWORD_GENERATOR.md`          |
-| Topic registry      | `bytes/_config/topic-registry.md`                   |
-| Topic scaffolder    | `bytes/_config/generate-keywords.ps1`               |
-| Preview emitter     | `bytes/_config/bytes_scaffold.py` (optional)        |
-| Validator           | `bytes/_config/validate-byte.py`                    |
-| Auto-instructions   | `.github/instructions/bytes.instructions.md`        |
-| Agent               | `.github/agents/bytes.agent.md`                     |
-| Keyword-gen prompt  | `.github/prompts/bytes-generate-keywords.prompt.md` |
+| Content spec (v1.0) | `learn/_config/LEARN_PROMPT.md`                     |
+| Keyword spec (v1.0) | `learn/_config/LEARN_KEYWORD_GENERATOR.md`          |
+| Topic registry      | `learn/_config/topic-registry.md`                   |
+| Topic scaffolder    | `learn/_config/generate-keywords.ps1`               |
+| Preview emitter     | `learn/_config/learn_scaffold.py` (optional)        |
+| Validator           | `learn/_config/validate-learn.py`                   |
+| Auto-instructions   | `.github/instructions/learn.instructions.md`        |
+| Agent               | `.github/agents/learn.agent.md`                     |
+| Keyword-gen prompt  | `.github/prompts/learn-generate-keywords.prompt.md` |
 
 **Spec Versions**: content `SPEC_VERSION` = 1 (v1.0); keyword
-generator = v1.0.
+generator = v1.0. Three templates auto-selected by keyword level:
+
+| Tier         | Levels        | Sections | Words       |
+| ------------ | ------------- | -------- | ----------- |
+| SIMPLE       | L0, L1        | 9        | 400-700     |
+| INTERMEDIATE | L2, L3        | 13       | 900-1,300   |
+| COMPLEX      | L4,L5,L6,META | 16       | 1,400-2,000 |
+
 **NON-NEGOTIABLE:** Topic / subtopic / keyword generation MUST use
-`bytes/_config/BYTES_KEYWORD_GENERATOR.md` v1.0 as the single source
+`learn/_config/LEARN_KEYWORD_GENERATOR.md` v1.0 as the single source
 of truth. No ad-hoc keyword lists.
 
 ## Shared rules
@@ -39,7 +46,8 @@ of truth. No ad-hoc keyword lists.
 
 - Always `pwsh` (PowerShell 7+), never `powershell.exe`.
 - UTF-8 without BOM: `[System.Text.UTF8Encoding]::new($false)`.
-- Python path: `$env:USERPROFILE\.local\bin\python3.14.exe`.
+- Python path: `$env:USERPROFILE\.local\bin\python3.14.exe` if
+  present, otherwise `python`.
 
 ### Formatting (non-negotiable)
 
@@ -64,17 +72,19 @@ of truth. No ad-hoc keyword lists.
 ### Git workflow
 
 ```pwsh
-git add bytes/ .github/
+git add learn/ .github/
 git commit -m "feat: <description>"
 # Do NOT git push without explicit user approval
 ```
 
 ## Default behaviour
 
-- When asked to work on byte content: read
-  `bytes/_config/BYTES_PROMPT.md` for the full spec.
-- When asked to generate or validate bytes: invoke the
-  matching `@bytes-*` prompt or `/bytes` agent.
-- When editing `bytes/**`, the bytes instructions auto-load with the
-  14-section template and validation rules.
-- Always validate before committing: `python bytes/_config/validate-byte.py`.
+- When asked to work on learn content: read
+  `learn/_config/LEARN_PROMPT.md` for the full spec including
+  the three templates (SIMPLE / INTERMEDIATE / COMPLEX).
+- When asked to generate or validate content: invoke the
+  matching `@learn-*` prompt or the `/learn` agent.
+- When editing `learn/**`, the learn instructions auto-load with
+  the tri-template structure and validation rules.
+- Always validate before committing:
+  `python learn/_config/validate-learn.py`.

@@ -1,35 +1,56 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-bytes_scaffold.py
+learn_scaffold.py
 =================
-OPTIONAL preview tool. Pre-generates scaffold byte content files
-with [FILL:...] stubs.
+OPTIONAL preview tool. Pre-generates scaffold learn content files
+with [FILL:...] stubs per tier (SIMPLE / INTERMEDIATE / COMPLEX).
 
 Content scaffolding is no longer required for content generation:
-the /bytes agent reads `keywords:` from each file's YAML frontmatter
+the /learn agent reads `keywords:` from each file's YAML frontmatter
 and generates content directly. This script exists only to preview
-the 14-section structure or to seed files for manual editing.
+the tri-template structure or to seed files for manual editing.
 
-Each scaffold has:
-  - Correct file-level YAML frontmatter
-  - All 14 required sections per keyword with [FILL:...] stubs
-  - Proper double-rule separators between keywords
-  - Keyword TOC at top of file
+Tier is chosen per keyword in this order of priority:
+  1. CLI --tier SIMPLE|INTERMEDIATE|COMPLEX (forces all keywords).
+  2. A `levels:` mapping in YAML frontmatter, e.g.:
+         levels:
+           ArrayList: L2
+           ConcurrentHashMap: L4
+     (Levels are then mapped: L0,L1=SIMPLE; L2,L3=INTERMEDIATE;
+      L4,L5,L6,META=COMPLEX.)
+  3. The file's `difficulty_range`:
+         easy   -> SIMPLE
+         medium -> INTERMEDIATE
+         hard   -> COMPLEX
+         mixed  -> INTERMEDIATE (writer should reclassify per kw)
 
 Usage (optional):
-  python bytes/_config/bytes_scaffold.py <topic-folder>
-  python bytes/_config/bytes_scaffold.py java
-  python bytes/_config/bytes_scaffold.py --file "java/Java - Collections.md"
+  python learn/_config/learn_scaffold.py <topic-folder>
+  python learn/_config/learn_scaffold.py java
+  python learn/_config/learn_scaffold.py --file "java/Java - Collections.md"
+  python learn/_config/learn_scaffold.py --file "..." --tier COMPLEX
 """
 
-import os
 import re
 import sys
 from pathlib import Path
 
-BASE = Path(r"C:\ASK\Workspace\northstar\sk-bytes")
-BYTES_BASE = BASE / "bytes"
+BASE = Path(__file__).resolve().parents[2]
+LEARN_BASE = BASE / "learn"
+
+LEVEL_TO_TIER = {
+    "L0": "SIMPLE", "L1": "SIMPLE",
+    "L2": "INTERMEDIATE", "L3": "INTERMEDIATE",
+    "L4": "COMPLEX", "L5": "COMPLEX",
+    "L6": "COMPLEX", "META": "COMPLEX",
+}
+DIFFICULTY_TO_TIER = {
+    "easy": "SIMPLE",
+    "medium": "INTERMEDIATE",
+    "hard": "COMPLEX",
+    "mixed": "INTERMEDIATE",
+}
 
 
 def read_frontmatter(path: Path) -> dict:
@@ -41,25 +62,37 @@ def read_frontmatter(path: Path) -> dict:
     if end == -1:
         return {}
     fm_text = text[3:end]
-    fields = {}
-    keywords = []
+    fields: dict = {}
+    keywords: list = []
+    levels: dict = {}
     in_keywords = False
+    in_levels = False
     for line in fm_text.splitlines():
         if re.match(r"^keywords:", line):
-            in_keywords = True
+            in_keywords = True; in_levels = False
+            continue
+        if re.match(r"^levels:", line):
+            in_keywords = False; in_levels = True
             continue
         if in_keywords:
             m = re.match(r"^\s+-\s+(.+)", line)
             if m:
                 keywords.append(m.group(1).strip())
                 continue
-            else:
-                in_keywords = False
+            in_keywords = False
+        if in_levels:
+            m = re.match(r"^\s+([^:]+):\s*(\S+)", line)
+            if m:
+                levels[m.group(1).strip()] = m.group(2).strip()
+                continue
+            in_levels = False
         m = re.match(r"^(\w[\w_]*):\s*(.*)$", line)
-        if m and not in_keywords:
+        if m and not in_keywords and not in_levels:
             fields[m.group(1)] = m.group(2).strip().strip('"\'')
     if keywords:
         fields["_keywords"] = keywords
+    if levels:
+        fields["_levels"] = levels
     return fields
 
 
@@ -230,30 +263,36 @@ Specific, accurate, memorable.]
 """
 
 
-def build_file_scaffold(file_path: Path, fm: dict) -> str:
-    """Build complete scaffold for a bytes sub-topic file."""
+def build_file_scaffold(
+    file_path: Path, fm: dict, cli_tier: str = ""
+) -> str:
+    """Build complete scaffold for a learn sub-topic file."""
     title = fm.get("title", file_path.stem)
     topic = fm.get("topic", "Unknown")
     subtopic = fm.get("subtopic", "Unknown")
     keywords = fm.get("_keywords", [])
+    levels = fm.get("_levels", {})
     difficulty = fm.get("difficulty_range", "mixed")
     parent = fm.get("parent", topic)
-    grand_parent = fm.get("grand_parent", "Bytes")
+    grand_parent = fm.get("grand_parent", "Learn")
     nav_order = fm.get("nav_order", "1")
     permalink = fm.get("permalink", "")
     version = 1
 
     kw_yaml = "\n".join(f"  - {kw}" for kw in keywords)
 
-    toc = "\n".join(
-        f"- [{kw}](#{keyword_to_anchor(kw)})" for kw in keywords
-    )
+    toc_lines = []
+    for kw in keywords:
+        tier = pick_tier(kw, levels, difficulty, cli_tier)
+        anchor = keyword_to_anchor(kw)
+        toc_lines.append(f"- [{kw}](#{anchor}) [{tier}]")
+    toc = "\n".join(toc_lines)
 
     kw_sections = []
     for i, kw in enumerate(keywords):
-        kw_sections.append(build_keyword_scaffold(kw, difficulty))
+        tier = pick_tier(kw, levels, difficulty, cli_tier)
+        kw_sections.append(build_keyword_scaffold(kw, tier))
         if i < len(keywords) - 1:
-            # Double-rule separator: blank/---/blank/---/blank
             kw_sections.append("\n---\n\n---\n")
 
     all_keywords = "\n".join(kw_sections)
@@ -285,82 +324,85 @@ nav_order: {nav_order}
 """
 
 
-def process_file(file_path: Path) -> None:
-    """Process a single byte file - read frontmatter, generate scaffold."""
+def process_file(file_path: Path, cli_tier: str = "") -> None:
     fm = read_frontmatter(file_path)
     keywords = fm.get("_keywords", [])
-
     if not keywords:
-        print(f"  SKIP: {file_path.name} - no keywords in frontmatter")
+        print(f"  SKIP: {file_path.name} - no keywords")
         return
-
     if len(keywords) < 5:
-        print(f"  WARN: {file_path.name} - only {len(keywords)} keywords "
-              f"(bytes requires >=5)")
-
-    content = build_file_scaffold(file_path, fm)
-
-    # Write UTF-8 no BOM
+        print(
+            f"  WARN: {file_path.name} - only {len(keywords)} "
+            f"keywords (spec requires >=5)"
+        )
+    content = build_file_scaffold(file_path, fm, cli_tier)
     file_path.write_text(content, encoding="utf-8", newline="\n")
-
     fill_count = content.count("[FILL:")
-    print(f"  OK: {file_path.name} - {len(keywords)} keywords, "
-          f"{fill_count} [FILL:] stubs, {len(content)} bytes")
+    print(
+        f"  OK: {file_path.name} - {len(keywords)} kw, "
+        f"{fill_count} [FILL:] stubs, {len(content)} bytes"
+    )
 
 
-def process_topic(topic_folder: str) -> None:
-    """Process all files in a topic folder."""
-    topic_dir = BYTES_BASE / topic_folder
+def process_topic(topic_folder: str, cli_tier: str = "") -> None:
+    topic_dir = LEARN_BASE / topic_folder
     if not topic_dir.is_dir():
         print(f"ERROR: folder not found: {topic_dir}")
         sys.exit(1)
-
     md_files = sorted([
-        f for f in topic_dir.glob("*.md")
-        if f.name != "index.md"
+        f for f in topic_dir.glob("*.md") if f.name != "index.md"
     ])
-
     if not md_files:
-        print(f"ERROR: no .md files found in {topic_dir}")
+        print(f"ERROR: no .md files in {topic_dir}")
         sys.exit(1)
-
     print(f"\n{'='*60}")
-    print(f"BYTES SCAFFOLD: {topic_folder}")
+    print(f"LEARN SCAFFOLD: {topic_folder}")
     print(f"Files: {len(md_files)}")
     print(f"{'='*60}\n")
-
-    total_keywords = 0
-
+    total = 0
     for f in md_files:
         fm = read_frontmatter(f)
-        kw_count = len(fm.get("_keywords", []))
-        process_file(f)
-        total_keywords += kw_count
-
+        total += len(fm.get("_keywords", []))
+        process_file(f, cli_tier)
     print(f"\n{'='*60}")
-    print(f"DONE: {len(md_files)} files, {total_keywords} keywords scaffolded")
+    print(
+        f"DONE: {len(md_files)} files, {total} keywords scaffolded"
+    )
     print(f"{'='*60}\n")
 
 
-def main():
-    if len(sys.argv) < 2:
+def main() -> None:
+    args = sys.argv[1:]
+    cli_tier = ""
+    if "--tier" in args:
+        i = args.index("--tier")
+        cli_tier = args[i + 1].upper()
+        del args[i:i + 2]
+        if cli_tier not in ("SIMPLE", "INTERMEDIATE", "COMPLEX"):
+            print("ERROR: --tier must be SIMPLE|INTERMEDIATE|COMPLEX")
+            sys.exit(1)
+    if not args:
         print("Usage:")
-        print("  python bytes_scaffold.py <topic-folder>")
-        print("  python bytes_scaffold.py java")
-        print("  python bytes_scaffold.py --file \"java/Java - Collections.md\"")
+        print(
+            "  python learn_scaffold.py <topic-folder> "
+            "[--tier SIMPLE|INTERMEDIATE|COMPLEX]"
+        )
+        print(
+            "  python learn_scaffold.py --file "
+            "\"java/Java - Collections.md\" [--tier ...]"
+        )
         sys.exit(1)
-
-    if sys.argv[1] == "--file":
-        if len(sys.argv) < 3:
+    if args[0] == "--file":
+        if len(args) < 2:
             print("ERROR: --file requires a path argument")
             sys.exit(1)
-        file_path = BYTES_BASE / sys.argv[2]
+        file_path = LEARN_BASE / args[1]
         if not file_path.exists():
             print(f"ERROR: file not found: {file_path}")
             sys.exit(1)
-        process_file(file_path)
+        process_file(file_path, cli_tier)
     else:
-        process_topic(sys.argv[1])
+        process_topic(args[0], cli_tier)
 
 
 if __name__ == "__main__":

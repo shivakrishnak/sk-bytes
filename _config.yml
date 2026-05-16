@@ -1,6 +1,6 @@
-title: sk-bytes
+title: sk-learn
 description: >-
-  A learning ladder of byte-sized study units. One atomic keyword per
+  A learning ladder of bite-sized study units. One atomic keyword per
   file, depth-first and progression-first.
 
 remote_theme: just-the-docs/just-the-docs
@@ -20,15 +20,15 @@ search:
   button: false
 
 heading_anchors: true
-color_scheme: dark
+color_scheme: light
 
 aux_links:
-  "Bytes":
-    - "/bytes/"
+  "Learn":
+    - "/learn/"
 
 nav_external_links:
   - title: Source on GitHub
-    url: https://github.com/shivakrishnak/sk-bytes
+    url: https://github.com/shivakrishnak/sk-learn
 
 # Build settings
 markdown: kramdown
@@ -46,14 +46,14 @@ exclude:
   - Gemfile.lock
   - README.md
   - .github/
-  - bytes/_config/*.py
-  - bytes/_config/*.ps1
+  - learn/_config/*.py
+  - learn/_config/*.ps1
   - "**/learning-path.md"
 
 # Defaults
 defaults:
   - scope:
-      path: "bytes"
+      path: "learn"
       type: "pages"
     values:
       layout: default
