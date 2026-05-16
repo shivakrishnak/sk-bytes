@@ -47,7 +47,7 @@ took 5 lines of boilerplate just to define one comparison.
 Threading required `new Runnable() { public void run() { ... } }`
 for every task. The signal-to-noise ratio was terrible. Lambdas
 (Java 8) let you write the behavior inline: `(a, b) -> a - b`.
-This is exactly why lambdas were created.
+The ceremony vanished; the intent stayed.
 
 ---
 
@@ -65,18 +65,20 @@ of an anonymous class.
 
 ### 🧠 Mental Model
 
-> A lambda is a sticky note with instructions. Instead of
-> writing a full letter (anonymous class), you stick a short
-> note (lambda) on the fridge. The fridge magnet (functional
-> interface) can only hold one note at a time.
+> A lambda is a verb you can store in a variable. Before Java 8,
+> you could only pass nouns (objects) between methods. Lambdas
+> let you pass actions - "sort by this rule," "filter with
+> this test," "transform using this function" - without
+> wrapping the action in a disposable class.
 
-- "Sticky note" -> lambda expression
-- "Full letter" -> anonymous inner class
-- "Fridge magnet" -> functional interface (one abstract method)
+- "Verb in a variable" -> lambda expression
+- "Disposable class" -> anonymous inner class
+- "Grammar rule" -> functional interface (one abstract method)
 
-**Where this analogy breaks down:** unlike a sticky note, a
-lambda can capture variables from its surrounding scope
-(closure), effectively carrying context with it.
+**Where this analogy breaks down:** lambdas are not truly
+first-class functions - they must target a functional interface.
+You cannot store a raw lambda in a `var` without a target type.
+`var f = x -> x + 1;` does not compile.
 
 ---
 
@@ -135,15 +137,30 @@ names.sort(String::compareToIgnoreCase);
 
 Why it's right: one line, same behavior, compiler-verified.
 
+**Failure pattern:**
+
+```java
+// Capturing a mutable variable - compile error
+int count = 0;
+list.forEach(item -> count++); // ERROR
+// count must be effectively final
+// Fix: use AtomicInteger or stream().count()
+```
+
 **Production pattern:**
 
 ```java
-// Chaining functional operations
-List<String> active = users.stream()
-    .filter(u -> u.isActive())
-    .map(User::getName)
-    .sorted()
+// Chaining with composition
+Predicate<String> notBlank = s -> !s.isBlank();
+Predicate<String> shortEnough = s -> s.length() < 100;
+Function<String, String> normalize =
+    String::trim;
+
+List<String> clean = input.stream()
+    .filter(notBlank.and(shortEnough))
+    .map(normalize)
     .toList();
+// Named predicates + composition = reusable, testable
 ```
 
 ---
@@ -249,7 +266,7 @@ totals, sum them. With loops, this takes 10+ lines, mixes
 filtering with accumulation, and is hard to parallelize. The
 Stream API (Java 8) lets you write `orders.stream().filter(o -> !o.isCancelled()).mapToDouble(Order::getTotal).sum()` - a
 declarative pipeline that the runtime can optimize and
-parallelize. This is exactly why the Stream API was created.
+parallelize. You describe the what; the runtime decides the how.
 
 ---
 
@@ -341,11 +358,14 @@ Why it's right: declarative, composable, parallelizable
 **Production pattern:**
 
 ```java
-// Grouping orders by status
-Map<Status, List<Order>> grouped =
+// Grouping with downstream collector
+Map<Status, DoubleSummaryStatistics> stats =
     orders.stream()
         .collect(Collectors.groupingBy(
-            Order::getStatus));
+            Order::getStatus,
+            Collectors.summarizingDouble(
+                Order::getTotal)));
+// One pass: count, sum, min, max, avg per status
 ```
 
 ---
@@ -421,11 +441,14 @@ unreadable chains.
 
 ### 💡 The Surprising Truth
 
-`Stream.forEach()` does not guarantee order even on sequential
-streams for some sources. `forEachOrdered()` exists for that
-reason. Also, `parallelStream().forEach()` executes elements
-in arbitrary order across threads - if order matters, use
-`forEachOrdered()` or `collect()`.
+`Stream.forEach()` does not guarantee encounter order even on
+sequential streams for some sources. `forEachOrdered()` exists
+for that reason. More importantly, the Stream implementation
+performs operation fusion: `filter(p).map(f).filter(q)` does
+not create three intermediate collections. Each element passes
+through all stages before the next element enters. This is why
+Streams can be faster than naive multi-pass loops that create
+intermediate lists at each step.
 
 ---
 
@@ -472,13 +495,15 @@ parameters, or collections.
 
 ### 🧠 Mental Model
 
-> Optional is a gift box that might be empty. Before using
-> the gift (value), you must open the box and check. Null is a
-> gift box that looks full but explodes when opened (NPE).
+> Optional is a type-level "maybe." In conversation, the
+> difference between "I will give you a User" and "I might
+> give you a User" is the word might. In code, the difference
+> between `User` and `Optional<User>` is the same word -
+> visible in the type signature, enforceable by the compiler.
 
-- "Gift box" -> Optional wrapper
-- "Open and check" -> ifPresent, map, orElse
-- "Exploding box" -> null reference
+- "I will" -> direct return type (`User`)
+- "I might" -> Optional return type (`Optional<User>`)
+- "Open and check" -> `map`, `orElse`, `orElseThrow`
 
 **Where this analogy breaks down:** Optional itself can be
 null if misused (`Optional<User> opt = null;`). The discipline
@@ -545,6 +570,12 @@ Why it's right: absence is explicit; handling is forced.
 Optional<String> city = findUser(id)
     .flatMap(User::getAddress)
     .map(Address::getCity);
+
+// DANGER: orElse vs orElseGet
+// orElse evaluates eagerly - ALWAYS runs compute()
+String a = opt.orElse(expensiveQuery()); // BAD
+// orElseGet evaluates lazily - only if empty
+String b = opt.orElseGet(() -> expensiveQuery());
 ```
 
 ---
@@ -587,11 +618,11 @@ adds noise; `Optional.get()` without check is as bad as null.
 
 ### ⚠️ Top Traps
 
-| #   | Misconception                                        | Reality                                                                        |
-| --- | ---------------------------------------------------- | ------------------------------------------------------------------------------ |
-| 1   | `Optional.get()` is the normal way to extract values | It throws NoSuchElementException if empty; use orElse/map                      |
-| 2   | Optional eliminates all NPEs                         | Only if used correctly; Optional itself can be null                            |
-| 3   | Use Optional for every field                         | No - Optional is for return types only; fields should be null or use a default |
+| #   | Misconception                                        | Reality                                                                                                                   |
+| --- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `Optional.get()` is the normal way to extract values | It throws NoSuchElementException if empty; use orElse/map                                                                 |
+| 2   | Optional eliminates all NPEs                         | Only if used correctly; Optional itself can be null                                                                       |
+| 3   | `orElse()` and `orElseGet()` are interchangeable     | `orElse(compute())` evaluates eagerly even when value is present; use `orElseGet(() -> compute())` for expensive defaults |
 
 ---
 
@@ -652,8 +683,8 @@ verbosity was a running joke. `var` (Java 10) lets the compiler
 infer the type from the initializer:
 `var grouped = new HashMap<String, List<Employee>>();`
 Same type safety, less noise. But overuse of `var` hides intent
-when the right-hand side is not obvious. This is exactly why
-understanding when to use var matters.
+when the right-hand side is not obvious. The rule: var is for
+the reader, not the writer - use it when it helps clarity.
 
 ---
 
@@ -670,17 +701,21 @@ declaration; `var` is purely a source-level feature.
 
 ### 🧠 Mental Model
 
-> var is autocomplete for types. The compiler fills in the
-> full type from the right side of `=`. You still have the
-> same type - you just do not type it twice.
+> var is a transparent alias. The compiler reads the right side,
+> stamps the type onto the variable, and discards the `var`
+> token. At the bytecode level, `var s = "hi"` and
+> `String s = "hi"` are byte-for-byte identical. The type is
+> not inferred at runtime - it is resolved at compile time and
+> baked into the class file.
 
-- "Autocomplete" -> compiler infers from initializer
-- "Same type" -> bytecode is identical
-- "No initializer, no autocomplete" -> var requires `= ...`
+- "Transparent alias" -> var resolves to the concrete type
+- "Stamp" -> compiler infers once, type is fixed forever
+- "Bytecode identical" -> zero runtime cost or difference
 
-**Where this analogy breaks down:** autocomplete is reversible
-(you can see the full type in your IDE). In code review without
-an IDE, `var` can obscure the type.
+**Where this analogy breaks down:** var with intersection
+types (e.g., `var x = condition ? "a" : 1;`) can infer
+types like `Serializable & Comparable<?>` that you cannot
+write explicitly - revealing types you did not expect.
 
 ---
 
@@ -819,7 +854,11 @@ IDE hover to see the type.
 means you can still have a variable named `var`:
 `int var = 42;` compiles. This was done to maintain backward
 compatibility with code that used `var` as an identifier before
-Java 10.
+Java 10. Also, since Java 11, `var` is allowed in lambda
+parameters: `(var x, var y) -> x + y`. This seems pointless
+until you need annotations on lambda parameters:
+`(@NonNull var x, @Nullable var y) -> x + y` - the only way
+to annotate lambda params.
 
 ---
 
@@ -848,8 +887,9 @@ Combining both produces chains of `if (x instanceof Foo f)`
 blocks that grow linearly with each new type. Switch expressions
 (Java 14) return values with arrow syntax (no fall-through).
 Pattern matching (Java 16+ for instanceof, Java 21 for switch)
-lets you test and bind in one step. This is exactly why these
-features were created.
+lets you test and bind in one step. Together, they bring
+algebraic data type matching to a language that was designed
+without it.
 
 ---
 
@@ -890,7 +930,11 @@ nor scanners do.
 3. Pattern instanceof: `if (obj instanceof String s)` binds
    s in scope.
 4. Pattern switch: `switch(obj) { case Integer i -> ... }`.
-5. Exhaustiveness: sealed types + switch guarantee all
+5. Guarded patterns: `case String s when s.length() > 5`
+   adds a boolean guard to a pattern (Java 21).
+6. Multi-line cases use `yield` to return from a block:
+   `case A -> { int r = calc(); yield r; }`.
+7. Exhaustiveness: sealed types + switch guarantee all
    subtypes are covered.
 
 ```text
@@ -1074,7 +1118,8 @@ by the compiler - existing switch/if chains silently miss it.
 Records (Java 16) eliminate boilerplate. Sealed types (Java 17)
 restrict which classes can extend a type. Pattern matching
 (Java 21) destructures them. Together, they form algebraic data
-types in Java. This is exactly why all three were introduced.
+types in Java. What Haskell had from birth, Java built
+over 25 years.
 
 ---
 
@@ -1187,6 +1232,16 @@ record Shipped(String id, String tracking)
     implements OrderEvent {}
 record Cancelled(String id, String reason)
     implements OrderEvent {}
+
+// Compact constructor for validation
+record OrderId(String value) {
+    OrderId {
+        if (value == null || value.isBlank())
+            throw new IllegalArgumentException(
+                "OrderId must not be blank");
+        value = value.strip();
+    }
+}
 
 String describe(OrderEvent e) {
     return switch (e) {
@@ -1305,9 +1360,10 @@ Writing SQL, JSON, or HTML in Java required escaping every
 quote and manually adding `\n` for newlines. A 5-line SQL query
 became an unreadable mess of `"SELECT " + col + " FROM " + table`.
 Text blocks (Java 15) use `"""..."""` to preserve formatting.
-String templates (preview in Java 21+) embed expressions
-directly: `STR."Hello \{name}"`. This is exactly why text blocks
-and templates were created.
+String templates were previewed in Java 21-22 (`STR."Hello
+\{name}"`) but the API was withdrawn; the design is being
+reworked. The goal: make embedded languages (SQL, JSON, HTML)
+readable in Java source code.
 
 ---
 
@@ -1315,25 +1371,28 @@ and templates were created.
 
 A **text block** is a multi-line string literal delimited by
 `"""` (triple double-quotes). Incidental indentation is
-stripped. A **string template** (preview feature, Java 21+)
-is a template expression processed by a template processor
-(`STR`, `FMT`, or custom) that safely interpolates values
-into strings.
+stripped. A **string template** (previewed in Java 21-22,
+then withdrawn) was a template expression processed by a
+template processor (`STR`, `FMT`, or custom). The string
+template API was removed after its second preview; the
+final design is still being reworked. Text blocks, however,
+are stable and GA since Java 15.
 
 ---
 
 ### 🧠 Mental Model
 
 > A text block is a framed photograph of your text - what you
-> see is what you get, whitespace and all. String templates are
-> mail merge - placeholders filled safely at runtime.
+> see is what you get, whitespace and all. Use `.formatted()`
+> for variable interpolation, like mail merge for strings.
 
 - "Framed photograph" -> text block preserves formatting
-- "Mail merge placeholder" -> `\{expr}` in template
-- "Mail merge engine" -> template processor (STR, FMT)
+- "Mail merge" -> `.formatted()` fills in values
+- "Cropped edges" -> common indentation is stripped
 
 **Where this analogy breaks down:** text blocks strip common
 leading indentation, so the "photograph" is slightly cropped.
+Trailing whitespace is also stripped unless you use `\s`.
 
 ---
 
@@ -1343,10 +1402,11 @@ leading indentation, so the "photograph" is slightly cropped.
    close with `"""`.
 2. The compiler strips common leading whitespace (incidental
    indentation).
-3. String templates: `STR."name: \{user.name()}"` evaluates
-   the expression and produces a String.
-4. Template processors can validate content (e.g., prevent
-   SQL injection with a custom processor).
+3. String templates: use `.formatted()` or
+   `MessageFormat` instead. The `STR` processor was
+   previewed in Java 21-22 then withdrawn; the design is
+   being reworked. Rely on text blocks + `.formatted()` for
+   now.
 
 ```text
 Text block:
@@ -1362,8 +1422,8 @@ String sql = """
 flowchart LR
     TB["Text Block (source)"] --> SI["Strip indent"]
     SI --> S["String value"]
-    TP["Template + processor"] --> EV["Evaluate expressions"]
-    EV --> S2["Processed String"]
+    S --> FMT[".formatted() interpolation"]
+    FMT --> R["Final String"]
 ```
 
 ---
@@ -1451,11 +1511,11 @@ preview features (may change).
 
 ### ⚠️ Top Traps
 
-| #   | Misconception                         | Reality                                                                   |
-| --- | ------------------------------------- | ------------------------------------------------------------------------- |
-| 1   | Text blocks preserve all whitespace   | Common leading indent is stripped; trailing whitespace needs `\s`         |
-| 2   | String templates are in GA            | As of Java 21, templates are a preview feature; API may change            |
-| 3   | Text blocks for SQL prevent injection | No - text blocks are just strings; use parameterized queries for DB calls |
+| #   | Misconception                         | Reality                                                                                    |
+| --- | ------------------------------------- | ------------------------------------------------------------------------------------------ |
+| 1   | Text blocks preserve all whitespace   | Common leading indent is stripped; trailing whitespace needs `\s`                          |
+| 2   | String templates are in GA            | String templates were previewed in Java 21-22, then withdrawn; the API is being redesigned |
+| 3   | Text blocks for SQL prevent injection | No - text blocks are just strings; use parameterized queries for DB calls                  |
 
 ---
 
@@ -1614,11 +1674,13 @@ Why it's right: JLS provides the authoritative answer.
 **Production pattern:**
 
 ```text
-# How to search the JLS
-# 1. Go to docs.oracle.com/javase/specs/jls/se21/
-# 2. Search for the keyword or chapter
-# 3. Read the specific section
-# 4. Check the JLS change log for version differences
+# Real JLS resolution example:
+# Q: Can a default method override equals()?
+# A: JLS 9.4.1.2 - No. Default methods cannot
+#    override methods from java.lang.Object.
+#    Reason: the class always wins over interface
+#    defaults in method resolution.
+# This catches a real design mistake in practice.
 ```
 
 ---
@@ -1728,7 +1790,8 @@ All of these fail because Java erases generic type parameters
 during compilation. The `<String>` in `List<String>` exists
 only in source code - the bytecode sees `List`. This has deep
 consequences for reflection, serialization, and framework
-design. This is exactly why understanding type erasure matters.
+design. Every Java generics puzzle traces back to this
+single decision.
 
 ---
 
@@ -1906,6 +1969,12 @@ compiler inlines the function body at each call site and
 substitutes the concrete type. The JVM bytecode still has
 erased types; Kotlin just moves the type info into the inlined
 code. True reification would require JVM specification changes.
+Also, erasure creates invisible **bridge methods**: if you
+implement `Comparable<MyClass>`, the compiler generates a
+synthetic `compareTo(Object)` that casts and delegates to
+your `compareTo(MyClass)`. These bridge methods appear in
+stack traces and confuse developers who do not know about
+erasure.
 
 ---
 
@@ -1935,7 +2004,8 @@ category) requires writing new loops for each. Records make
 data immutable and transparent. Streams let you write
 `products.stream().filter(...).mapToInt(...).sum()` for any
 aggregation without new loops. This phase teaches the functional
-Java style. This is exactly why Phase 3 exists.
+Java style. Phase 3 teaches you to think in
+transformations, not mutations.
 
 ---
 
@@ -2139,7 +2209,8 @@ and pattern matching. But can you answer "Why are generics
 erased?" under interview pressure? Can you write a switch
 expression with record patterns on a whiteboard? Self-assessment
 reveals the gap between "I've read about it" and "I can explain
-and use it." This is exactly why a structured self-check exists.
+and use it." The gap between recognition and recall is
+where interviews live.
 
 ---
 
@@ -2169,24 +2240,31 @@ skill. A self-assessment covers an entire topic.
 
 ### ⚙️ How It Works
 
-1. **Lambda:** write a Predicate that filters strings > 5
-   chars. What is a functional interface?
-2. **Streams:** rewrite a nested loop as a stream pipeline
-   with groupingBy.
-3. **Optional:** given a method returning Optional, chain
-   map and orElse without calling get().
-4. **Records:** define a record, explain equals behavior,
-   list limitations.
-5. **Pattern switch:** write a switch over a sealed hierarchy
-   with record deconstruction.
+1. **Lambda:** write a `Comparator<Employee>` that sorts
+   by department, then by salary descending, in one
+   statement. What happens if you capture a mutable
+   local variable?
+2. **Streams:** given a `List<Order>`, produce a
+   `Map<Status, Double>` of total revenue per status
+   using `groupingBy` + `summingDouble`.
+3. **Optional:** chain `findUser(id).flatMap(User::getAddress).map(Address::getCity).orElse("unknown")`
+   and explain what happens at each step when the user
+   has no address.
+4. **Records:** define a `record Money(BigDecimal amount, Currency currency)` with a compact constructor that
+   rejects null or negative amounts. What does equals()
+   compare?
+5. **Pattern switch:** write an exhaustive switch over a
+   sealed `Result<T>` with `Success(T value)` and
+   `Failure(Exception cause)` using record patterns.
 
 ```text
 Assessment checklist:
-  [_] Can explain type erasure in 2 sentences
-  [_] Can write a stream pipeline from scratch
+  [_] Can explain type erasure and bridge methods
+  [_] Can write a stream groupingBy with downstream
   [_] Can define sealed + record + pattern switch
-  [_] Can explain PECS (Producer Extends, Consumer Super)
+  [_] Can explain orElse vs orElseGet (eager vs lazy)
   [_] Can explain why var is not dynamic typing
+  [_] Can explain when synchronized pins virtual threads
 ```
 
 ```mermaid
@@ -2529,15 +2607,39 @@ module names.
 
 ### 🔬 Production Reality
 
+**BAD:**
+
+```java
+// Accessing internal JDK API directly
+import sun.misc.Unsafe;
+Unsafe u = Unsafe.getUnsafe();
+// Compiles on classpath, fails on module path:
+// IllegalAccessError: java.base does not export
+// sun.misc to unnamed module
+```
+
+**GOOD:**
+
+```java
+// Use public API: VarHandle (Java 9+)
+import java.lang.invoke.VarHandle;
+import java.lang.invoke.MethodHandles;
+// VarHandle provides safe low-level operations
+// without depending on internal JDK classes
+```
+
 A typical migration scenario: a Spring Boot application with
-200+ dependencies. Only 30% of libraries have module-info.
-The rest become automatic modules. The application uses
-`--add-opens java.base/java.lang=ALL-UNNAMED` for reflection-
-heavy frameworks (Spring, Hibernate). Each `--add-opens` flag
-is technical debt that should be tracked. Over time, as
-libraries publish module-info descriptors, the flags can be
-removed. The value of JPMS in this scenario is jlink: producing
-a 40MB Docker image instead of a 300MB one.
+200+ dependencies. Roughly 30% of libraries ship module-info
+as of mid-2020s. The rest become automatic modules. The
+application uses `--add-opens java.base/java.lang=ALL-UNNAMED`
+for reflection-heavy frameworks (Spring, Hibernate). Each
+`--add-opens` flag is technical debt - track them in a
+dedicated file (e.g., `jvm-args.txt`) reviewed during
+upgrades. Over time, as libraries publish module-info
+descriptors, the flags can be removed. The practical value
+of JPMS in this scenario is jlink: a custom runtime image
+for a microservice can shrink Docker image size by 80-90%
+(implementation-dependent, varies by application).
 
 ---
 
@@ -2761,8 +2863,10 @@ Replace thread pools in IO-bound services with virtual threads.
 Profile for pinning (use `-Djdk.tracePinnedThreads=short`).
 Replace `synchronized` with `ReentrantLock` in hot paths.
 Virtual threads do not help CPU-bound workloads - those still
-need platform threads. Spring Boot 3.2+ has native virtual
-thread support via `spring.threads.virtual.enabled=true`.
+need platform threads. Replace ThreadLocal with `ScopedValue`
+(preview) to avoid per-thread memory explosion. Spring Boot
+3.2+ has native virtual thread support via
+`spring.threads.virtual.enabled=true`.
 
 ---
 
@@ -2838,14 +2942,42 @@ explicitly instead of ThreadLocal.
 
 ### 🔬 Production Reality
 
+**BAD:**
+
+```java
+// Traditional thread pool - limits concurrency
+var pool = Executors.newFixedThreadPool(200);
+for (Request req : requests) {
+    pool.submit(() -> handle(req));
+    // Request 201+ queues for a free thread
+}
+```
+
+**GOOD:**
+
+```java
+// Virtual thread per task - no artificial limit
+try (var exec = Executors
+        .newVirtualThreadPerTaskExecutor()) {
+    for (Request req : requests) {
+        exec.submit(() -> handle(req));
+        // Each request gets its own virtual thread
+    }
+}
+```
+
 A typical pattern: a Spring Boot service migrates from a
 200-thread Tomcat pool to virtual threads. Before: under load,
 requests queue when all 200 threads block on JDBC calls. After:
 each request gets its own virtual thread; JDBC blocking
-unmounts the virtual thread. Throughput increases by a factor
-that is typically limited by the database connection pool, not
-thread count. The bottleneck shifts from thread count to
-connection pool size and database capacity.
+unmounts the virtual thread. Throughput increases, but the
+bottleneck shifts from thread count to connection pool size
+and database capacity. The key insight: virtual threads do not
+make the database faster - they remove thread starvation as
+the first bottleneck, exposing the real bottleneck underneath.
+Spring Boot 3.2+ supports virtual threads natively via
+`spring.threads.virtual.enabled=true`. Quarkus and Helidon
+also have first-class support.
 
 ---
 
@@ -3130,14 +3262,48 @@ if (Thread.interrupted())
 
 ### 🔬 Production Reality
 
+**BAD:**
+
+```java
+// Unstructured fan-out - leaked threads on failure
+var exec = Executors
+    .newVirtualThreadPerTaskExecutor();
+Future<User> user = exec.submit(this::fetchUser);
+Future<List<Order>> orders =
+    exec.submit(this::fetchOrders);
+// If fetchUser throws, fetchOrders keeps running
+// Nobody cancels it - resource leak
+```
+
+**GOOD:**
+
+```java
+// Structured - automatic cleanup on failure
+try (var scope = new StructuredTaskScope
+        .ShutdownOnFailure()) {
+    var user = scope.fork(this::fetchUser);
+    var orders = scope.fork(this::fetchOrders);
+    scope.join().throwIfFailed();
+    return new Response(
+        user.get(), orders.get());
+}
+// If fetchUser fails, fetchOrders is cancelled
+// Scope guarantees zero leaked threads
+```
+
 A fan-out pattern: an API gateway fetches user profile, order
 history, and recommendations in parallel. Without structured
 concurrency, if the user fetch fails, the order and
 recommendation fetches continue until timeout - wasting
-resources. With `ShutdownOnFailure`, the failed user fetch
-immediately cancels the other two tasks. Response time improves
-because wasted work is eliminated. The scope guarantees no
-thread leaks even under partial failure.
+resources and connection pool slots. With `ShutdownOnFailure`,
+the failed user fetch immediately cancels the other two tasks.
+The scope guarantees no thread leaks even under partial failure.
+The quantifiable gain: in services where fan-out calls have
+high latency variance, early cancellation reduces wasted work
+and returns errors to callers faster than waiting for all
+timeouts to expire. Design your code to isolate structured
+concurrency usage behind an interface so migration is easy
+when the API finalizes.
 
 ---
 
