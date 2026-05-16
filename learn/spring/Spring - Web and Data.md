@@ -3439,6 +3439,36 @@ flowchart TD
 4. The repository persists the entity to the database.
 5. Any business or database exception is caught by `@ControllerAdvice` and returned as a structured error.
 
+**Schema management replaces ddl-auto.** Phase 1 relied on
+`ddl-auto=create-drop` for convenience. Phase 2 switches to
+`ddl-auto=validate` and delegates schema changes to Flyway
+or Liquibase. The application checks on startup that the
+JPA model matches the actual database schema. If it does
+not match, the app fails fast instead of silently altering
+tables. Migration scripts live in `db/migration/` and run
+in version order before the first query executes. This
+means schema evolution is versioned, reviewable, and
+reproducible across environments.
+
+**Transaction boundaries wrap the service layer.** When
+`@Transactional` annotates a service method, Spring creates
+a proxy that opens a transaction before the method body and
+commits after it returns. If any runtime exception escapes,
+the proxy rolls back the entire unit of work. This is why
+the controller should never carry `@Transactional` - you
+want the transaction to cover exactly the business logic,
+not the HTTP serialization. Checked exceptions do not
+trigger rollback by default; you must declare
+`rollbackFor = Exception.class` if you need that behavior.
+
+**Entity lifecycle callbacks audit data changes.** JPA
+provides `@PrePersist` and `@PreUpdate` callbacks that
+fire automatically before the entity is written to the
+database. A common pattern is setting `createdAt` and
+`updatedAt` timestamps in these callbacks, ensuring every
+row carries accurate audit metadata without requiring
+callers to remember to set them.
+
 ### 🛠️ Worked Example
 
 **BAD:**
@@ -3484,6 +3514,38 @@ public OrderResponse create(
 }
 ```
 
+**Production Flyway migration:**
+
+```sql
+-- V1__create_orders_table.sql
+CREATE TABLE orders (
+  id         BIGSERIAL PRIMARY KEY,
+  name       VARCHAR(255) NOT NULL,
+  quantity   INT NOT NULL
+               CHECK (quantity > 0),
+  created_at TIMESTAMP NOT NULL
+               DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL
+               DEFAULT now()
+);
+```
+
+The `V1__` prefix tells Flyway this is version 1. Flyway
+records applied migrations in a `flyway_schema_history`
+table and never re-runs them. To add a column later, you
+create `V2__add_status_column.sql` - never edit V1.
+
+**Full lifecycle of a CREATE request:** the controller
+deserializes JSON into `CreateOrderReq`, the `@Valid`
+annotation triggers Bean Validation, and if any constraint
+fails, Spring throws `MethodArgumentNotValidException`
+before the service is ever called. On success, the service
+opens a transaction, constructs the `Order` entity, calls
+`repo.save()`, Hibernate flushes the INSERT, and the
+transaction commits. The service maps the saved entity to
+an `OrderResponse` DTO so the JPA entity never leaks into
+the JSON response.
+
 **Production: application properties:**
 
 ```properties
@@ -3491,6 +3553,8 @@ spring.datasource.url=\
   jdbc:postgresql://localhost:5432/orders
 spring.jpa.hibernate.ddl-auto=validate
 spring.jpa.open-in-view=false
+spring.flyway.locations=\
+  classpath:db/migration
 ```
 
 ### ⚖️ Trade-offs
@@ -3503,6 +3567,19 @@ spring.jpa.open-in-view=false
 | Persistence    | database                 | memory (lost on restart) | database + cache |
 | Validation     | Bean Validation          | none                     | multi-layer      |
 | Error handling | @ControllerAdvice        | default Spring errors    | RFC 7807         |
+
+**Evolution to Phase 3.** Phase 2 gives you a working API
+that persists data and rejects bad input, but it is still
+open to the world. Phase 3 adds Spring Security for
+authentication and authorization, caching to reduce
+database load, and structured logging for observability.
+The key architectural insight: Phase 2 is deliberately
+security-free so you can test the data layer in isolation.
+Adding security later is straightforward because
+`@ControllerAdvice` already handles `AccessDeniedException`
+if you configure it. The Phase 2 error handling pattern
+becomes the foundation that Phase 3 extends rather than
+replaces.
 
 ### ⚡ Decision Snap
 
@@ -3531,6 +3608,19 @@ spring.jpa.open-in-view=false
 ### 💡 The Surprising Truth
 
 `spring.jpa.open-in-view` defaults to `true` in Spring Boot, which means a database connection is held open for the entire HTTP request - including during JSON serialization. Boot logs a warning about this at startup, but most developers ignore it. In production under load, this silent default is one of the most common causes of connection pool exhaustion.
+
+**How to detect it.** Search your startup logs for
+`spring.jpa.open-in-view is enabled by default`. If you see
+that line, the OSIV filter is active. You can also check
+programmatically: inject `EntityManager` into a controller
+method and call `em.isOpen()` - if it returns `true` inside
+a controller with no `@Transactional`, OSIV is keeping the
+session alive. The fix is one line in `application.properties`:
+`spring.jpa.open-in-view=false`. After disabling it, any
+lazy-loading outside a transaction throws
+`LazyInitializationException`, which forces you to fetch
+all needed data inside the service layer - exactly where
+the transaction and the database connection belong.
 
 ### 📇 Revision Card
 
@@ -3619,6 +3709,16 @@ mindmap
 3. **Singleton scope:** default bean scope - one instance per context, shared across all injection points.
 4. **@Component vs @Bean:** `@Component` on the class for auto-detection, `@Bean` on a method for manual creation.
 5. **@Configuration proxy:** `@Configuration` creates a CGLIB proxy so `@Bean` methods calling other `@Bean` methods return the singleton, not a new instance.
+6. **@Transactional rollback default:** rolls back on unchecked exceptions (RuntimeException and subclasses) only. Checked exceptions commit by default. Override with `rollbackFor = Exception.class` when checked exceptions should also roll back.
+7. **@Transactional readOnly:** set `readOnly = true` on query methods. Hibernate skips dirty checking and flush, the JDBC driver may route to a read replica, and the database can optimize locking.
+8. **Propagation basics:** REQUIRED (default) joins the existing transaction or creates one. REQUIRES_NEW always suspends the current transaction and creates a fresh one - useful for audit logs that must persist even if the outer transaction rolls back.
+9. **@WebMvcTest:** loads only the web slice - controllers, filters, `@ControllerAdvice`, converters. No `@Service` or `@Repository` beans. Wire dependencies with `@MockBean`.
+10. **@SpringBootTest:** loads the full application context. Slow but necessary when you need real wiring across layers. Combine with `@Transactional` to auto-rollback test data.
+11. **@MockBean context cost:** each unique set of `@MockBean` declarations creates a separate ApplicationContext. Standardize mocks across test classes to preserve context caching.
+12. **open-in-view=false:** disables the OpenEntityManagerInViewInterceptor. Lazy collections accessed after the service layer throw `LazyInitializationException` - this is intentional. It forces explicit fetch strategies and prevents N+1 queries leaking into the view.
+13. **ddl-auto=validate:** the only safe production value. `update` silently alters tables, `create` drops data. `validate` checks that entity mappings match the schema at startup and fails fast on drift.
+14. **Graceful shutdown:** `server.shutdown=graceful` with `spring.lifecycle.timeout-per-shutdown-phase=30s` lets in-flight requests complete before the JVM exits. Essential for zero-downtime deployments behind a load balancer.
+15. **Profile-guarded beans:** use `@Profile("!prod")` for dev-only beans (H2 console, seed data). Never rely on classpath tricks alone - an accidental dependency can activate dev behavior in production.
 
 ### 🛠️ Worked Example
 
@@ -3683,6 +3783,8 @@ server.shutdown=graceful
 **Gain:** fast retrieval of high-frequency facts, prevents common mistakes, interview preparation.
 **Cost:** not comprehensive - covers only the most critical 15 facts from 39 keywords.
 
+**How to use this card effectively:** passive re-reading creates an illusion of mastery. Instead, cover the right column of the table below and try to recall each key fact from the recall area alone. Score yourself honestly. Facts you cannot recall within five seconds go on a "weak list" for focused review. Schedule retrieval sessions using expanding intervals - day 1, day 3, day 7, day 21 - and shuffle the order each time so position cues do not substitute for real recall. When you can retrieve all 15 facts cold in under 90 seconds, the card has done its job and you can move to monthly maintenance reviews.
+
 | Recall area | Key fact               | Common mistake             |
 | ----------- | ---------------------- | -------------------------- |
 | DI          | Constructor injection  | Field injection            |
@@ -3718,6 +3820,8 @@ server.shutdown=graceful
 ### 💡 The Surprising Truth
 
 The five facts that prevent the most production bugs are all proxy-related: (1) self-invocation bypasses `@Transactional`, (2) self-invocation bypasses `@Cacheable`, (3) private methods are invisible to proxies, (4) `@Configuration` uses CGLIB proxies for `@Bean` inter-method calls, (5) `@MockBean` in tests replaces the proxy, not the target. Understanding Spring's proxy mechanism is the single highest-leverage knowledge for avoiding Spring bugs.
+
+This is not coincidence. Spring chose proxy-based AOP as its core abstraction because it requires zero bytecode manipulation at the application level and integrates cleanly with standard Java semantics. But that design decision creates a fundamental gap: the proxy only intercepts calls that arrive through the proxy reference. Any call that bypasses the reference - self-invocation, private methods, final classes with JDK proxies - silently loses the cross-cutting behavior. Developers who internalize this one architectural constraint can predict the behavior of `@Transactional`, `@Cacheable`, `@Async`, `@Retryable`, and any future proxy-based annotation without memorizing each one separately. The proxy model is the skeleton key.
 
 ### 📇 Revision Card
 
@@ -3787,6 +3891,10 @@ sequenceDiagram
 2. **Constructor injection:** Spring resolves all dependencies first, then calls the constructor with all of them. The object is never in an incomplete state. Fields can be `final`.
 3. **Why it matters:** constructor injection makes the dependency count visible at the constructor signature level, triggering refactoring when it grows too large.
 
+**Reflection internals.** When Spring encounters an `@Autowired` field, it calls `java.lang.reflect.Field.setAccessible(true)` to bypass the `private` access modifier, then calls `field.set(bean, resolvedDependency)`. This means the JVM's encapsulation guarantees - the reason you declared the field `private` - are deliberately circumvented by the container. The field was never designed to be set from outside the class, yet reflection treats access modifiers as suggestions rather than rules. Under a `SecurityManager` (deprecated since Java 17, removed in Java 24), `setAccessible` requires explicit permission grants. Even without a `SecurityManager`, the pattern means your class's invariants depend on a framework calling private mutation methods in the right order - something the compiler cannot verify.
+
+**Spring 4.3 eliminated the last convenience argument.** Before Spring 4.3 (released 2016), constructor injection required an explicit `@Autowired` annotation on the constructor, making it marginally more verbose than field injection. Spring 4.3 introduced implicit single-constructor autowiring: if a class has exactly one constructor, Spring uses it automatically with no annotation needed. This removed the only syntactic advantage field injection ever had. Combined with Lombok's `@RequiredArgsConstructor`, constructor injection now requires zero boilerplate beyond declaring `private final` fields - the same line count as field injection but with immutability and testability built in.
+
 ### 🛠️ Worked Example
 
 **BAD:**
@@ -3840,6 +3948,41 @@ public class OrderService {
 }
 ```
 
+**Test comparison - field injection vs constructor injection:**
+
+```java
+// Testing field-injected class: PAINFUL
+// Option A: start entire Spring context
+@SpringBootTest
+class OrderServiceTest {
+  @Autowired OrderService svc; // slow
+}
+// Option B: reflection hacks
+OrderService svc = new OrderService();
+Field f = OrderService.class
+    .getDeclaredField("repo");
+f.setAccessible(true);
+f.set(svc, mockRepo); // fragile, ugly
+```
+
+```java
+// Testing constructor-injected class: EASY
+class OrderServiceTest {
+  @Test
+  void placesOrder() {
+    var repo = mock(OrderRepo.class);
+    var pay = mock(PaymentGateway.class);
+    // Plain constructor - no Spring,
+    // no reflection, no magic
+    var svc = new OrderService(repo, pay);
+    svc.place(new Order("item-1", 2));
+    verify(repo).save(any());
+  }
+}
+```
+
+The constructor-injected test runs in milliseconds because it never starts Spring. The field-injected test either takes seconds (full context) or relies on brittle reflection that breaks when field names change.
+
 ### ⚖️ Trade-offs
 
 **Gain:** constructor injection gives immutability, testability, explicit dependency graph, compile-time safety.
@@ -3879,6 +4022,8 @@ public class OrderService {
 ### 💡 The Surprising Truth
 
 The Spring Framework documentation explicitly recommends constructor injection over field injection. IntelliJ IDEA shows a warning on `@Autowired` fields: "Field injection is not recommended." Yet in most enterprise codebases, field injection still dominates because it was the default in Spring tutorials for years. The Spring team changed the recommendation in 2016 (Spring 4.3), but legacy tutorials and Stack Overflow answers still teach the anti-pattern.
+
+The persistence has three reinforcing causes. First, **tutorial inertia**: thousands of blog posts, Udemy courses, and Baeldung examples written between 2010 and 2016 use field injection because that was the idiomatic style when they were published. Search engines rank old content highly, so newcomers learn the anti-pattern first. Second, **path of least resistance in large codebases**: when an existing service already uses field injection, developers add one more `@Autowired` field rather than refactoring the constructor, especially under deadline pressure. Third, **invisible cost**: field injection's downsides only surface during testing, refactoring, or debugging circular dependencies - activities that happen after the code is written, not during. The feedback loop is too slow to change habits without team-level standards and static analysis rules enforcing constructor injection.
 
 ### 📇 Revision Card
 
@@ -3932,6 +4077,21 @@ A developer with 1-2 years of Spring experience walks into a mid-level interview
 | Q5: @Transactional rollback?|
 |   unchecked only by default |
 +----------------------------+
+| Q6: Field injection?       |
+|   anti-pattern, use ctor   |
++----------------------------+
+| Q7: Boot test vs WebMvc?   |
+|   full context vs slice    |
++----------------------------+
+| Q8: @Configuration proxy?  |
+|   CGLIB ensures singletons |
++----------------------------+
+| Q9: Spring profiles?       |
+|   env-specific beans/config|
++----------------------------+
+| Q10: @ControllerAdvice?    |
+|   global exception handler |
++----------------------------+
 ```
 
 ```mermaid
@@ -3942,7 +4102,7 @@ mindmap
       DI is the mechanism
     Annotations
       Component vs Bean
-      Configuration proxy
+      Configuration CGLIB proxy
     Proxy Mechanism
       Self-invocation trap
       Private method invisible
@@ -3952,6 +4112,12 @@ mindmap
     Testing
       SpringBootTest vs WebMvcTest
       MockBean context cache
+    Anti-patterns
+      Field injection
+      Constructor injection fix
+    Environment
+      Profiles per env
+      ControllerAdvice global
 ```
 
 **Top 10 Questions with Concise Answers:**
@@ -3970,6 +4136,21 @@ The second method's `@Transactional` is ignored because the call bypasses the AO
 
 **Q5: When does @Transactional roll back?**
 By default, only on unchecked exceptions (`RuntimeException` and `Error`). Checked exceptions commit. Use `rollbackFor = Exception.class` to include checked exceptions.
+
+**Q6: Why is field injection considered an anti-pattern?**
+Field injection (`@Autowired` on a field) hides dependencies, prevents immutable objects, and makes classes untestable without reflection. Constructor injection makes dependencies explicit, enables `final` fields, and lets plain unit tests pass dependencies directly without a Spring context.
+
+**Q7: @SpringBootTest vs @WebMvcTest - when to use which?**
+`@SpringBootTest` loads the full application context - use it for integration tests that need the real wiring. `@WebMvcTest` loads only the web layer (controllers, filters, advice) with a mock MVC environment - use it for fast, focused controller tests without database or service layer overhead.
+
+**Q8: What does @Configuration CGLIB proxying do for @Bean methods?**
+In a `@Configuration` class, Spring creates a CGLIB subclass so that `@Bean` methods calling other `@Bean` methods return the existing singleton, not a new instance. In a plain `@Component` with `@Bean` methods ("lite mode"), inter-method calls create new objects every time - a subtle source of bugs.
+
+**Q9: What are Spring profiles and when do you use them?**
+Profiles (`@Profile("dev")`, `spring.profiles.active=prod`) activate different beans or configuration per environment. Common use: separate datasource config for dev (H2 in-memory), staging (shared database), and production (connection pool tuned for load).
+
+**Q10: What does @ControllerAdvice do?**
+`@ControllerAdvice` is a global interceptor for controllers. Its primary use is centralized exception handling via `@ExceptionHandler` methods, but it also supports `@ModelAttribute` and `@InitBinder` across all controllers. It replaces scattered try-catch blocks in every controller with one consistent error response strategy.
 
 ### 🛠️ Worked Example
 
@@ -4061,6 +4242,8 @@ class OrderService {
 
 The single question that most reliably separates "uses Spring" from "understands Spring" in interviews is the self-invocation trap. Candidates who can explain why calling a `@Transactional` method from within the same class does not create a transaction - and can draw the proxy diagram - demonstrate framework understanding that puts them ahead of 80% of candidates at the same level.
 
+The ideal answer structure for the self-invocation question has four parts: (1) state that Spring uses proxies for AOP-based features, (2) explain that `this.method()` bypasses the proxy because the call never passes through the Spring-managed wrapper object, (3) name the fix - extract to a separate bean or inject the proxy via `ApplicationContext` or `@Lazy` self-injection, and (4) mention that this applies to all proxy-based annotations, not just `@Transactional` - it equally affects `@Cacheable`, `@Async`, and `@Secured`. Delivering all four parts in under 60 seconds signals genuine comprehension rather than memorized fragments.
+
 ### 📇 Revision Card
 
 1. IoC is the principle (framework calls you), DI is the mechanism (container provides dependencies)
@@ -4142,6 +4325,14 @@ flowchart TD
 4. **DataSource auto-config failure:** Spring detects a JDBC driver but no `spring.datasource.url` is configured.
 5. **ConflictingBeanDefinitionException:** two beans with the same name but different classes.
 
+**Enabling the auto-configuration debug report:**
+
+Pass `--debug` as a command-line argument or set `debug=true` in `application.properties`. Spring Boot prints a **Conditions Evaluation Report** splitting every auto-configuration class into "Positive matches" (activated) and "Negative matches" (skipped with the exact condition that failed). When a `DataSourceAutoConfiguration` fires unexpectedly, this report tells you which condition matched - typically "@ConditionalOnClass found h2" - so you can exclude the auto-configuration or remove the transitive dependency. The report also lists "Unconditional classes" that always load, which helps you understand the baseline context even when no explicit configuration exists.
+
+**FailureAnalyzer - Spring Boot's error translator:**
+
+Before the raw stack trace reaches the console, Spring Boot passes the exception through a chain of `FailureAnalyzer` implementations. Each analyzer inspects the exception type, and if it recognizes the pattern, it produces a human-readable description with an "ACTION" section telling you exactly what to fix. For example, `PortInUseFailureAnalyzer` converts a `BindException` on port 8080 into "Web server failed to start. Port 8080 was already in use. ACTION: Identify and stop the process listening on port 8080 or configure this application to listen on another port." You see these formatted blocks *above* the stack trace. If no analyzer matches, you get the raw trace - which is your signal that this is an unusual failure requiring manual root-cause reading.
+
 ### 🛠️ Worked Example
 
 **BAD:**
@@ -4197,6 +4388,57 @@ com.other.repo/    <-- NOT scanned!
 4. Fix ONE thing, restart, repeat
 ```
 
+**Debugging a circular dependency:**
+
+```text
+// The stack trace you see:
+BeanCurrentlyInCreationException:
+  Error creating bean 'orderService':
+  Requested bean is currently in creation:
+  Is there an unresolvable circular
+  reference?
+
+Caused by:
+  UnsatisfiedDependencyException:
+  Error creating bean 'paymentService'
+  defined in file [...PaymentService.class]:
+  Unsatisfied dependency expressed through
+  constructor parameter 0:
+  Error creating bean 'orderService'
+```
+
+```java
+// The cause: constructor injection loop
+@Service
+public class OrderService {
+    private final PaymentService payment;
+    public OrderService(PaymentService p) {
+        this.payment = p; // needs Payment
+    }
+}
+
+@Service
+public class PaymentService {
+    private final OrderService order;
+    public PaymentService(OrderService o) {
+        this.order = o;   // needs Order
+    }
+}
+
+// Fix: break the cycle with @Lazy
+@Service
+public class PaymentService {
+    private final OrderService order;
+    public PaymentService(
+            @Lazy OrderService o) {
+        this.order = o; // proxy injected
+    }
+}
+// Better fix: extract shared logic into a
+// third service that both depend on,
+// eliminating the cycle entirely.
+```
+
 ### ⚖️ Trade-offs
 
 **Gain:** systematic debugging reduces fix time from hours to minutes, builds confidence with Spring internals.
@@ -4236,6 +4478,8 @@ com.other.repo/    <-- NOT scanned!
 ### 💡 The Surprising Truth
 
 Spring Boot's `--debug` flag prints the **Conditions Evaluation Report** at startup - showing every auto-configuration class that was evaluated, which ones matched (activated), and which ones did not match (and why). This report answers the question "why did Spring configure X but not Y?" and is the single most powerful diagnostic tool for auto-configuration mysteries. Yet most developers do not know it exists.
+
+Equally underused is the `FailureAnalyzer` extension point. Spring Boot ships with over a dozen built-in analyzers, but you can register your own by implementing `AbstractFailureAnalyzer<T>` parameterized on the exception type your analyzer handles. Register it in `META-INF/spring.factories` (or `META-INF/spring/org.springframework.boot.diagnostics.FailureAnalyzer` in Spring Boot 3.x) and your custom analyzer converts cryptic internal exceptions into actionable messages for your team. Organizations that build custom analyzers for their proprietary starters report dramatically faster onboarding - new developers see "ACTION: Add @EnableFeatureX to your configuration class" instead of a 200-line stack trace they cannot interpret.
 
 ### 📇 Revision Card
 
