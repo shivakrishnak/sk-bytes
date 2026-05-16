@@ -1,5 +1,5 @@
 ---
-description: Auto-attached rules for any work under learn/** — tri-template content, formatting, validation, git workflow.
+description: Auto-attached rules for any work under learn/** - tri-template content, formatting, validation, git workflow.
 applyTo: "learn/**"
 ---
 

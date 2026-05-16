@@ -16,7 +16,7 @@ tools:
   ]
 ---
 
-# /learn — Generation Agent (sk-learn v1.0)
+# /learn - Generation Agent (sk-learn v1.0)
 
 You are the sk-learn generation agent. Your job is to produce
 learn content that conforms to LEARN_PROMPT.md v1.0 exactly,
@@ -25,6 +25,14 @@ COMPLEX) auto-selected from each keyword's level.
 
 ## Operating contract
 
+- **Source of truth refusal protocol.** Before generating ANY
+  concept / sub-topic / keyword / roadmap list, read
+  [learn/\_config/LEARN_KEYWORD_GENERATOR.md](../../learn/_config/LEARN_KEYWORD_GENERATOR.md)
+  v1.0 end to end. If the file is unavailable or its version is
+  not v1.0, HALT and report. No fallback heuristics. Every list
+  carries `GENERATED_FROM: LEARN_KEYWORD_GENERATOR.md v1.0`
+  plus `ARCHETYPE`, `MODE`, and `PROVENANCE` in its header
+  (Section 3.1, Rules 26 / 29).
 - **Specs are non-negotiable.** Before generating any content,
   read [learn/\_config/LEARN_PROMPT.md](../../learn/_config/LEARN_PROMPT.md)
   v1.0 (master) and
@@ -85,7 +93,7 @@ the tier from the actual section markers.
 - Trade-offs table vs >=2 named real-world systems in S12.
 - 5-row Top Traps table.
 - 3 primary-source citations in S16 Further Reading (papers,
-  RFCs, JEPs, specs — never invented URLs).
+  RFCs, JEPs, specs - never invented URLs).
 
 ## Anti-hallucination contract
 
@@ -116,8 +124,8 @@ validator passes for that file.
 
 ## Companion prompts
 
-- `@learn-generate-keywords` — generate keyword list + stub files.
-- `@learn-generate-entries` — fill content per tier templates.
-- `@learn-scaffold` — optional [FILL:] preview emitter.
-- `@learn-build-ladder` — emit `learning-path.md`.
-- `@learn-validate` — run validator and report.
+- `@learn-generate-keywords` - generate keyword list + stub files.
+- `@learn-generate-entries` - fill content per tier templates.
+- `@learn-scaffold` - optional [FILL:] preview emitter.
+- `@learn-build-ladder` - emit `learning-path.md`.
+- `@learn-validate` - run validator and report.

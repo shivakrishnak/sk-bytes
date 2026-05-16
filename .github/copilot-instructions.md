@@ -36,9 +36,13 @@ generator = v1.0. Three templates auto-selected by keyword level:
 | INTERMEDIATE | L2, L3        | 13       | 900-1,300   |
 | COMPLEX      | L4,L5,L6,META | 16       | 1,400-2,000 |
 
-**NON-NEGOTIABLE:** Topic / subtopic / keyword generation MUST use
-`learn/_config/LEARN_KEYWORD_GENERATOR.md` v1.0 as the single source
-of truth. No ad-hoc keyword lists.
+**NON-NEGOTIABLE:** Any list of concepts, sub-topics, keywords,
+roadmap nodes, or learning paths - for any skill, language,
+framework, CS topic, free-text blob, or job description - MUST
+be generated through `learn/_config/LEARN_KEYWORD_GENERATOR.md`
+v1.0. The agent loads that file end to end before emitting any
+list. Halt and report if the file is unavailable or its version
+is not v1.0. No ad-hoc lists. No shortcuts.
 
 ## Shared rules
 
@@ -51,7 +55,8 @@ of truth. No ad-hoc keyword lists.
 
 ### Formatting (non-negotiable)
 
-- No em dashes anywhere. Regular hyphens only.
+- No em dashes (U+2014) anywhere. No en dashes (U+2013) either.
+  Regular ASCII hyphens only.
 - Code lines max 70 chars.
 - Diagrams: DUAL format - ASCII first (max 59 chars wide), then
   equivalent Mermaid block immediately below.
@@ -88,3 +93,7 @@ git commit -m "feat: <description>"
   the tri-template structure and validation rules.
 - Always validate before committing:
   `python learn/_config/validate-learn.py`.
+- Any keyword / sub-topic / roadmap list MUST be generated
+  through `learn/_config/LEARN_KEYWORD_GENERATOR.md` v1.0 and
+  carry `GENERATED_FROM: LEARN_KEYWORD_GENERATOR.md v1.0` plus
+  `ARCHETYPE`, `MODE`, and `PROVENANCE` in its header.

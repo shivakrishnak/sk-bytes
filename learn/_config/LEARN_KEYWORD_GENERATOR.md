@@ -1,4 +1,6 @@
-# 🎯 Category Keyword Generator - Master Prompt v1.0
+# 🎯 Universal Roadmap Generator - Master Prompt v1.0
+
+# (Concepts / Keywords / Sub-topics, all domains)
 
 ---
 
@@ -51,6 +53,88 @@ PURPOSE:
     - teaching mastery,
     - and long-term retention structures.
 
+═══════════════════════════════════════════════════════════════════════════
+ECTION -1: SOURCE OF TRUTH PROTOCOL  (READ FIRST)
+═══════════════════════════════════════════════════════════════════════════
+
+SCOPE:
+  This file is the BINDING source of truth for generating any
+  list of concepts, keywords, sub-topics, micro-topics, roadmap
+  nodes, or learning paths inside the sk-learn workspace.
+
+  It applies uniformly to:
+    - programming languages   (Java, Python, Rust, ...)
+    - frameworks / libraries  (Spring, React, PyTorch, ...)
+    - infrastructure / tools  (Kafka, Kubernetes, Redis, ...)
+    - protocols / standards   (HTTP, TLS, OAuth, gRPC, ...)
+    - CS concepts             (Caching, Concurrency, DSA, ...)
+    - paradigms               (FP, OOP, Reactive, ...)
+    - skills / soft-tech      (Code Review, Incident Mgmt, ...)
+    - arbitrary descriptions  (free-text blobs)
+    - job descriptions        (parsed for required skills)
+
+REFUSAL PROTOCOL:
+  Before emitting ANY concept / keyword / sub-topic / roadmap
+  list, the generating agent MUST:
+    1. Load this file (LEARN_KEYWORD_GENERATOR.md v1.0) end to
+       end.
+    2. Echo the provenance line
+       "GENERATED_FROM: LEARN_KEYWORD_GENERATOR.md v1.0"
+       into the output header (Section 3.1).
+    3. If the file is unavailable or its version is not v1.0,
+       HALT and report. No fallback heuristics. No ad-hoc lists.
+
+PRECEDENCE:
+  This file overrides any improvised structure, any chat-history
+  shortcut, and any unscoped "use your judgement" instruction.
+  If a downstream prompt or agent disagrees with a rule here,
+  this file wins.
+
+CORPUS SCOPE FOR FOLDER SCANNING (Section 5):
+  /learn ONLY. Sister corpora (/dictionary, /interview) are NOT
+  scanned by this generator.
+
+OUTPUT BINDING:
+  Every generated list MUST embed (in its header, Section 3.1):
+    GENERATED_FROM:  LEARN_KEYWORD_GENERATOR.md v1.0
+    ARCHETYPE:       <one of 7, Section A>
+    MODE:            <one of 5, Section B>
+    PROVENANCE:      <input source / topic / JD ref / free text>
+
+═══════════════════════════════════════════════════════════════════════════
+TABLE OF CONTENTS
+═══════════════════════════════════════════════════════════════════════════
+
+  SECTION -1   Source of Truth Protocol            (read first)
+  SECTION  0   Core Philosophy - 12 Mastery Pillars
+  SECTION  A   Domain Archetypes - 7 archetypes        (NEW)
+  SECTION  B   Input Modes - 5 modes                   (NEW)
+  SECTION  1   Knowledge Level Framework - 7 levels
+  SECTION  2   Keyword Generation Rules - 32 rules
+  SECTION  3   Output Format - 14 components
+                 3.1  Header block
+                 3.2  Level block format
+                 3.3  Sub-topic clustering
+                 3.4  Level milestones
+                 3.5  Summary table
+                 3.6  Learning path note
+                 3.7  Cross-category dependencies
+                 3.8  Confusion pairs index
+                 3.9  Meta-skills addendum
+                 3.10 Topic index.md update procedure
+                 3.10-bis Cascade update across /learn   (NEW)
+                 3.11 Stub file generation
+                 3.12 Roadmap tree output                (NEW)
+                 3.13 Parallel tracks (opt-in)           (NEW)
+                 3.14 Roadmap tree block in index.md     (NEW)
+  SECTION  4   Quality Checks - 27 checks
+  SECTION  5   Pre-Generation Folder Scan (/learn)      (NEW)
+  SECTION  6   JD / Free-Text Parsing Procedure         (NEW)
+  SECTION  7   Step-by-Step Authoring Procedure         (NEW)
+  APPENDIX A   Worked Example - Caching
+  APPENDIX B   Worked Example - Job Description         (NEW)
+
+═══════════════════════════════════════════════════════════════════════════
 ═══════════════════════════════════════════════════════════════════════════
 SECTION 0: CORE PHILOSOPHY - 12 MASTERY PILLARS
 ═══════════════════════════════════════════════════════════════════════════
@@ -123,6 +207,66 @@ a mastery curriculum.
     - checklist learning (I covered all items = I know it)
     - framework obsession without fundamentals
 
+═══════════════════════════════════════════════════════════════════════════
+SECTION A: DOMAIN ARCHETYPES - 7 ARCHETYPES
+═══════════════════════════════════════════════════════════════════════════
+
+Every generated list MUST declare exactly one archetype in its
+header. The archetype constrains how L0/L1/META keywords are
+framed and what shape the roadmap tree takes.
+
+  | Archetype       | Examples                          | L0 angle              | L1 angle              | META angle               |
+  | --------------- | --------------------------------- | --------------------- | --------------------- | ------------------------ |
+  | LANGUAGE        | Java, Python, Rust, Go, TS        | Why this language     | Syntax + runtime      | Cross-language patterns  |
+  | FRAMEWORK       | Spring, React, Django, PyTorch    | Problem it solves     | Core abstractions     | Framework-agnostic ideas |
+  | INFRASTRUCTURE  | Kafka, K8s, Redis, Postgres       | Where it sits         | Primitives + ops      | Distributed-systems laws |
+  | PROTOCOL        | HTTP, TLS, OAuth, gRPC            | What it transports    | Message + handshake   | Protocol design lessons  |
+  | CS-CONCEPT      | Caching, Concurrency, DSA         | Why the problem       | Vocabulary            | Cross-domain transfer    |
+  | SKILL           | Code Review, Incident Mgmt        | Why the skill         | Steps + cadence       | Skill-stack composition  |
+  | PARADIGM        | FP, OOP, Reactive, Event-Driven   | Mental model shift    | Building blocks       | Multi-paradigm fluency   |
+
+DECLARING AN ARCHETYPE (Rule 26):
+  In the Section 3.1 header:
+    ARCHETYPE:  CS-CONCEPT   # or LANGUAGE / FRAMEWORK / ...
+
+  If the input does not cleanly fit one archetype, pick the
+  closest and add a sub-archetype in parentheses, e.g.
+  ARCHETYPE: INFRASTRUCTURE (managed cloud).
+
+═══════════════════════════════════════════════════════════════════════════
+SECTION B: INPUT MODES - 5 MODES
+═══════════════════════════════════════════════════════════════════════════
+
+Every generated list MUST declare exactly one mode in its header.
+Mode controls which procedures run (Sections 5, 6, 7).
+
+  | Mode          | Trigger                                       | Folder scan? | JD parse? | Cascade writes? | Output                              |
+  | ------------- | --------------------------------------------- | ------------ | --------- | --------------- | ----------------------------------- |
+  | MODE_NEW      | Brand-new topic, no prior /learn presence     | YES (verify) | no        | YES             | full list + tree + cascade          |
+  | MODE_EXTEND   | Existing topic, add concepts / sub-topics     | YES          | no        | YES             | delta list + tree refresh + cascade |
+  | MODE_JD       | Job description blob                          | YES          | YES       | YES (per row)   | coverage matrix + per-row runs      |
+  | MODE_FREETEXT | Arbitrary description / paragraph             | YES          | YES       | YES (per row)   | coverage matrix + per-row runs      |
+  | MODE_AUDIT    | Audit existing topic, no writes               | YES          | no        | NO              | gap report only                     |
+
+DECLARING A MODE (Rule 29):
+  In the Section 3.1 header:
+    MODE:        MODE_EXTEND
+    PROVENANCE:  learn/caching/index.md (existing CCH-001..045)
+
+MODE SELECTION DECISION TREE:
+  Is input a JD or skill-bullet blob?
+    -> MODE_JD (run Section 6, then per row run MODE_NEW or
+       MODE_EXTEND).
+  Is input arbitrary free-text description (not a JD)?
+    -> MODE_FREETEXT (same flow as MODE_JD).
+  Is the topic already present under learn/{topic}/?
+    -> MODE_EXTEND (run Section 5, generate delta).
+  Is the user asking "what is missing in X"?
+    -> MODE_AUDIT (run Section 5, emit gap report, no writes).
+  Otherwise:
+    -> MODE_NEW.
+
+═══════════════════════════════════════════════════════════════════════════
 ═══════════════════════════════════════════════════════════════════════════
 SECTION 1: KNOWLEDGE LEVEL FRAMEWORK - 7 LEVELS
 ═══════════════════════════════════════════════════════════════════════════
@@ -205,7 +349,7 @@ LEVEL 0 - ORIENTATION  🌱
                "Structured vs Unstructured Data",
                "The Spreadsheet-to-Database Leap"
 
-  EXPECTED KEYWORD COUNT: 5–10
+  EXPECTED KEYWORD COUNT: 5-10
 
 ─────────────────────────────────────────────────────────────────────────
 LEVEL 1 - FOUNDATIONAL  ★☆☆
@@ -245,7 +389,7 @@ LEVEL 1 - FOUNDATIONAL  ★☆☆
     Docker: Container, Image, Dockerfile
     SQL:    Table, Row, Column, SELECT, WHERE
 
-  EXPECTED KEYWORD COUNT: 15–25
+  EXPECTED KEYWORD COUNT: 15-25
 
 ─────────────────────────────────────────────────────────────────────────
 LEVEL 2 - WORKING  ★★☆
@@ -284,7 +428,7 @@ LEVEL 2 - WORKING  ★★☆
     Docker: docker-compose, Volumes, Networking
     SQL:    JOINs, Indexes, Transactions
 
-  EXPECTED KEYWORD COUNT: 20–35
+  EXPECTED KEYWORD COUNT: 20-35
 
 ─────────────────────────────────────────────────────────────────────────
 LEVEL 3 - INTERMEDIATE  ★★☆+
@@ -333,7 +477,7 @@ LEVEL 3 - INTERMEDIATE  ★★☆+
     Docker: Layer Caching, Multi-Stage Builds
     SQL:    Query Execution Plan, Index Types
 
-  EXPECTED KEYWORD COUNT: 25–40
+  EXPECTED KEYWORD COUNT: 25-40
 
 ─────────────────────────────────────────────────────────────────────────
 LEVEL 4 - EXPERT  ★★★
@@ -380,10 +524,10 @@ LEVEL 4 - EXPERT  ★★★
               Overlay Filesystem, seccomp
     SQL:      MVCC Internals, WAL, Buffer Pool
 
-  EXPECTED KEYWORD COUNT: 25–40
+  EXPECTED KEYWORD COUNT: 25-40
 
 ─────────────────────────────────────────────────────────────────────────
-LEVEL 4.5 - ARCHITECT / INNOVATOR  🔥
+LEVEL 5 - ARCHITECT / INNOVATOR  🔥
 ─────────────────────────────────────────────────────────────────────────
 
     WHO:
@@ -446,10 +590,10 @@ LEVEL 4.5 - ARCHITECT / INNOVATOR  🔥
               "Platform Engineering on Kubernetes",
               "Operator Pattern Design"
 
-  EXPECTED KEYWORD COUNT: 10–20
+  EXPECTED KEYWORD COUNT: 10-20
 
 ─────────────────────────────────────────────────────────────────────────
-LEVEL 5 - CREATOR / DESIGNER  🔬
+LEVEL 6 - CREATOR / DESIGNER  🔬
 ─────────────────────────────────────────────────────────────────────────
 
   WHO:
@@ -497,7 +641,7 @@ LEVEL 5 - CREATOR / DESIGNER  🔬
     SQL:    Relational Algebra, MVCC Theory,
             Isolation Level Formalism (Adya 1999)
 
-  EXPECTED KEYWORD COUNT: 10–20
+  EXPECTED KEYWORD COUNT: 10-20
 
 ─────────────────────────────────────────────────────────────────────────
 META-SKILLS LAYER  🧠  (Appended after L6)
@@ -519,7 +663,7 @@ META-SKILLS LAYER  🧠  (Appended after L6)
 
   HOW TO USE:
     After generating L6 keywords, add a META-SKILLS
-    section with 3–5 keywords capturing transferable
+    section with 3-5 keywords capturing transferable
     thinking patterns unique to mastery of this domain.
 
     These are NOT technology-specific procedures.
@@ -536,7 +680,7 @@ META-SKILLS LAYER  🧠  (Appended after L6)
                  "Latency vs Throughput Trade-off Framing"
 
 ═══════════════════════════════════════════════════════════════════════════
-SECTION 2: KEYWORD GENERATION RULES - 22 RULES
+SECTION 2: KEYWORD GENERATION RULES - 32 RULES
 ═══════════════════════════════════════════════════════════════════════════
 
 ─────────────────────────────────────────────────────────────────────────
@@ -585,20 +729,24 @@ RULE 3: DIFFICULTY AND LEVEL COLUMNS ARE BOTH REQUIRED
     L6    - Creator
     META  - Meta-Skills
 
-  DIFFICULTY COLUMN (maps to dictionary entry field):
-    L0          →  🌱
-    L1          →  ★☆☆
-    L2          →  ★★☆
-    L3          →  ★★☆   (same stars as L2; Level column disambiguates)
-    L4          →  ★★★
-    L5        →  🔥
-    L6          →  🔬
+  DIFFICULTY COLUMN (table marker, always shown):
+    L0                →  🌱
+    L1                →  ★☆☆
+    L2                →  ★★☆
+    L3                →  ★★☆   (same stars as L2; Level column disambiguates)
+    L4                →  ★★★
+    L5                →  🔥
+    L6                →  🔬
+    META              →  🧠
 
-  In the dictionary entry YAML frontmatter:
-    L0, L1      →  difficulty: ★☆☆
-    L2, L3      →  difficulty: ★★☆
-    L4, L5    →  difficulty: ★★★
-    L6          →  difficulty: ★★★
+  In the dictionary entry YAML frontmatter (canonical mapping):
+    L0, L1            →  difficulty: ★☆☆
+    L2, L3            →  difficulty: ★★☆
+    L4, L5, L6, META  →  difficulty: ★★★
+
+  The Level column is the disambiguator. The marker emoji
+  reflects identity (architect / creator / meta) and never
+  overrides the YAML difficulty mapping above.
 
 ─────────────────────────────────────────────────────────────────────────
 RULE 4: KEYWORDS BUILD ON EACH OTHER
@@ -1152,8 +1300,122 @@ RULE 25 (META): CROSS-DOMAIN TRANSFER KEYWORDS
     "Browser Cache vs CDN Cache vs DB Cache: The Common Pattern"
     "Cache as Materialized View - Lessons from Databases"
 
+
+─────────────────────────────────────────────────────────────────────────
+RULE 26: DOMAIN ARCHETYPE DECLARED IN HEADER
+─────────────────────────────────────────────────────────────────────────
+
+  Every output MUST declare exactly one archetype from Section A
+  in its header (Section 3.1):
+    ARCHETYPE:  LANGUAGE | FRAMEWORK | INFRASTRUCTURE |
+                PROTOCOL | CS-CONCEPT | SKILL | PARADIGM
+
+  The archetype shapes:
+    - L0 framing (per Section A archetype rubric)
+    - META keyword angle (cross-domain transfer surface)
+    - Cluster naming defaults in Section 3.3
+
+  If the input is ambiguous, declare the closest archetype and
+  add a parenthetical sub-archetype.
+
+─────────────────────────────────────────────────────────────────────────
+RULE 27: PREREQUISITE DAG VALIDITY
+─────────────────────────────────────────────────────────────────────────
+
+  Cross-level and intra-level prerequisite links MUST form a
+  DIRECTED ACYCLIC GRAPH. Before emitting the keyword table,
+  the generator MUST:
+    1. Topologically sort all keywords by their depends_on links
+       (in-category) and external prerequisite links (Section
+       3.6, Section 3.7).
+    2. Abort and report if a cycle is detected.
+    3. The emitted order in each level table MUST be consistent
+       with the topo-sort.
+
+─────────────────────────────────────────────────────────────────────────
+RULE 28: ROADMAP TREE OUTPUT REQUIRED
+─────────────────────────────────────────────────────────────────────────
+
+  Every generated list MUST produce a roadmap tree (Section
+  3.12) in BOTH formats:
+    1. ASCII tree (max 59 chars wide, grouped by L0..L6+META)
+    2. Mermaid mindmap block immediately below
+
+  The tree IDs MUST be a 1:1 set with the keyword table IDs.
+  Every ID in the table appears exactly once in the tree, and
+  vice versa.
+
+─────────────────────────────────────────────────────────────────────────
+RULE 29: INPUT MODE + PROVENANCE DECLARED IN HEADER
+─────────────────────────────────────────────────────────────────────────
+
+  Every output MUST declare exactly one mode from Section B in
+  its header:
+    MODE:        MODE_NEW | MODE_EXTEND | MODE_JD |
+                 MODE_FREETEXT | MODE_AUDIT
+    PROVENANCE:  <one-line source: file path, JD text id, or
+                  free-text excerpt>
+
+  PROVENANCE is human-readable and traceable. For JD/FREETEXT
+  modes, attach the parsed coverage matrix (Section 6) as part
+  of the output.
+
+─────────────────────────────────────────────────────────────────────────
+RULE 30: FOLDER-SCAN-BEFORE-GENERATE
+─────────────────────────────────────────────────────────────────────────
+
+  For MODE_EXTEND / MODE_JD / MODE_FREETEXT / MODE_AUDIT, the
+  generator MUST run Section 5 (Pre-Generation Folder Scan) and
+  emit the resulting corpus_map BEFORE drafting any new keyword.
+
+  Skipping the scan is a critical violation. The scan is the
+  ONLY mechanism that prevents duplicate IDs, duplicate topics,
+  and broken parent chains.
+
+  Scope: /learn ONLY. Other corpora are out of scope.
+
+─────────────────────────────────────────────────────────────────────────
+RULE 31: CASCADE UPDATE INTEGRITY (within /learn)
+─────────────────────────────────────────────────────────────────────────
+
+  When the run produces writes (any mode except MODE_AUDIT), the
+  cascade MUST touch the following files in order, each step
+  non-destructive (Section 3.10-bis):
+
+    1. learn/{topic-folder}/index.md
+       - update Keywords line + table (append only)
+       - refresh roadmap tree block (Section 3.14)
+    2. learn/_config/topic-registry.md
+       - add or update one row per topic touched
+    3. learn/index.md   (only when a NEW top-level topic is
+       added)
+       - append nav row
+    4. Stub files per Section 3.11
+       - one per new keyword
+       - no overwrites of existing stubs
+
+  Every parent: reference in YAML frontmatter MUST resolve to an
+  existing title:. No orphaned children.
+
+─────────────────────────────────────────────────────────────────────────
+RULE 32: ROADMAP TREE BLOCK IS REGENERABLE-ONLY
+─────────────────────────────────────────────────────────────────────────
+
+  The roadmap tree block embedded in learn/{topic}/index.md
+  (Section 3.14) is delimited by:
+    <!-- ROADMAP-TREE:START -->
+    ...
+    <!-- ROADMAP-TREE:END -->
+
+  Hand-edits inside the delimiters are FORBIDDEN. The block is
+  always regenerated from the keyword table by the generator.
+  Hand-edits outside the delimiters are unrestricted.
+
+  If the block is missing, the generator creates it on the next
+  cascade. If the delimiters are corrupted, the generator
+  rebuilds the block from scratch and reports the repair.
 ═══════════════════════════════════════════════════════════════════════════
-SECTION 3: OUTPUT FORMAT - 12 COMPONENTS
+SECTION 3: OUTPUT FORMAT - 14 COMPONENTS
 ═══════════════════════════════════════════════════════════════════════════
 
 ─────────────────────────────────────────────────────────────────────────
@@ -1224,7 +1486,7 @@ SECTION 3: OUTPUT FORMAT - 12 COMPONENTS
 ─────────────────────────────────────────────────────────────────────────
 
   For levels with 20+ keywords, group into named clusters.
-  Use 3–7 clusters per level. Name each cluster clearly.
+  Use 3-7 clusters per level. Name each cluster clearly.
   List keywords within each cluster in learning order.
 
   Format:
@@ -1294,15 +1556,15 @@ SECTION 3: OUTPUT FORMAT - 12 COMPONENTS
 
   | Level | Name              | Count | ID Range          |
   |-------|-------------------|-------|-------------------|
-  | L0    | Orientation       | N     | [CODE]-001–0NN    |
-  | L1    | Foundational      | N     | [CODE]-0NN–0NN    |
-  | L2    | Working           | N     | [CODE]-0NN–0NN    |
-  | L3    | Intermediate      | N     | [CODE]-0NN–0NN    |
-  | L4    | Expert            | N     | [CODE]-0NN–0NN    |
-  | L5  | Architect         | N     | [CODE]-0NN–0NN    |
-  | L6    | Creator/Designer  | N     | [CODE]-0NN–0NN    |
-  | META  | Meta-Skills       | N     | [CODE]-0NN–0NN    |
-  | TOTAL |                   | N     | [CODE]-001–0NN    |
+  | L0    | Orientation       | N     | [CODE]-001-0NN    |
+  | L1    | Foundational      | N     | [CODE]-0NN-0NN    |
+  | L2    | Working           | N     | [CODE]-0NN-0NN    |
+  | L3    | Intermediate      | N     | [CODE]-0NN-0NN    |
+  | L4    | Expert            | N     | [CODE]-0NN-0NN    |
+  | L5  | Architect         | N     | [CODE]-0NN-0NN    |
+  | L6    | Creator/Designer  | N     | [CODE]-0NN-0NN    |
+  | META  | Meta-Skills       | N     | [CODE]-0NN-0NN    |
+  | TOTAL |                   | N     | [CODE]-001-0NN    |
 
   TAG COVERAGE:
   | Tag    | Count | % of Total |
@@ -1687,11 +1949,168 @@ permalink: /category-slug/keyword-slug/
 Stub file naming: CODE-NNN - Keyword Name.md
 Place in: dictionary/[tier]/[FOLDER]/
 
+─────────────────────────────────────────────────────────────────────────
+3.10-bis CASCADE UPDATE PROCEDURE (within /learn)
+─────────────────────────────────────────────────────────────────────────
+
+Extends Section 3.10. Section 3.10 covers the topic-level
+index.md only. This section covers the FULL cascade across
+/learn, in fixed order.
+
+STEP 1 - learn/{topic-folder}/index.md - Apply Section 3.10 STEP 1..6 (read, parse, compute new,
+append, validate). - Insert or refresh the ROADMAP-TREE block (Section 3.14).
+
+STEP 2 - learn/\_config/topic-registry.md - Append or update one row:
+| <code> | <topic> | <archetype> | <id range> | <count> | - Preserve all existing rows verbatim.
+
+STEP 3 - learn/index.md (only when topic is brand-new) - Append one nav row pointing at learn/{topic-folder}/. - Do NOT modify existing nav rows.
+
+STEP 4 - Stub files per Section 3.11 - One stub per NEW keyword. - Skip if a stub with that ID already exists.
+
+STEP 5 - VALIDATION (post-cascade) - Every parent: in stub frontmatter resolves to a title: in
+its topic index.md. - Every ID in keyword table appears in the ROADMAP-TREE
+block and has a matching stub file. - learn/\_config/topic-registry.md row count == number of
+learn/{topic}/index.md files.
+
+NON-DESTRUCTIVE GUARANTEES: - Never modify existing keyword rows. - Never modify existing nav rows. - Never rename existing files. - Never delete existing stubs. - ROADMAP-TREE block is the only auto-regenerated region;
+always inside its delimiters; never overflows.
+
+─────────────────────────────────────────────────────────────────────────
+3.12 ROADMAP TREE OUTPUT (Rule 28)
+─────────────────────────────────────────────────────────────────────────
+
+After the level tables (3.2) and before the summary (3.5),
+emit a ROADMAP TREE block in TWO formats. ASCII first
+(primary, grep-able), Mermaid mindmap second (visual).
+
+ASCII format (max 59 chars wide):
+
+    ROADMAP TREE - <Topic Name>
+    ===========================================================
+    L0 Orientation
+     +-- CODE-001 Keyword A
+     +-- CODE-002 Keyword B
+    L1 Foundational
+     +-- CODE-006 Keyword C
+     +-- CODE-007 Keyword D
+    L2 Working
+     +-- CLUSTER: Read patterns
+     |    +-- CODE-012 Cache-Aside
+     |    +-- CODE-013 Read-Through
+     +-- CLUSTER: Write patterns
+          +-- CODE-014 Write-Through
+    L3 Intermediate
+     +-- ...
+    L4 Expert
+     +-- ...
+    L5 Architect
+     +-- ...
+    L6 Creator
+     +-- ...
+    META
+     +-- ...
+
+Mermaid format (immediately below ASCII):
+
+    ```mermaid
+    mindmap
+      root((Topic Name))
+        L0 Orientation
+          CODE-001 Keyword A
+          CODE-002 Keyword B
+        L1 Foundational
+          CODE-006 Keyword C
+        L2 Working
+          Read patterns
+            CODE-012 Cache-Aside
+            CODE-013 Read-Through
+          Write patterns
+            CODE-014 Write-Through
+        L3 Intermediate
+        L4 Expert
+        L5 Architect
+        L6 Creator
+        META
+    ```
+
+RULES: - Every ID in the keyword table appears EXACTLY ONCE in the
+tree (Rule 28). - Cluster names (3.3) become intermediate tree nodes. - ASCII width <= 59 chars; truncate long titles with "...". - Mermaid mindmap node text MUST be unquoted plain text;
+avoid colons in node names (replace with " - ").
+
+─────────────────────────────────────────────────────────────────────────
+3.13 PARALLEL TRACKS (opt-in, default OFF)
+─────────────────────────────────────────────────────────────────────────
+
+Some topics are naturally multi-track at a given level (e.g.
+Frontend L1 = HTML + CSS + JS taught in parallel; Backend L2 =
+REST + gRPC + GraphQL in parallel).
+
+OPT-IN: parallel tracks are OFF by default. Enable by adding
+to the Section 3.1 header:
+PARALLEL_TRACKS: enabled
+
+When enabled, each row in the Section 3.2 level table carries
+a "track" field:
+
+    | ID       | Keyword                | Lv | Diff | track | Tags |
+    | -------- | ---------------------- | -- | ---- | ----- | ---- |
+    | FRT-006  | HTML Document Model    | L1 | ★☆☆  | html  |      |
+    | FRT-007  | CSS Box Model          | L1 | ★☆☆  | css   |      |
+    | FRT-008  | JS Variables and Scope | L1 | ★☆☆  | js    |      |
+
+Track names are lowercase short strings.
+
+ROADMAP TREE WITH TRACKS:
+Tracks become intermediate nodes under their level node:
+L1 Foundational
++-- html
+| +-- FRT-006 HTML Document Model
++-- css
+| +-- FRT-007 CSS Box Model
++-- js
++-- FRT-008 JS Variables and Scope
+
+GUIDELINES: - Use tracks only when a level has 3+ keywords per track AND
+tracks are taught in parallel in the field. - Do not invent tracks to pad a level. - Tracks are an ADDITIONAL dimension; the prereq DAG (Rule 27) is still computed over all keywords.
+
+─────────────────────────────────────────────────────────────────────────
+3.14 ROADMAP TREE BLOCK INSIDE TOPIC INDEX.MD (Rule 32)
+─────────────────────────────────────────────────────────────────────────
+
+After the keyword table in learn/{topic}/index.md, embed the
+same roadmap tree (ASCII + Mermaid) inside delimiters:
+
+    <!-- ROADMAP-TREE:START -->
+
+    ## Roadmap
+
+    ```text
+    ROADMAP TREE - <Topic Name>
+    ...ASCII tree...
+    ```
+
+    ```mermaid
+    mindmap
+      root((Topic Name))
+        ...
+    ```
+
+    <!-- ROADMAP-TREE:END -->
+
+RULES: - The block is the ONLY auto-regenerated region in
+index.md. Everything outside the delimiters is preserved
+verbatim by the generator. - Hand-edits inside the delimiters are FORBIDDEN; they are
+overwritten on the next regeneration. - If delimiters are missing or corrupted, the generator
+rebuilds the block and reports the repair in its output. - IDs inside the block MUST be a 1:1 match with the keyword
+table immediately above.
+
+PLACEMENT: - Below the keyword table. - Above any "Sub-topic files" listing. - The block contributes to nav as a single-level "Roadmap"
+heading rendered by Jekyll.
 ═══════════════════════════════════════════════════════════════════════════
-SECTION 4: QUALITY CHECKS - 17 CHECKS
+SECTION 4: QUALITY CHECKS - 27 CHECKS
 ═══════════════════════════════════════════════════════════════════════════
 
-Before finalising output, run ALL 17 checks:
+Before finalising output, run ALL 27 checks:
 
 CHECK 1 - COMPLETENESS:
 ☐ L0: Does list give a newcomer domain context
@@ -1708,7 +2127,7 @@ to diagnose production incidents?
 to design organisational strategy?
 ☐ L6: Does list cover what a creator needs
 to redesign or extend the technology?
-☐ META: Are 3–5 transferable thinking patterns captured?
+☐ META: Are 3-5 transferable thinking patterns captured?
 
 CHECK 2 - BALANCE:
 ☐ No level is significantly shorter than the guidelines
@@ -1775,9 +2194,9 @@ CHECK 8 - REDUNDANCY:
 are complete and accurate
 
 CHECK 9 - PRACTICAL vs THEORETICAL BALANCE:
-☐ L0–L2: At least 70% practical keywords
+☐ L0-L2: At least 70% practical keywords
 (real things you do or use, not pure theory)
-☐ L4–L6: At least 30% theoretical keywords
+☐ L4-L6: At least 30% theoretical keywords
 (internals, algorithms, research)
 ☐ L3: Roughly equal practical and theoretical
 
@@ -1865,6 +2284,251 @@ domain (e.g. not both "networking")
 ☐ Each META keyword names a transferable pattern, not
 a duplicate of an in-domain summary
 
+CHECK 21 - ARCHETYPE DECLARED (Rule 26):
+Header carries one of 7 archetypes from Section A. No row in
+the keyword table contradicts the declared archetype.
+
+CHECK 22 - PREREQ DAG ACYCLIC (Rule 27):
+Topological sort of depends_on links completes without a
+cycle. Output table order is consistent with the sort.
+
+CHECK 23 - ROADMAP TREE PRESENT (Rule 28):
+Section 3.12 ASCII + Mermaid blocks present. Tree IDs are a
+1:1 set with the keyword table IDs (no missing, no extra).
+ASCII width <= 59 chars.
+
+CHECK 24 - INPUT MODE + PROVENANCE (Rule 29):
+Header carries MODE (one of 5 from Section B) and PROVENANCE
+(one-line source). For MODE_JD / MODE_FREETEXT, the coverage
+matrix (Section 6) is attached.
+
+CHECK 25 - CORPUS MAP PRODUCED (Rule 30):
+For MODE_EXTEND / MODE_JD / MODE_FREETEXT / MODE_AUDIT, the
+pre-flight corpus_map (Section 5) is attached and dated.
+
+CHECK 26 - CASCADE INTEGRITY (Rule 31):
+Files touched match the cascade order (Section 3.10-bis).
+Every parent: in stub frontmatter resolves. No orphaned
+children. learn/\_config/topic-registry.md row count matches
+learn/{topic}/index.md count.
+
+CHECK 27 - ROADMAP TREE BLOCK IN INDEX.MD (Rule 32):
+The topic index.md contains the delimited ROADMAP-TREE block.
+IDs in the block match the keyword table verbatim. No content
+outside delimiters was modified by the regeneration.
+
+═══════════════════════════════════════════════════════════════════════════
+SECTION 5: PRE-GENERATION FOLDER SCAN (/learn only)
+═══════════════════════════════════════════════════════════════════════════
+
+Mandatory for MODE_EXTEND / MODE_JD / MODE_FREETEXT / MODE_AUDIT
+(Rule 30). Builds a CORPUS_MAP used by Sections 6 and 7.
+
+SCOPE:
+/learn ONLY. Do NOT scan /dictionary, /interview, or any
+sibling corpus. Out of scope by spec.
+
+PROCEDURE:
+
+STEP 1 - ENUMERATE TOPICS
+List directories under learn/ excluding \_config and the
+root index.md. Each direct child folder = one topic.
+
+STEP 2 - PARSE EACH TOPIC INDEX
+Read learn/{topic}/index.md. Extract:
+a) front-matter title and permalink
+b) Keywords line: **Keywords:** CODE-NNN-CODE-NNN (N)
+c) Keyword table rows (ID, title, level if present)
+d) ROADMAP-TREE block presence
+e) Sub-topic file list
+
+STEP 3 - BUILD CORPUS_MAP
+For each topic emit a record:
+{
+topic_slug: "caching",
+topic_title: "Caching",
+code: "CCH",
+archetype: "CS-CONCEPT" (from header if present),
+id_min: "CCH-001",
+id_max: "CCH-045",
+count: 45,
+levels_seen: ["L0","L1","L2","L3","L4","L5","L6",
+"META"],
+roadmap_block: true | false,
+sub_files: ["caching/foundations.md", ...]
+}
+Persist CORPUS_MAP in the run scratch.
+
+STEP 4 - MATCH INPUT AGAINST CORPUS_MAP
+For each candidate topic / sub-topic / skill name from the
+input:
+MATCH = exact topic match -> action: EXTEND
+MATCH = partial (sub-topic only) -> action: EXTEND
+MATCH = none, but related corpus -> action: SPLIT or
+NEW
+MATCH = none, unrelated -> action: NEW
+
+STEP 5 - EMIT PRE-FLIGHT SUMMARY
+Before writing anything, emit:
+
+      | Input         | Matched topic | Action  | New IDs    |
+      | ------------- | ------------- | ------- | ---------- |
+      | SQL           | sql           | EXTEND  | SQL-046..  |
+      | PostgreSQL    | sql           | EXTEND  | SQL-052..  |
+      | Trino         | (none)        | NEW     | TRN-001..  |
+      | AWS           | aws           | EXTEND  | AWS-...    |
+
+STEP 6 - HALT FOR MODE_AUDIT
+For MODE_AUDIT, stop after the summary. Emit a GAP REPORT: - missing levels per topic - missing tag coverage (Rule 16, Rule 7, Rule 12, ...) - missing roadmap tree block (Rule 32) - missing META cross-domain transfer (Rule 25)
+Do NOT write any files.
+
+═══════════════════════════════════════════════════════════════════════════
+SECTION 6: JD / FREE-TEXT PARSING PROCEDURE
+═══════════════════════════════════════════════════════════════════════════
+
+Mandatory for MODE_JD and MODE_FREETEXT. Converts arbitrary
+text into a structured coverage matrix that drives Section 7.
+
+INPUT EXAMPLE (JD):
+"Strong SQL skills and experience with relational and
+non-relational databases (Postgres / Trino / Redshift /
+Mongo). Experience developing SaaS applications over public
+cloud infrastructure (AWS / Azure / GCP)."
+
+PROCEDURE:
+
+STEP 1 - TOKENIZE
+Split into sentences, then into noun-phrase candidates.
+Lowercase, strip punctuation. Keep proper nouns verbatim
+(Postgres, Trino, AWS, ...).
+
+STEP 2 - EXTRACT SKILL PHRASES
+Pull out: - technology names (Postgres, Mongo, AWS, ...) - skill verbs ("design", "operate", "tune", "migrate") - capability phrases ("relational databases",
+"public cloud infrastructure", "SaaS applications")
+
+STEP 3 - MAP TO ARCHETYPE
+For each phrase, assign the closest archetype from
+Section A:
+SQL -> CS-CONCEPT
+PostgreSQL -> INFRASTRUCTURE
+Trino -> INFRASTRUCTURE
+Redshift -> INFRASTRUCTURE
+MongoDB -> INFRASTRUCTURE
+AWS / Azure / GCP -> INFRASTRUCTURE
+"SaaS applications" -> CS-CONCEPT
+"developing over public cloud" -> SKILL
+
+STEP 4 - MATCH AGAINST CORPUS_MAP
+Use Section 5 CORPUS_MAP. Each phrase becomes a row with
+one of: EXTEND, NEW, SPLIT, IGNORE.
+
+STEP 5 - CLUSTER LOW-CONFIDENCE PHRASES
+If a phrase resolves to multiple existing topics with low
+confidence (< 0.6), group them into a CLUSTER:LOW-CONF
+cluster and request human disambiguation in the output. Do
+NOT silently pick one.
+
+STEP 6 - EMIT COVERAGE MATRIX
+
+    | Skill phrase             | Archetype       | Action | Target          |
+    | ------------------------ | --------------- | ------ | --------------- |
+    | SQL                      | CS-CONCEPT      | EXTEND | sql             |
+    | PostgreSQL               | INFRASTRUCTURE  | NEW    | postgres        |
+    | Trino                    | INFRASTRUCTURE  | NEW    | trino           |
+    | Redshift                 | INFRASTRUCTURE  | NEW    | redshift        |
+    | MongoDB                  | INFRASTRUCTURE  | NEW    | mongodb         |
+    | AWS                      | INFRASTRUCTURE  | EXTEND | aws             |
+    | Azure                    | INFRASTRUCTURE  | NEW    | azure           |
+    | GCP                      | INFRASTRUCTURE  | NEW    | gcp             |
+    | SaaS apps on cloud       | CS-CONCEPT      | NEW    | saas-on-cloud   |
+
+STEP 7 - PER-ROW GENERATOR RUN
+For each row, run Section 7 with MODE = MODE_NEW or
+MODE_EXTEND as indicated. Aggregate all outputs into a
+single combined report.
+
+═══════════════════════════════════════════════════════════════════════════
+SECTION 7: STEP-BY-STEP AUTHORING PROCEDURE
+═══════════════════════════════════════════════════════════════════════════
+
+The mechanical procedure for producing a single topic keyword
+list, roadmap tree, and cascade. Twelve steps; each has DO,
+OUTPUT, and GATE.
+
+STEP 1 - RESOLVE DOMAIN AND ARCHETYPE
+DO: Read the user input. Identify the topic. Select one
+archetype from Section A.
+OUTPUT: ARCHETYPE: <one of 7>
+GATE: Rule 26 satisfied.
+
+STEP 2 - RESOLVE MODE AND PROVENANCE
+DO: Use the Section B decision tree to pick the mode.
+Write a one-line PROVENANCE.
+OUTPUT: MODE: <one of 5> ; PROVENANCE: <line>
+GATE: Rule 29 satisfied.
+
+STEP 3 - PRE-GENERATION FOLDER SCAN (if applicable)
+DO: For MODE_EXTEND / MODE_JD / MODE_FREETEXT /
+MODE_AUDIT, run Section 5. For MODE_NEW, skip.
+OUTPUT: CORPUS_MAP record (or null for MODE_NEW).
+GATE: Rule 30 satisfied.
+
+STEP 4 - JD / FREE-TEXT PARSE (if applicable)
+DO: For MODE_JD / MODE_FREETEXT, run Section 6.
+OUTPUT: Coverage matrix.
+GATE: At least one row has Action != IGNORE.
+
+STEP 5 - ALLOCATE CATEGORY CODE
+DO: For MODE_NEW: choose a 3-letter code not in
+topic-registry.md. For MODE_EXTEND: reuse existing
+code from CORPUS_MAP.
+OUTPUT: CODE: <XXX>
+GATE: Code is unique in topic-registry.md.
+
+STEP 6 - DRAFT L0..L6 + META KEYWORDS
+DO: Apply Sections 1, 2, 3 (Rules 1..32). Respect the
+archetype L0/L1/META rubric. Honour expected counts
+from Section 1.
+OUTPUT: Draft tables L0..L6 + META.
+GATE: Checks 1, 2, 3 pass.
+
+STEP 7 - ASSIGN IDs AND TEMPLATE TIER
+DO: Sequential IDs (Rule 9). Template tier per Rule 23.
+OUTPUT: Final tables with id, lv, diff, template, tags.
+GATE: Checks 5, 18 pass.
+
+STEP 8 - BUILD PREREQUISITE DAG
+DO: Compute depends_on links. Topologically sort.
+OUTPUT: depends_on map; in-order table rows.
+GATE: Rule 27 (acyclic). Check 22 pass.
+
+STEP 9 - GENERATE ROADMAP TREE
+DO: Emit ASCII tree (<=59 chars) + Mermaid mindmap
+(Section 3.12). Apply parallel tracks if header
+opts in (Section 3.13).
+OUTPUT: ROADMAP TREE block.
+GATE: Rule 28 + Check 23 pass.
+
+STEP 10 - CASCADE WRITES (skip for MODE_AUDIT)
+DO: Apply Section 3.10-bis steps in order. Embed the
+roadmap tree block in topic index.md (Section
+3.14).
+OUTPUT: Files touched, in cascade order.
+GATE: Rules 31, 32 + Checks 16, 26, 27 pass.
+
+STEP 11 - RUN ALL 27 QUALITY CHECKS
+DO: Run Checks 1..27 in order. Stop and report on first
+failure.
+OUTPUT: Pass/fail summary table.
+GATE: All 27 checks pass.
+
+STEP 12 - EMIT FINAL REPORT
+DO: Output the assembled list per Section 3 with
+GENERATED_FROM, ARCHETYPE, MODE, PROVENANCE in the
+header. Attach corpus_map and coverage matrix where
+relevant.
+OUTPUT: Final report.
+GATE: Section 3.1 header populated; ready for review.
 ═══════════════════════════════════════════════════════════════════════════
 APPENDIX A: WORKED EXAMPLE - CACHING (full L0..L6 + META)
 ═══════════════════════════════════════════════════════════════════════════
@@ -1877,11 +2541,14 @@ more tags per row.
 ════════════════════════════════════════════════════════
 CATEGORY: Caching
 CODE: CCH
+ARCHETYPE: CS-CONCEPT
+MODE: MODE_NEW
+PROVENANCE: spec example, learn/\_config/LEARN_KEYWORD_GENERATOR.md
 TIER: tier-2-systems
 FOLDER: CCH-caching
 LEVELS: L0 + L1 + L2 + L3 + L4 + L5 + L6 + META
 TOTAL: 58 keywords across 8 components
-GENERATED: v1.0
+GENERATED_FROM: LEARN_KEYWORD_GENERATOR.md v1.0
 ════════════════════════════════════════════════════════
 
 ────────────────────────────────────────────────────
@@ -1994,3 +2661,100 @@ Notes on Caching example:
 - Retention keywords 🔁 placed at end of L2/L3/L4.
 - Triage keywords 🚨 at L4 (stampede, hot key).
 - Decision-framework keywords 🧭 at L3 and L5.
+
+═══════════════════════════════════════════════════════════════════════════
+APPENDIX B: WORKED EXAMPLE - JOB DESCRIPTION -> KEYWORDS
+═══════════════════════════════════════════════════════════════════════════
+
+End-to-end walk-through showing Sections 5, 6, 7 in action on a
+real job description. Use as the canonical reference for
+MODE_JD runs.
+
+INPUT (JD excerpt):
+
+"Strong SQL skills and experience with relational and
+non-relational databases e.g. (Postgres / Trino / Redshift /
+Mongo). Experience with developing SaaS applications over
+public cloud infrastructure - AWS / Azure / GCP."
+
+STEP 1 - HEADER
+
+ARCHETYPE: SKILL (composite)
+MODE: MODE_JD
+PROVENANCE: JD excerpt, data-engineer role 2026-05
+GENERATED_FROM: LEARN_KEYWORD_GENERATOR.md v1.0
+
+STEP 2 - SECTION 5 (FOLDER SCAN) RESULT
+
+Assume current /learn corpus:
+learn/
+sql/ (SQL-001..SQL-045)
+aws/ (AWS-001..AWS-030)
+
+CORPUS_MAP (abbreviated):
+sql: archetype=CS-CONCEPT, id_max=SQL-045, count=45
+aws: archetype=INFRASTRUCTURE, id_max=AWS-030, count=30
+
+STEP 3 - SECTION 6 (JD PARSE) - COVERAGE MATRIX
+
+| Skill phrase       | Archetype      | Action | Target        | New IDs          |
+| ------------------ | -------------- | ------ | ------------- | ---------------- |
+| SQL                | CS-CONCEPT     | EXTEND | sql           | SQL-046..SQL-060 |
+| relational DBs     | CS-CONCEPT     | MERGE  | sql           | (covered by SQL) |
+| non-relational DBs | CS-CONCEPT     | NEW    | nosql         | NSQ-001..NSQ-020 |
+| Postgres           | INFRASTRUCTURE | NEW    | postgres      | PGS-001..PGS-030 |
+| Trino              | INFRASTRUCTURE | NEW    | trino         | TRN-001..TRN-025 |
+| Redshift           | INFRASTRUCTURE | NEW    | redshift      | RSH-001..RSH-025 |
+| MongoDB            | INFRASTRUCTURE | NEW    | mongodb       | MGO-001..MGO-030 |
+| AWS                | INFRASTRUCTURE | EXTEND | aws           | AWS-031..AWS-050 |
+| Azure              | INFRASTRUCTURE | NEW    | azure         | AZR-001..AZR-030 |
+| GCP                | INFRASTRUCTURE | NEW    | gcp           | GCP-001..GCP-030 |
+| SaaS apps on cloud | CS-CONCEPT     | NEW    | saas-on-cloud | SAA-001..SAA-025 |
+
+Total: 2 EXTEND runs + 8 NEW runs (10 topics, ~285 new
+keywords).
+
+STEP 4 - SECTION 7 (PER-ROW RUN) - SAMPLE ROW
+
+Take row 5 (Trino):
+
+    STEP 1 ARCHETYPE: INFRASTRUCTURE
+    STEP 2 MODE:      MODE_NEW
+           PROVENANCE: JD row "Trino"
+    STEP 3 CORPUS_MAP scan: trino not present -> NEW.
+    STEP 5 CODE allocate: TRN (free in topic-registry.md).
+    STEP 6 Draft L0..L6 + META keywords for Trino. Apply
+           INFRASTRUCTURE archetype rubric:
+             L0 = "Where Trino sits (federated query layer)"
+             L1 = "Connectors, catalogs, splits, workers"
+             META = distributed-systems trade-offs
+    STEP 7 IDs TRN-001..TRN-025; template tier per Rule 23.
+    STEP 8 DAG: acyclic; sort emitted in level order.
+    STEP 9 ROADMAP TREE generated (ASCII + Mermaid).
+    STEP 10 CASCADE:
+              - create learn/trino/index.md (with ROADMAP-TREE
+                block)
+              - append row to learn/_config/topic-registry.md
+              - append nav row to learn/index.md (new
+                top-level)
+              - emit 25 stub files under learn/trino/
+    STEP 11 27 checks pass.
+    STEP 12 Final report.
+
+STEP 5 - AGGREGATED OUTPUT
+
+- 10 topic index.md files touched (2 extended, 8 created).
+- 10 ROADMAP-TREE blocks regenerated.
+- learn/\_config/topic-registry.md: +8 rows.
+- learn/index.md: +8 nav rows.
+- ~285 stub files created.
+- 1 combined run report with 10 sub-reports.
+
+CROSS-REFERENCES:
+
+- Section 5 - folder scan procedure.
+- Section 6 - JD parsing procedure.
+- Section 7 - per-topic authoring procedure.
+- Section 3.10-bis - cascade integrity.
+- Section 3.14 - roadmap tree in index.md.
+- Rules 26..32, Checks 21..27 - all exercised in this example.

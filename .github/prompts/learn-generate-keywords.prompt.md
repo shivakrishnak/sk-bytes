@@ -18,6 +18,13 @@ then scaffold the folder + sub-topic stub files.
 
 ## Workflow
 
+0. **Load the source of truth.** Read
+   `learn/_config/LEARN_KEYWORD_GENERATOR.md` v1.0 end to end
+   BEFORE emitting any keyword. Echo
+   `GENERATED_FROM: LEARN_KEYWORD_GENERATOR.md v1.0` into the
+   output header (Section 3.1). If the file is unavailable or
+   its version is not v1.0, abort and report. No fallback. No
+   ad-hoc lists.
 1. Read the keyword spec:
    `learn/_config/LEARN_KEYWORD_GENERATOR.md` v1.0.
 2. Generate the full keyword set:
