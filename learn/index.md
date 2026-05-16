@@ -27,11 +27,11 @@ COMPLEX) based on its level. Word targets:
 
 ## Topics
 
-| Topic                  | Code | Archetype      | Status                    | Folder                    |
-| ---------------------- | ---- | -------------- | ------------------------- | ------------------------- |
-| [Java Language](java/) | JLG  | LANGUAGE       | scaffolded (62 kw, stubs) | `learn/java/`             |
-| Java JVM               | JVM  | INFRASTRUCTURE | planned                   | `learn/java-jvm/`         |
-| [Java Concurrency](java-concurrency/) | JCC | CS-CONCEPT | scaffolded (92 kw, stubs) | `learn/java-concurrency/` |
+| Topic                                 | Code | Archetype      | Status                     | Folder                    |
+| ------------------------------------- | ---- | -------------- | -------------------------- | ------------------------- |
+| [Java Language](java/)                | JLG  | LANGUAGE       | scaffolded (62 kw, stubs)  | `learn/java/`             |
+| [Java JVM](java-jvm/)                 | JVM  | INFRASTRUCTURE | scaffolded (132 kw, stubs) | `learn/java-jvm/`         |
+| [Java Concurrency](java-concurrency/) | JCC  | CS-CONCEPT     | scaffolded (92 kw, stubs)  | `learn/java-concurrency/` |
 
 ## Spec
 
