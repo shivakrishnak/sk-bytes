@@ -1,19 +1,7 @@
 ---
 description: "Custom agent for sk-learn. Routes work to tri-template content generation, keyword generation, validation, ladder building. Triggers: /learn, new topic, fill keyword, validate file."
 tools:
-  [
-    "read_file",
-    "create_file",
-    "replace_string_in_file",
-    "multi_replace_string_in_file",
-    "grep_search",
-    "file_search",
-    "list_dir",
-    "run_in_terminal",
-    "semantic_search",
-    "get_errors",
-    "runSubagent",
-  ]
+  [vscode/installExtension, vscode/memory, vscode/newWorkspace, vscode/resolveMemoryFileUri, vscode/runCommand, vscode/vscodeAPI, vscode/extensions, vscode/askQuestions, vscode/toolSearch, execute/runNotebookCell, execute/executionSubagent, execute/getTerminalOutput, execute/killTerminal, execute/sendToTerminal, execute/createAndRunTask, execute/runInTerminal, execute/runTests, read/getNotebookSummary, read/problems, read/readFile, read/viewImage, read/terminalSelection, read/terminalLastCommand, agent/runSubagent, edit/createDirectory, edit/createFile, edit/createJupyterNotebook, edit/editFiles, edit/editNotebook, edit/rename, search/codebase, search/fileSearch, search/listDirectory, search/textSearch, search/usages, web/fetch, web/githubRepo, web/githubTextSearch, browser/openBrowserPage, browser/readPage, browser/screenshotPage, browser/navigatePage, browser/clickElement, browser/dragElement, browser/hoverElement, browser/typeInPage, browser/runPlaywrightCode, browser/handleDialog, pylance-mcp-server/pylanceDocString, pylance-mcp-server/pylanceDocuments, pylance-mcp-server/pylanceFileSyntaxErrors, pylance-mcp-server/pylanceImports, pylance-mcp-server/pylanceInstalledTopLevelModules, pylance-mcp-server/pylanceInvokeRefactoring, pylance-mcp-server/pylancePythonEnvironments, pylance-mcp-server/pylanceRunCodeSnippet, pylance-mcp-server/pylanceSettings, pylance-mcp-server/pylanceSyntaxErrors, pylance-mcp-server/pylanceUpdatePythonEnvironment, pylance-mcp-server/pylanceWorkspaceRoots, pylance-mcp-server/pylanceWorkspaceUserFiles, vscode.mermaid-chat-features/renderMermaidDiagram, mermaidchart.vscode-mermaid-chart/get_syntax_docs, mermaidchart.vscode-mermaid-chart/mermaid-diagram-validator, mermaidchart.vscode-mermaid-chart/mermaid-diagram-preview, ms-python.python/getPythonEnvironmentInfo, ms-python.python/getPythonExecutableCommand, ms-python.python/installPythonPackage, ms-python.python/configurePythonEnvironment, vscjava.vscode-java-debug/debugJavaApplication, vscjava.vscode-java-debug/setJavaBreakpoint, vscjava.vscode-java-debug/debugStepOperation, vscjava.vscode-java-debug/getDebugVariables, vscjava.vscode-java-debug/getDebugStackTrace, vscjava.vscode-java-debug/evaluateDebugExpression, vscjava.vscode-java-debug/getDebugThreads, vscjava.vscode-java-debug/removeJavaBreakpoints, vscjava.vscode-java-debug/stopDebugSession, vscjava.vscode-java-debug/getDebugSessionInfo, todo]
 ---
 
 # /learn - Generation Agent (sk-learn v1.0)

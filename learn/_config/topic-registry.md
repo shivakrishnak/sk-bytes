@@ -37,7 +37,7 @@
 | ---------------- | ----------------- | ---- | -------------- | ---------------- | ----- | ------------------ | ---------- | -------------------------------------------------------------------------------- |
 | Java Language    | java/             | JLG  | LANGUAGE       | JLG-001..JLG-062 | 62    | JLG                | scaffolded | The Java language proper: syntax, types, generics, collections, modern features. |
 | Java JVM         | java-jvm/         | JVM  | INFRASTRUCTURE | -                | 0     | JVM                | planned    | Runtime: classloader, bytecode, JIT, GC, JFR, diagnostics, tuning.               |
-| Java Concurrency | java-concurrency/ | JCC  | CS-CONCEPT     | -                | 0     | JCC                | planned    | Threading, synchronization, virtual threads, Loom, concurrent collections.       |
+| Java Concurrency | java-concurrency/ | JCC  | CS-CONCEPT     | JCC-001..JCC-092 | 92    | JCC                | scaffolded | Threading, synchronization, virtual threads, Loom, concurrent collections.       |
 
 ---
 
@@ -63,6 +63,14 @@ relatedness and must be self-sufficient.
 _Planned. Will hold classloader, bytecode, JIT, GC, JFR diagnostics, and runtime tuning._
 
 ### Java Concurrency (java-concurrency/)
+
+| File                                                                                                                              | Keywords | Levels         | Status |
+| --------------------------------------------------------------------------------------------------------------------------------- | -------- | -------------- | ------ |
+| [Java Concurrency - Foundations](../java-concurrency/Java%20Concurrency%20-%20Foundations.md)                                     | 21       | L0 + L1        | stub   |
+| [Java Concurrency - Locks and Coordination](../java-concurrency/Java%20Concurrency%20-%20Locks%20and%20Coordination.md)           | 18       | L2             | stub   |
+| [Java Concurrency - Async and Patterns](../java-concurrency/Java%20Concurrency%20-%20Async%20and%20Patterns.md)                   | 20       | L3             | stub   |
+| [Java Concurrency - Virtual Threads and Diagnostics](../java-concurrency/Java%20Concurrency%20-%20Virtual%20Threads%20and%20Diagnostics.md) | 16 | L4        | stub   |
+| [Java Concurrency - Architecture and META](../java-concurrency/Java%20Concurrency%20-%20Architecture%20and%20META.md)             | 17       | L5 + L6 + META | stub   |
 
 ---
 
