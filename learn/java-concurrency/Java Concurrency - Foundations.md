@@ -116,10 +116,12 @@ Why it's right: both fetches overlap; CPU switches between tasks during I/O wait
 ### ⚡ When to use / Not to use
 
 **Use when:**
+
 - Tasks spend significant time waiting (I/O-bound work).
 - Multiple independent operations can overlap.
 
 **Avoid when:**
+
 - Work is purely CPU-bound AND single-threaded is fast enough.
 - Added complexity outweighs the latency gain.
 
@@ -193,10 +195,12 @@ Why it's right: concurrency helps I/O-bound tasks regardless of core count becau
 ### ⚡ When to use / Not to use
 
 **Use when:**
+
 - Distinguishing whether your workload benefits from threads (I/O overlap) vs cores (CPU parallelism).
 - Designing systems that must run on varying hardware (1 core in container vs 8 cores bare-metal).
 
 **Avoid when:**
+
 - Overcomplicating a single-user script with no blocking.
 - The system is already meeting latency requirements sequentially.
 
@@ -268,10 +272,12 @@ Why it's right: AtomicInteger uses hardware CAS to make increment truly atomic.
 ### ⚡ When to use / Not to use
 
 **Use when:**
+
 - Understanding WHY synchronized/volatile/Atomic classes exist (they solve this).
 - Diagnosing flaky tests or production data corruption.
 
 **Avoid when:**
+
 - You can eliminate sharing (thread confinement) or mutability (immutable objects).
 - Single-threaded context where no races are possible.
 
@@ -343,10 +349,12 @@ Why it's right: managed pool, timeout support, automatic cleanup, works with vir
 ### ⚡ When to use / Not to use
 
 **Use when:**
+
 - Building any Java application that handles concurrent requests or background tasks.
 - Choosing the right abstraction layer for your JDK version.
 
 **Avoid when:**
+
 - A simple single-threaded script suffices.
 - Reactive frameworks (Reactor/RxJava) already manage concurrency for you.
 
@@ -418,10 +426,12 @@ Why it's right: threads share memory directly - zero-copy communication within t
 ### ⚡ When to use / Not to use
 
 **Use when:**
+
 - Threads: work needs fast shared data access within one JVM.
 - Processes: work needs fault isolation (crash one, others survive).
 
 **Avoid when:**
+
 - Threads: tasks are untrusted (a thread crash kills the JVM).
 - Processes: you need nanosecond-level communication latency.
 
@@ -499,10 +509,12 @@ Why it's right: concurrent structure benefits from ANY core count because I/O wa
 ### ⚡ When to use / Not to use
 
 **Use when:**
+
 - Deciding whether your workload is I/O-bound (concurrency helps) or CPU-bound (parallelism needed).
 - Explaining performance gains (or lack thereof) to your team.
 
 **Avoid when:**
+
 - The workload is trivially small and sequential is adequate.
 - Over-engineering a discussion about a simple single-threaded tool.
 
@@ -580,10 +592,12 @@ Why it's right: one task definition, three execution options - true separation.
 ### ⚡ When to use / Not to use
 
 **Use when:**
+
 - Defining any concurrent task (always prefer Runnable/Callable over extending Thread).
 - You need the task reusable across execution contexts.
 
 **Avoid when:**
+
 - You need a return value (use Callable<T> instead of Runnable).
 - Direct thread creation in production (use executors for lifecycle management).
 
@@ -618,7 +632,7 @@ When debugging deadlocks or performance issues, thread dumps show state labels. 
 
 > A thread's life is like an airport journey: NEW (ticket bought, not at airport), RUNNABLE (in the terminal ready to board), BLOCKED (waiting for a gate held by another plane), WAITING (parked at gate waiting for signal), TERMINATED (arrived, journey over).
 
-**Memory hook:** "NEW -> RUNNABLE -> (BLOCKED|WAITING|TIMED_WAITING)* -> TERMINATED"
+**Memory hook:** "NEW -> RUNNABLE -> (BLOCKED|WAITING|TIMED_WAITING)\* -> TERMINATED"
 
 ### ⚙️ How it works
 
@@ -657,10 +671,12 @@ Why it's right: `start()` transitions thread through proper lifecycle; `join()` 
 ### ⚡ When to use / Not to use
 
 **Use when:**
+
 - Reading thread dumps during deadlock/hang investigation.
 - Understanding why a thread is not progressing (BLOCKED vs WAITING).
 
 **Avoid when:**
+
 - You are using high-level abstractions (ExecutorService) that manage lifecycle for you.
 - Obsessing over states when the real issue is business logic.
 
@@ -738,10 +754,12 @@ Why it's right: all threads compete for the SAME lock object, guaranteeing mutua
 ### ⚡ When to use / Not to use
 
 **Use when:**
+
 - Simple mutual exclusion with automatic unlock on exit (including exceptions).
 - You need both atomicity AND visibility guarantees.
 
 **Avoid when:**
+
 - You need try-lock, timed-lock, or interruptible-lock (use ReentrantLock).
 - The critical section is read-heavy (use ReadWriteLock for reader concurrency).
 
@@ -816,10 +834,12 @@ Why it's right: single-writer boolean flag - volatile is sufficient (no compound
 ### ⚡ When to use / Not to use
 
 **Use when:**
+
 - Single-writer, multiple-reader flag (shutdown signal, configuration toggle).
 - You need visibility guarantee without mutual exclusion.
 
 **Avoid when:**
+
 - Compound operations (increment, check-then-act) - use AtomicInteger or synchronized.
 - Multiple writers - volatile provides no atomicity for read-modify-write.
 
@@ -894,10 +914,12 @@ Why it's right: `while` loop handles spurious wakeups and ensures condition is t
 ### ⚡ When to use / Not to use
 
 **Use when:**
+
 - Simple producer-consumer patterns with pre-JDK5 code.
 - You need to understand legacy code that uses wait/notify.
 
 **Avoid when:**
+
 - Modern code: prefer `Condition` (from ReentrantLock) or `BlockingQueue`.
 - Complex coordination: use CountDownLatch, CyclicBarrier, or Semaphore.
 
@@ -971,10 +993,12 @@ Why it's right: wait releases the lock, allowing other threads to make progress 
 ### ⚡ When to use / Not to use
 
 **Use when:**
+
 - sleep: fixed delay outside any lock (rate limiting, backoff).
 - wait: coordinating between threads inside synchronized blocks.
 
 **Avoid when:**
+
 - sleep inside synchronized (creates unnecessary blocking).
 - wait without a condition variable (pointless wake without check).
 
@@ -1047,10 +1071,12 @@ Why it's right: computeIfAbsent makes the check-and-act atomic - no interleaving
 ### ⚡ When to use / Not to use
 
 **Use when:**
+
 - Diagnosing flaky tests or intermittent production bugs.
 - Reviewing code for thread safety (check-then-act is the #1 pattern to look for).
 
 **Avoid when:**
+
 - Single-threaded code (no races possible).
 - Already using proper atomic operations or synchronized blocks.
 
@@ -1128,10 +1154,12 @@ Why it's right: consistent lock ordering eliminates circular wait - one of the f
 ### ⚡ When to use / Not to use
 
 **Use when:**
+
 - Reviewing multi-lock code for safety (enforce consistent ordering).
 - Diagnosing hangs: take a thread dump (jstack shows deadlock cycle directly).
 
 **Avoid when:**
+
 - Single-lock scenarios (deadlock impossible with one lock).
 - You can restructure to eliminate nested locking entirely.
 
@@ -1209,10 +1237,12 @@ Why it's right: volatile write of ready creates a happens-before edge that also 
 ### ⚡ When to use / Not to use
 
 **Use when:**
+
 - Reviewing any shared state for thread safety (checklist: A, V, O).
 - Choosing between volatile (visibility+ordering) and synchronized (all three).
 
 **Avoid when:**
+
 - State is thread-confined (no sharing = no need for these guarantees).
 - Using immutable objects (no writes = no visibility/ordering concern).
 
@@ -1282,10 +1312,12 @@ Why it's right: `start()` creates a real concurrent thread - main thread is free
 ### ⚡ When to use / Not to use
 
 **Use when:**
+
 - ALWAYS use start() for concurrent execution.
 - Testing: deliberately calling run() for single-threaded test of task logic.
 
 **Avoid when:**
+
 - NEVER call run() expecting concurrent behavior.
 - Never call start() twice on the same Thread object.
 
@@ -1357,10 +1389,12 @@ Why it's right: correctness first. Optimize only when profiling shows lock conte
 ### ⚡ When to use / Not to use
 
 **Use when:**
+
 - Default choice for protecting shared mutable state (correct first, fast later).
 - Profiling shows no contention issue.
 
 **Avoid when:**
+
 - Profiling PROVES contention is the bottleneck AND you need finer-grained control (then use ReentrantLock, read-write locks, or atomics).
 - High-contention hot paths where lock-free alternatives are measured to be faster.
 
@@ -1436,11 +1470,13 @@ Why it's right: evidence-based diagnosis identifies the exact stuck threads and 
 ### ⚡ When to use / Not to use
 
 **Use when:**
+
 - Application hangs (zero throughput).
 - High latency with many BLOCKED threads (contention).
 - Suspected deadlock.
 
 **Avoid when:**
+
 - Performance problems that are not thread-related (GC, memory).
 - Need historical data (use JFR for continuous profiling).
 
@@ -1515,10 +1551,12 @@ Why it's right: shows the boundary (what it does NOT do) which proves deep under
 ### ⚡ When to use / Not to use
 
 **Use when:**
+
 - Preparing for Java interviews (mid to senior level).
 - Self-assessing your concurrency understanding.
 
 **Avoid when:**
+
 - Memorizing answers without understanding - follow-ups will expose gaps.
 - Using these as a checklist for production design (real design needs deeper analysis).
 
@@ -1559,7 +1597,7 @@ Reading about race conditions is abstract. Running code that produces 1,834,721 
 
 1. Create a shared `int counter = 0`.
 2. Launch N threads, each incrementing counter M times.
-3. Expected result: N * M. Actual result: less (lost updates).
+3. Expected result: N \* M. Actual result: less (lost updates).
 4. Fix 1: `synchronized` - correct, simple, contention under load.
 5. Fix 2: `AtomicInteger.incrementAndGet()` - correct, lock-free, better scaling.
 6. Fix 3: `LongAdder.increment()` - correct, cell-striped, best throughput under high contention.
@@ -1590,10 +1628,12 @@ Why it's right: AtomicInteger uses hardware CAS for true atomic increment.
 ### ⚡ When to use / Not to use
 
 **Use when:**
+
 - Learning concurrency (first exercise to run).
 - Benchmarking synchronization primitives for your specific contention level.
 
 **Avoid when:**
+
 - Production code: use the appropriate atomic/lock class directly (do not re-derive).
 - Already proficient and want to study higher-level patterns.
 
@@ -1669,10 +1709,12 @@ Why it's right: synchronized iteration prevents ConcurrentModificationException 
 ### ⚡ When to use / Not to use
 
 **Use when:**
+
 - Learning concurrency fundamentals through building.
 - Understanding WHY thread pools (Phase 2) and async (Phase 3) exist.
 
 **Avoid when:**
+
 - Production chat systems (use Netty, WebSocket frameworks).
 - You have already built concurrent servers and need advanced patterns.
 
