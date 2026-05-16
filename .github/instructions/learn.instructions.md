@@ -11,9 +11,10 @@ Keyword spec: [learn/\_config/LEARN_KEYWORD_GENERATOR.md](../../learn/_config/LE
 
 ## 1. Three templates, one tier per keyword
 
-Every keyword is routed to ONE of three templates based on its
-level (set by the keyword generator). Never mix sections across
-tiers within a single keyword.
+Each keyword is assigned a level (L0-L6 or META) by the
+keyword generator based on its complexity. The level
+determines which template tier to use. Never mix sections
+across tiers within a single keyword.
 
 | Tier         | Levels        | Sections | Words       | Diagrams     |
 | ------------ | ------------- | -------- | ----------- | ------------ |
@@ -128,17 +129,22 @@ Rules:
 
 ## 4. Formatting (non-negotiable)
 
-- No em dashes. Regular hyphens only.
-- Code lines: max 70 chars.
-- ASCII diagrams: max 59 chars wide.
-- Mandatory diagrams use DUAL format: ASCII first, Mermaid
-  second. Supported Mermaid types: `flowchart`,
-  `sequenceDiagram`, `stateDiagram-v2`, `classDiagram`,
-  `erDiagram`, `mindmap`.
-- BAD pattern before GOOD pattern in every Wrong-vs-Right
-  example.
-- Bold keyword on first mention in Textbook Definition / What
-  it is.
+**Characters:** No em dashes (U+2014) or en dashes (U+2013).
+ASCII hyphens only.
+
+**Width limits:** Code lines max 70 chars. ASCII diagrams
+max 59 chars wide.
+
+**Diagrams:** DUAL format - ASCII block first, then equivalent
+Mermaid block immediately below. Supported Mermaid types:
+`flowchart`, `sequenceDiagram`, `stateDiagram-v2`,
+`classDiagram`, `erDiagram`, `mindmap`.
+
+**Code examples:** BAD pattern before GOOD pattern in every
+Wrong-vs-Right example.
+
+**Text style:** Bold keyword on first mention in Textbook
+Definition / What it is.
 
 ## 5. Anti-hallucination
 
