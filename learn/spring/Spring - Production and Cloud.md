@@ -5518,7 +5518,7 @@ flowchart TD
 spring:
   datasource:
     hikari:
-      maximum-pool-size: 10    # too small
+      maximum-pool-size: 10 # too small
       connection-timeout: 30000
       # enable leak detection
       leak-detection-threshold: 10000
@@ -5699,26 +5699,31 @@ Engineer takes a heap dump on a production pod running with 8GB heap. The dump p
 ### 🔬 Production Reality
 
 **Scenario 1 metrics to monitor:**
+
 - `hikaricp_connections_active` - should never equal max
 - `hikaricp_connections_pending` - should be near zero
 - `hikaricp_connections_usage_seconds` - p99 under 100ms for OLTP
 
 **Scenario 2 metrics to monitor:**
+
 - `jvm_memory_used_bytes{area="heap"}` - should not trend upward across GC cycles
 - `cache_size` (Caffeine) - should plateau at `maximumSize`
 - `cache_eviction_count` - should be non-zero (proves eviction works)
 
 **Scenario 3 metrics to monitor:**
+
 - `resilience4j_circuitbreaker_state` - 0=closed, 1=open, 2=half-open
 - `http_server_requests_seconds{status="503"}` - cascading failures show as 503 spikes
 - `tomcat_threads_busy` - should never approach `tomcat_threads_config_max`
 
 **Scenario 4 metrics to monitor:**
+
 - `application_started_time_seconds` - target under 30s
 - Kubernetes pod `restartCount` - should be 0
 - `/actuator/startup` - identify beans taking over 1s
 
 **Scenario 5 checks:**
+
 - `curl -s http://service:8080/actuator | jq .` - should only list allowed endpoints
 - Verify management port is not exposed via public ingress
 - Check for `management.endpoints.web.exposure.include=*` in all config sources
@@ -5732,7 +5737,7 @@ Engineer takes a heap dump on a production pod running with 8GB heap. The dump p
 spring:
   datasource:
     hikari:
-      maximum-pool-size: 200  # masks slow queries
+      maximum-pool-size: 200 # masks slow queries
 ```
 
 **GOOD:**
@@ -5748,14 +5753,14 @@ spring:
 # AND fix the slow query with proper index
 ```
 
-| Approach | Pros | Cons |
-|---|---|---|
-| Increase pool size | Quick fix, no code change | Masks root cause, wastes DB connections |
-| Fix slow queries | Addresses root cause | Requires investigation time |
-| Add circuit breaker | Prevents cascading failure | Adds complexity, needs tuning |
-| Add cache eviction | Prevents memory leak | May increase cache misses |
-| Narrow component scan | Faster startup | Must maintain explicit package list |
-| Separate actuator port | Security isolation | Extra port in network config |
+| Approach               | Pros                       | Cons                                    |
+| ---------------------- | -------------------------- | --------------------------------------- |
+| Increase pool size     | Quick fix, no code change  | Masks root cause, wastes DB connections |
+| Fix slow queries       | Addresses root cause       | Requires investigation time             |
+| Add circuit breaker    | Prevents cascading failure | Adds complexity, needs tuning           |
+| Add cache eviction     | Prevents memory leak       | May increase cache misses               |
+| Narrow component scan  | Faster startup             | Must maintain explicit package list     |
+| Separate actuator port | Security isolation         | Extra port in network config            |
 
 ### ⚡ Decision Snap
 
@@ -5767,13 +5772,13 @@ spring:
 
 ### ⚠️ Top Traps
 
-| # | Trap | Why It Hurts | Prevention |
-|---|---|---|---|
-| 1 | Increasing pool size without finding slow queries | Shifts bottleneck to database, causes DB connection exhaustion | Always check query performance metrics first |
-| 2 | Using ConcurrentMapCacheManager in production | No eviction, no size limit, guaranteed memory leak with high-cardinality keys | Use Caffeine or Redis with explicit maximumSize |
-| 3 | Adding timeouts without circuit breakers | Timeout fires, request retries, downstream gets hammered with retries | Pair every timeout with a circuit breaker |
-| 4 | Taking heap dumps on live traffic pods | JVM pause causes health check failures, pod restarts, traffic spike on remaining pods | Drain pod from load balancer before dumping |
-| 5 | Setting `exposure.include=*` in any profile | Development config bleeds to production via config precedence or oversight | Use explicit allowlist in default profile, never use wildcard |
+| #   | Trap                                              | Why It Hurts                                                                          | Prevention                                                    |
+| --- | ------------------------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| 1   | Increasing pool size without finding slow queries | Shifts bottleneck to database, causes DB connection exhaustion                        | Always check query performance metrics first                  |
+| 2   | Using ConcurrentMapCacheManager in production     | No eviction, no size limit, guaranteed memory leak with high-cardinality keys         | Use Caffeine or Redis with explicit maximumSize               |
+| 3   | Adding timeouts without circuit breakers          | Timeout fires, request retries, downstream gets hammered with retries                 | Pair every timeout with a circuit breaker                     |
+| 4   | Taking heap dumps on live traffic pods            | JVM pause causes health check failures, pod restarts, traffic spike on remaining pods | Drain pod from load balancer before dumping                   |
+| 5   | Setting `exposure.include=*` in any profile       | Development config bleeds to production via config precedence or oversight            | Use explicit allowlist in default profile, never use wildcard |
 
 ### 🪜 Learning Ladder
 
@@ -6033,11 +6038,11 @@ A senior Spring engineer should score 13+. A principal engineer should score 15/
 # 45 min, lasting retention
 ```
 
-| Study Method | Short-term | Long-term |
-|---|---|---|
-| Re-reading keywords | High (illusion) | Very low |
-| Active retrieval (this quiz) | Medium | Very high |
-| Teaching concepts to others | High | Very high |
+| Study Method                 | Short-term      | Long-term |
+| ---------------------------- | --------------- | --------- |
+| Re-reading keywords          | High (illusion) | Very low  |
+| Active retrieval (this quiz) | Medium          | Very high |
+| Teaching concepts to others  | High            | Very high |
 
 ### ⚡ Decision Snap
 
@@ -6049,13 +6054,13 @@ A senior Spring engineer should score 13+. A principal engineer should score 15/
 
 ### ⚠️ Top Traps
 
-| # | Trap | Why It Hurts | Prevention |
-|---|---|---|---|
-| 1 | Reading answers before attempting | Eliminates retrieval benefit, creates false confidence | Cover answers physically, write yours first |
-| 2 | Generous self-scoring | Masks real knowledge gaps until production incident | Full credit only for specific mechanisms, not vague concepts |
-| 3 | Skipping questions you "already know" | Retrieval of known items strengthens memory too | Answer every question, even confident ones |
-| 4 | One-time assessment without spaced review | Forgetting curve erases gains within 2 weeks | Schedule Day 3, Day 7, Day 30 retests |
-| 5 | Memorizing answers instead of understanding | Same question worded differently will fail | Explain WHY to yourself, not just WHAT |
+| #   | Trap                                        | Why It Hurts                                           | Prevention                                                   |
+| --- | ------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------ |
+| 1   | Reading answers before attempting           | Eliminates retrieval benefit, creates false confidence | Cover answers physically, write yours first                  |
+| 2   | Generous self-scoring                       | Masks real knowledge gaps until production incident    | Full credit only for specific mechanisms, not vague concepts |
+| 3   | Skipping questions you "already know"       | Retrieval of known items strengthens memory too        | Answer every question, even confident ones                   |
+| 4   | One-time assessment without spaced review   | Forgetting curve erases gains within 2 weeks           | Schedule Day 3, Day 7, Day 30 retests                        |
+| 5   | Memorizing answers instead of understanding | Same question worded differently will fail             | Explain WHY to yourself, not just WHAT                       |
 
 ### 🪜 Learning Ladder
 

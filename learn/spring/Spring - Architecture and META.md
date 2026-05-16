@@ -5635,15 +5635,15 @@ is correct and the independence is needed.
 > you have not gained independence - you have gained
 > paperwork.
 
- -> A service boundary is a separate bank account -
-    only valuable if it operates independently
- -> Network calls are wire transfers - each one adds
-    latency, fees, and failure risk
- -> Synchronized deploys are joint account signatures -
-    they prove the "separate" accounts are not separate
- -> A modular monolith is a single account with labeled
-    sub-budgets - same isolation logic, zero transfer
-    overhead
+-> A service boundary is a separate bank account -
+only valuable if it operates independently
+-> Network calls are wire transfers - each one adds
+latency, fees, and failure risk
+-> Synchronized deploys are joint account signatures -
+they prove the "separate" accounts are not separate
+-> A modular monolith is a single account with labeled
+sub-budgets - same isolation logic, zero transfer
+overhead
 
 **Where this analogy breaks down:**
 
@@ -5902,15 +5902,15 @@ class OrderService {
 }
 ```
 
-| Factor | Microservices | Modular Monolith |
-|--------|--------------|-----------------|
+| Factor              | Microservices        | Modular Monolith    |
+| ------------------- | -------------------- | ------------------- |
 | Deploy independence | High (if done right) | Low (single deploy) |
-| Data consistency | Eventual (sagas) | ACID (transactions) |
-| Network latency | Per-hop tax | Zero (in-process) |
-| Operational cost | High (N pipelines) | Low (one pipeline) |
-| Team scaling | Better at 50+ devs | Fine under 20 devs |
-| Extraction later | N/A | Straightforward |
-| Debug complexity | Distributed tracing | Stack traces |
+| Data consistency    | Eventual (sagas)     | ACID (transactions) |
+| Network latency     | Per-hop tax          | Zero (in-process)   |
+| Operational cost    | High (N pipelines)   | Low (one pipeline)  |
+| Team scaling        | Better at 50+ devs   | Fine under 20 devs  |
+| Extraction later    | N/A                  | Straightforward     |
+| Debug complexity    | Distributed tracing  | Stack traces        |
 
 ### ⚡ Decision Snap
 
@@ -5928,13 +5928,13 @@ is far harder to merge back.
 
 ### ⚠️ Top Traps
 
-| # | Trap | Why it bites | Escape |
-|---|------|-------------|--------|
-| 1 | Splitting before understanding domain | Boundaries are wrong, requiring constant cross-service changes | Model domain with DDD bounded contexts in a monolith first |
-| 2 | Shared database across services | Coupling through data defeats the purpose of service boundaries | Each service owns its data or merge the services |
-| 3 | Synchronous chains of calls | Latency compounds, failures cascade, no real independence | Use async events; accept eventual consistency or merge |
-| 4 | More services than developers | Team cannot maintain, monitor, or on-call for all services | Consolidate until ratio is at most 2 services per team |
-| 5 | Sagas for everything | Compensation logic bugs cause silent data corruption | Keep ACID where possible; use sagas only for true cross-boundary flows |
+| #   | Trap                                  | Why it bites                                                    | Escape                                                                 |
+| --- | ------------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| 1   | Splitting before understanding domain | Boundaries are wrong, requiring constant cross-service changes  | Model domain with DDD bounded contexts in a monolith first             |
+| 2   | Shared database across services       | Coupling through data defeats the purpose of service boundaries | Each service owns its data or merge the services                       |
+| 3   | Synchronous chains of calls           | Latency compounds, failures cascade, no real independence       | Use async events; accept eventual consistency or merge                 |
+| 4   | More services than developers         | Team cannot maintain, monitor, or on-call for all services      | Consolidate until ratio is at most 2 services per team                 |
+| 5   | Sagas for everything                  | Compensation logic bugs cause silent data corruption            | Keep ACID where possible; use sagas only for true cross-boundary flows |
 
 ### 🪜 Learning Ladder
 
@@ -6050,7 +6050,7 @@ now has a simpler alternative for most workloads.
 
 1. Reactive programming solves the backpressure problem
    - a fast producer overwhelming a slow consumer -
-   everything else is secondary benefit
+     everything else is secondary benefit
 2. Non-blocking I/O and reactive programming are not
    the same thing - you can have non-blocking I/O
    without Reactor operators (virtual threads prove
@@ -6080,16 +6080,16 @@ synchronous code.
 > conveyor belt system costs more to maintain than a
 > person walking each order to the next desk.
 
- -> Reactive operators are the conveyor belt system -
-    powerful but complex to build and maintain
- -> Backpressure is the automatic slowdown signal -
-    the core value proposition
- -> Blocking calls in a reactive chain are someone
-    standing on the conveyor belt - they stop the
-    entire line
- -> Virtual threads are hiring more workers who
-    naturally wait at each desk - simple, effective,
-    no conveyor belt needed
+-> Reactive operators are the conveyor belt system -
+powerful but complex to build and maintain
+-> Backpressure is the automatic slowdown signal -
+the core value proposition
+-> Blocking calls in a reactive chain are someone
+standing on the conveyor belt - they stop the
+entire line
+-> Virtual threads are hiring more workers who
+naturally wait at each desk - simple, effective,
+no conveyor belt needed
 
 **Where this analogy breaks down:**
 
@@ -6364,17 +6364,17 @@ public User getUser(
 // spring.threads.virtual.enabled=true
 ```
 
-| Factor | WebFlux | MVC + VThreads |
-|--------|---------|----------------|
-| Thread efficiency | High | High |
-| Code complexity | High (operators) | Low (imperative) |
-| Stack traces | Reactor internals | Business code |
-| Debugging | Difficult | Standard |
-| Onboarding | Weeks (Reactor) | Hours (standard Java) |
-| Backpressure | Built-in | Not built-in |
-| Streaming | Native support | Requires workarounds |
-| Library compat | R2DBC, reactive only | All JDBC libraries |
-| Team skill req | Reactor expertise | Standard Java |
+| Factor            | WebFlux              | MVC + VThreads        |
+| ----------------- | -------------------- | --------------------- |
+| Thread efficiency | High                 | High                  |
+| Code complexity   | High (operators)     | Low (imperative)      |
+| Stack traces      | Reactor internals    | Business code         |
+| Debugging         | Difficult            | Standard              |
+| Onboarding        | Weeks (Reactor)      | Hours (standard Java) |
+| Backpressure      | Built-in             | Not built-in          |
+| Streaming         | Native support       | Requires workarounds  |
+| Library compat    | R2DBC, reactive only | All JDBC libraries    |
+| Team skill req    | Reactor expertise    | Standard Java         |
 
 ### ⚡ Decision Snap
 
@@ -6392,13 +6392,13 @@ Adopt WebFlux only with evidence of a specific need.
 
 ### ⚠️ Top Traps
 
-| # | Trap | Why it bites | Escape |
-|---|------|-------------|--------|
-| 1 | Reactive by default | Adds complexity without solving a real problem for CRUD APIs | Default to MVC + virtual threads; prove the need for reactive |
-| 2 | Blocking calls in reactive chains | Pins event loop threads, causing total application freeze under load | Use BlockHound in CI; audit every dependency for blocking I/O |
-| 3 | Using `block()` to "escape" reactive | Deadlocks in production, works in tests (different scheduler) | Ban `block()` outside tests; enforce in code review |
-| 4 | Ignoring team skill requirements | One untrained developer can introduce production-killing bugs | Train the entire team on Reactor before adopting WebFlux |
-| 5 | Mixing blocking and reactive drivers | JDBC in a WebFlux app negates the non-blocking advantage | Use R2DBC for reactive or stay on MVC for JDBC workloads |
+| #   | Trap                                 | Why it bites                                                         | Escape                                                        |
+| --- | ------------------------------------ | -------------------------------------------------------------------- | ------------------------------------------------------------- |
+| 1   | Reactive by default                  | Adds complexity without solving a real problem for CRUD APIs         | Default to MVC + virtual threads; prove the need for reactive |
+| 2   | Blocking calls in reactive chains    | Pins event loop threads, causing total application freeze under load | Use BlockHound in CI; audit every dependency for blocking I/O |
+| 3   | Using `block()` to "escape" reactive | Deadlocks in production, works in tests (different scheduler)        | Ban `block()` outside tests; enforce in code review           |
+| 4   | Ignoring team skill requirements     | One untrained developer can introduce production-killing bugs        | Train the entire team on Reactor before adopting WebFlux      |
+| 5   | Mixing blocking and reactive drivers | JDBC in a WebFlux app negates the non-blocking advantage             | Use R2DBC for reactive or stay on MVC for JDBC workloads      |
 
 ### 🪜 Learning Ladder
 
@@ -6792,13 +6792,13 @@ mouse.
 // Failure domain: ---Service+DB---
 ```
 
-| Approach          | Clarity | Speed  | Depth     | Best for           |
-| ----------------- | ------- | ------ | --------- | ------------------ |
-| Layered stack     | High    | Fast   | Component | Interview (common) |
-| C4 model          | High    | Medium | Multi     | Architecture review|
-| Data flow diagram | Medium  | Fast   | Flow      | Integration design |
-| Deployment view   | Medium  | Medium | Infra     | DevOps discussion  |
-| Sequence diagram  | High    | Slow   | Behavior  | Specific scenario  |
+| Approach          | Clarity | Speed  | Depth     | Best for            |
+| ----------------- | ------- | ------ | --------- | ------------------- |
+| Layered stack     | High    | Fast   | Component | Interview (common)  |
+| C4 model          | High    | Medium | Multi     | Architecture review |
+| Data flow diagram | Medium  | Fast   | Flow      | Integration design  |
+| Deployment view   | Medium  | Medium | Infra     | DevOps discussion   |
+| Sequence diagram  | High    | Slow   | Behavior  | Specific scenario   |
 
 ### ⚡ Decision Snap
 
@@ -6816,13 +6816,13 @@ mouse.
 
 ### ⚠️ Top Traps
 
-| # | Trap | Why it hurts | Escape |
-| - | ---- | ------------ | ------ |
-| 1 | Drawing boxes without spatial convention | Interviewer cannot parse the architecture from the mess | Top-to-bottom layers, left-to-right service flow |
-| 2 | Unlabeled arrows between components | Ambiguous whether it is HTTP, gRPC, JDBC, or events | Label every arrow with protocol and data shape |
-| 3 | Skipping failure domain boundaries | Looks like you have never operated a production system | Draw dashed rectangles around independent failure units |
-| 4 | Zooming into code before showing system context | Loses the big picture; interviewer doubts systems thinking | C4 progression: Context, Container, Component, then Code |
-| 5 | Forgetting cross-cutting concerns | Security, transactions, and observability are invisible | Add vertical bars or overlay annotations for AOP concerns |
+| #   | Trap                                            | Why it hurts                                               | Escape                                                    |
+| --- | ----------------------------------------------- | ---------------------------------------------------------- | --------------------------------------------------------- |
+| 1   | Drawing boxes without spatial convention        | Interviewer cannot parse the architecture from the mess    | Top-to-bottom layers, left-to-right service flow          |
+| 2   | Unlabeled arrows between components             | Ambiguous whether it is HTTP, gRPC, JDBC, or events        | Label every arrow with protocol and data shape            |
+| 3   | Skipping failure domain boundaries              | Looks like you have never operated a production system     | Draw dashed rectangles around independent failure units   |
+| 4   | Zooming into code before showing system context | Loses the big picture; interviewer doubts systems thinking | C4 progression: Context, Container, Component, then Code  |
+| 5   | Forgetting cross-cutting concerns               | Security, transactions, and observability are invisible    | Add vertical bars or overlay annotations for AOP concerns |
 
 ### 🪜 Learning Ladder
 
@@ -7329,13 +7329,13 @@ ENTRYPOINT ["java", \
 # <300MB image, secrets from K8s Secrets
 ```
 
-| Approach           | Image Size | Startup    | Config        | Best for          |
-| ------------------ | ---------- | ---------- | ------------- | ----------------- |
-| Fat JAR + JRE      | 250-350MB  | 2-8s       | Env vars      | Most K8s deploys  |
-| Buildpacks         | 250-350MB  | 2-8s       | Env vars      | No-Dockerfile shop|
-| GraalVM native     | 50-100MB   | 50-200ms   | Env vars      | Serverless, edge  |
-| Layered JAR        | 250-350MB  | 2-8s       | Env vars      | Faster rebuilds   |
-| CDS (Class Sharing)| 250-350MB  | 1-4s       | Env vars      | JVM with fast start|
+| Approach            | Image Size | Startup  | Config   | Best for            |
+| ------------------- | ---------- | -------- | -------- | ------------------- |
+| Fat JAR + JRE       | 250-350MB  | 2-8s     | Env vars | Most K8s deploys    |
+| Buildpacks          | 250-350MB  | 2-8s     | Env vars | No-Dockerfile shop  |
+| GraalVM native      | 50-100MB   | 50-200ms | Env vars | Serverless, edge    |
+| Layered JAR         | 250-350MB  | 2-8s     | Env vars | Faster rebuilds     |
+| CDS (Class Sharing) | 250-350MB  | 1-4s     | Env vars | JVM with fast start |
 
 ### ⚡ Decision Snap
 
@@ -7355,13 +7355,13 @@ ENTRYPOINT ["java", \
 
 ### ⚠️ Top Traps
 
-| # | Trap | Why it hurts | Escape |
-| - | ---- | ------------ | ------ |
-| 1 | No graceful shutdown configured | Dropped requests during every rolling update | `server.shutdown=graceful` + preStop hook |
-| 2 | Readiness probe checking shared dependencies | Transient DB blip removes all pods from LB | Check only pod-local health in readiness |
-| 3 | Secrets baked into container image | Credentials leak via image layers and registries | Kubernetes Secrets as env vars or volume mounts |
-| 4 | No container resource limits | Memory leak in one pod OOM-kills the node | Set requests and limits for CPU and memory |
-| 5 | JVM unaware of container memory limits | Heap exceeds cgroup limit, OOM killed | Use JDK 10+ with MaxRAMPercentage flag |
+| #   | Trap                                         | Why it hurts                                     | Escape                                          |
+| --- | -------------------------------------------- | ------------------------------------------------ | ----------------------------------------------- |
+| 1   | No graceful shutdown configured              | Dropped requests during every rolling update     | `server.shutdown=graceful` + preStop hook       |
+| 2   | Readiness probe checking shared dependencies | Transient DB blip removes all pods from LB       | Check only pod-local health in readiness        |
+| 3   | Secrets baked into container image           | Credentials leak via image layers and registries | Kubernetes Secrets as env vars or volume mounts |
+| 4   | No container resource limits                 | Memory leak in one pod OOM-kills the node        | Set requests and limits for CPU and memory      |
+| 5   | JVM unaware of container memory limits       | Heap exceeds cgroup limit, OOM killed            | Use JDK 10+ with MaxRAMPercentage flag          |
 
 ### 🪜 Learning Ladder
 
@@ -7504,16 +7504,16 @@ at least one major version.
 > Think of Spring as a building that gets renovated floor
 > by floor while tenants keep living in it.
 
- -> XML config is the original foundation floor - still
-    load-bearing but nobody builds new rooms there
- -> Annotations are the second floor renovation - most
-    current tenants live here
- -> Java config is the third floor - preferred for new
-    construction, full control over wiring
- -> Boot auto-configuration is the elevator - you skip
-    floors you do not need to visit
- -> AOT/native is the solar panel retrofit - optional,
-    reduces operating cost, requires structural checks
+-> XML config is the original foundation floor - still
+load-bearing but nobody builds new rooms there
+-> Annotations are the second floor renovation - most
+current tenants live here
+-> Java config is the third floor - preferred for new
+construction, full control over wiring
+-> Boot auto-configuration is the elevator - you skip
+floors you do not need to visit
+-> AOT/native is the solar panel retrofit - optional,
+reduces operating cost, requires structural checks
 
 **Where this analogy breaks down:** Real building
 renovations can happen in isolation. Spring version
@@ -7689,6 +7689,7 @@ while maintaining security patch coverage.
 ### ⚖️ Trade-offs & Alternatives
 
 **BAD:**
+
 ```java
 // Staying on Boot 1.5 "because it works"
 // Java 8 end-of-life, no security patches
@@ -7700,6 +7701,7 @@ public class LegacyApp { }
 ```
 
 **GOOD:**
+
 ```java
 // Boot 3.2 on Java 21, current deps
 // Virtual threads enabled, AOT optional
@@ -7715,13 +7717,13 @@ public class ModernApp {
 }
 ```
 
-| Factor         | Stay on Old | Incremental | Big-Bang  |
-|----------------|-------------|-------------|-----------|
-| Risk per step  | Zero        | Low         | Very high |
-| Cumulative risk| Increasing  | Constant    | Spike     |
-| Team learning  | Stagnant    | Gradual     | Chaotic   |
-| Security       | Degrading   | Current     | Delayed   |
-| Rollback       | N/A         | Easy        | Hard      |
+| Factor          | Stay on Old | Incremental | Big-Bang  |
+| --------------- | ----------- | ----------- | --------- |
+| Risk per step   | Zero        | Low         | Very high |
+| Cumulative risk | Increasing  | Constant    | Spike     |
+| Team learning   | Stagnant    | Gradual     | Chaotic   |
+| Security        | Degrading   | Current     | Delayed   |
+| Rollback        | N/A         | Easy        | Hard      |
 
 ### ⚡ Decision Snap
 
@@ -7741,17 +7743,18 @@ public class ModernApp {
 
 ### ⚠️ Top Traps
 
-| # | Trap | Why It Hurts |
-|---|------|-------------|
-| 1 | Ignoring deprecation warnings across minor releases | Removals at next major version break builds |
-| 2 | Upgrading Spring Boot without upgrading Spring Security | Version matrix misalignment causes cryptic class-loading errors |
-| 3 | Assuming Boot auto-config works identically across major versions | Bean registration order and conditions change |
-| 4 | Running OpenRewrite without reviewing generated diffs | Automated recipes handle syntax but miss semantic changes |
-| 5 | Adopting AOT/native without testing reflection-heavy libraries | Serialization, proxying, and dynamic registration break silently |
+| #   | Trap                                                              | Why It Hurts                                                     |
+| --- | ----------------------------------------------------------------- | ---------------------------------------------------------------- |
+| 1   | Ignoring deprecation warnings across minor releases               | Removals at next major version break builds                      |
+| 2   | Upgrading Spring Boot without upgrading Spring Security           | Version matrix misalignment causes cryptic class-loading errors  |
+| 3   | Assuming Boot auto-config works identically across major versions | Bean registration order and conditions change                    |
+| 4   | Running OpenRewrite without reviewing generated diffs             | Automated recipes handle syntax but miss semantic changes        |
+| 5   | Adopting AOT/native without testing reflection-heavy libraries    | Serialization, proxying, and dynamic registration break silently |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SPR-001 Dependency Injection (IoC Container) -
   understand the container that remained stable across
   all versions
@@ -7763,6 +7766,7 @@ Present) - the timeline, forces, and migration paths
 across every major Spring version.
 
 **Next steps:**
+
 - SPR-109 Spring Upgrade Strategy (LTS and Migration) -
   practical playbook for planning and executing version
   upgrades
@@ -7779,6 +7783,7 @@ facing breaking changes; they are the ones who ignored
 three years of deprecation warnings.
 
 **Further Reading:**
+
 - "Expert One-on-One J2EE Design and Development" -
   Rod Johnson (2002) - the book that started it all
 - Spring Framework Release Notes (spring.io/blog) -
@@ -7790,6 +7795,7 @@ three years of deprecation warnings.
   comparison appendix
 
 **Revision Card:**
+
 1. Spring's evolution follows a pattern: industry pain
    point triggers a new programming model layered on
    the same DI container core.
@@ -7895,13 +7901,13 @@ than under-adoption.
 > bicycle (plain Spring), a car (Boot), and a truck
 > fleet with dispatch (Cloud).
 
- -> A bicycle is perfect for short trips and gives you
-    complete control - but you pedal everything yourself
- -> A car handles most journeys efficiently with built-in
-    systems you do not think about (auto-config)
- -> A truck fleet solves logistics at scale but requires
-    dispatchers, mechanics, and fleet management
- -> Nobody buys a truck fleet to commute to the office
+-> A bicycle is perfect for short trips and gives you
+complete control - but you pedal everything yourself
+-> A car handles most journeys efficiently with built-in
+systems you do not think about (auto-config)
+-> A truck fleet solves logistics at scale but requires
+dispatchers, mechanics, and fleet management
+-> Nobody buys a truck fleet to commute to the office
 
 **Where this analogy breaks down:** Unlike vehicles, you
 can incrementally add Boot to a Spring project or Cloud
@@ -8099,6 +8105,7 @@ infrastructure services.
 ### ⚖️ Trade-offs & Alternatives
 
 **BAD:**
+
 ```java
 // New project, two developers, one service
 // Full Spring Cloud stack "for the future"
@@ -8112,6 +8119,7 @@ public class OverEngineeredApp { }
 ```
 
 **GOOD:**
+
 ```java
 // Same team, same service
 // Boot with targeted resilience
@@ -8123,15 +8131,15 @@ public class RightSizedApp { }
 // Add Cloud later IF needed, not before
 ```
 
-| Factor               | Plain Spring | Boot    | Cloud         |
-|----------------------|-------------|---------|---------------|
-| Setup time           | Hours       | Minutes | Days          |
-| Ops expertise needed | Low         | Medium  | High          |
-| Infra to operate     | None        | App     | App + infra   |
-| Right for libraries  | Yes         | No      | No            |
-| Right for 1-5 svcs   | Rare        | Yes     | Usually not   |
-| Right for 20+ svcs   | No          | Maybe   | Evaluate      |
-| K8s overlap          | None        | Low     | Significant   |
+| Factor               | Plain Spring | Boot    | Cloud       |
+| -------------------- | ------------ | ------- | ----------- |
+| Setup time           | Hours        | Minutes | Days        |
+| Ops expertise needed | Low          | Medium  | High        |
+| Infra to operate     | None         | App     | App + infra |
+| Right for libraries  | Yes          | No      | No          |
+| Right for 1-5 svcs   | Rare         | Yes     | Usually not |
+| Right for 20+ svcs   | No           | Maybe   | Evaluate    |
+| K8s overlap          | None         | Low     | Significant |
 
 ### ⚡ Decision Snap
 
@@ -8154,17 +8162,18 @@ public class RightSizedApp { }
 
 ### ⚠️ Top Traps
 
-| # | Trap | Why It Hurts |
-|---|------|-------------|
-| 1 | Adopting Cloud "because we might need microservices later" | Infrastructure cost starts immediately, business value arrives later (or never) |
-| 2 | Using Eureka on Kubernetes instead of kube-dns | Two discovery systems create split-brain routing failures |
-| 3 | Putting Boot dependencies in shared libraries | Forces all consumers into Boot's auto-configuration opinion |
-| 4 | Skipping Boot and using plain Spring for applications | Reinventing auto-config, health checks, and metrics wastes months |
-| 5 | Adopting all Cloud starters when only one pattern is needed | Each starter adds transitive dependencies, version constraints, and debug surface |
+| #   | Trap                                                        | Why It Hurts                                                                      |
+| --- | ----------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| 1   | Adopting Cloud "because we might need microservices later"  | Infrastructure cost starts immediately, business value arrives later (or never)   |
+| 2   | Using Eureka on Kubernetes instead of kube-dns              | Two discovery systems create split-brain routing failures                         |
+| 3   | Putting Boot dependencies in shared libraries               | Forces all consumers into Boot's auto-configuration opinion                       |
+| 4   | Skipping Boot and using plain Spring for applications       | Reinventing auto-config, health checks, and metrics wastes months                 |
+| 5   | Adopting all Cloud starters when only one pattern is needed | Each starter adds transitive dependencies, version constraints, and debug surface |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SPR-101 Performance at Scale - Spring vs Quarkus vs
   Micronaut - understand where Spring fits in the
   broader framework landscape
@@ -8177,6 +8186,7 @@ Pattern - the decision framework for choosing the right
 Spring layer for your operational context.
 
 **Next steps:**
+
 - SPR-108 Monolith-First Strategy with Spring Modulith -
   the architectural pattern that delays microservice
   decomposition until domain boundaries stabilize
@@ -8193,6 +8203,7 @@ on an architecture diagram, before deploying a single
 service to production.
 
 **Further Reading:**
+
 - "Spring Boot Reference Documentation" - the canonical
   guide for Boot capabilities and configuration
 - "Spring Cloud" (spring.io/projects/spring-cloud) -
@@ -8204,6 +8215,7 @@ service to production.
   spring-cloud-kubernetes project documentation
 
 **Revision Card:**
+
 1. Plain Spring for libraries, Boot for applications,
    Cloud only when distributed coordination pain is
    measured and real - not anticipated.
@@ -8586,14 +8598,14 @@ class OrderService {
 }
 ```
 
-| Aspect             | Unstructured Monolith | Spring Modulith   | Microservices          |
-| ------------------ | --------------------- | ----------------- | ---------------------- |
-| Boundary enforce.  | None                  | Build-time        | Network-level          |
-| Deploy complexity  | Low                   | Low               | High                   |
-| Data consistency   | ACID (fragile)        | ACID (structured) | Eventual               |
-| Extraction cost    | Very high             | Low (planned)     | N/A (already separate) |
-| Operational cost   | Low                   | Low               | High                   |
-| Team independence  | Low                   | Medium            | High                   |
+| Aspect            | Unstructured Monolith | Spring Modulith   | Microservices          |
+| ----------------- | --------------------- | ----------------- | ---------------------- |
+| Boundary enforce. | None                  | Build-time        | Network-level          |
+| Deploy complexity | Low                   | Low               | High                   |
+| Data consistency  | ACID (fragile)        | ACID (structured) | Eventual               |
+| Extraction cost   | Very high             | Low (planned)     | N/A (already separate) |
+| Operational cost  | Low                   | Low               | High                   |
+| Team independence | Low                   | Medium            | High                   |
 
 ### ⚡ Decision Snap
 
@@ -8611,13 +8623,13 @@ class OrderService {
 
 ### ⚠️ Top Traps
 
-| #   | Trap                                                  | Why it hurts                                                             | Escape                                                            |
-| --- | ----------------------------------------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------------- |
-| 1   | Technical layers as modules (controller, service, db) | Couples every feature across all modules                                 | Module per business capability (orders, inventory, payments)      |
-| 2   | Skipping verification tests in CI                     | Boundaries erode within one sprint                                       | Mandatory Modulith verify() in build pipeline                     |
-| 3   | Synchronous cross-module calls for everything         | Creates tight coupling identical to an unstructured monolith             | Default to events; use direct calls only for query-response       |
-| 4   | Premature extraction before traffic patterns are known| You guess wrong about which module needs independent scaling             | Wait for production metrics showing divergent resource needs      |
-| 5   | Sharing JPA entities across module boundaries         | Schema changes in one module force redeployment and retesting of another | Expose DTOs and events only; keep entities module-private         |
+| #   | Trap                                                   | Why it hurts                                                             | Escape                                                       |
+| --- | ------------------------------------------------------ | ------------------------------------------------------------------------ | ------------------------------------------------------------ |
+| 1   | Technical layers as modules (controller, service, db)  | Couples every feature across all modules                                 | Module per business capability (orders, inventory, payments) |
+| 2   | Skipping verification tests in CI                      | Boundaries erode within one sprint                                       | Mandatory Modulith verify() in build pipeline                |
+| 3   | Synchronous cross-module calls for everything          | Creates tight coupling identical to an unstructured monolith             | Default to events; use direct calls only for query-response  |
+| 4   | Premature extraction before traffic patterns are known | You guess wrong about which module needs independent scaling             | Wait for production metrics showing divergent resource needs |
+| 5   | Sharing JPA entities across module boundaries          | Schema changes in one module force redeployment and retesting of another | Expose DTOs and events only; keep entities module-private    |
 
 ### 🪜 Learning Ladder
 
@@ -9048,14 +9060,14 @@ per-team task.
 <!-- Override ONLY after verifying compat -->
 ```
 
-| Aspect              | Stay on 2.7         | Big-bang 3.x upgrade   | Phased upgrade         |
-| ------------------- | -------------------- | ---------------------- | ---------------------- |
-| Security patches    | None (EOL)           | Current                | Current                |
-| Risk                | Accumulating CVEs    | High (all-at-once)     | Low (incremental)      |
-| Downtime            | None                 | Potential (rollback)   | Minimal (canary)       |
-| Developer effort    | None now, debt later | Very high, compressed  | Moderate, distributed  |
-| Rollback complexity | N/A                  | Complex                | Simple (per-phase)     |
-| Recommended         | No                   | Only for small apps    | Yes - default strategy |
+| Aspect              | Stay on 2.7          | Big-bang 3.x upgrade  | Phased upgrade         |
+| ------------------- | -------------------- | --------------------- | ---------------------- |
+| Security patches    | None (EOL)           | Current               | Current                |
+| Risk                | Accumulating CVEs    | High (all-at-once)    | Low (incremental)      |
+| Downtime            | None                 | Potential (rollback)  | Minimal (canary)       |
+| Developer effort    | None now, debt later | Very high, compressed | Moderate, distributed  |
+| Rollback complexity | N/A                  | Complex               | Simple (per-phase)     |
+| Recommended         | No                   | Only for small apps   | Yes - default strategy |
 
 ### ⚡ Decision Snap
 
@@ -9073,13 +9085,13 @@ per-team task.
 
 ### ⚠️ Top Traps
 
-| #   | Trap                                                   | Why it hurts                                                             | Escape                                                           |
-| --- | ------------------------------------------------------ | ------------------------------------------------------------------------ | ---------------------------------------------------------------- |
-| 1   | Overriding BOM-managed dependency versions             | Creates version conflicts the BOM was designed to prevent                | Trust the BOM; override only with verified compatibility         |
-| 2   | Migrating javax to jakarta with find-and-replace       | Misses bytecode, generated code, and string literals in annotations      | Use OpenRewrite AST-based recipes for complete coverage          |
-| 3   | Upgrading Boot without upgrading Java first            | Build succeeds locally but fails in CI or production on old JVM          | Pin Java 17+ across all environments before touching Boot        |
-| 4   | Skipping integration tests after OpenRewrite migration | Recipes handle syntax but cannot verify runtime wiring correctness       | Run full integration suite on every upgrade branch               |
-| 5   | Upgrading all microservices simultaneously             | One failure blocks the entire fleet deployment                           | Upgrade canary services first; roll out to fleet progressively   |
+| #   | Trap                                                   | Why it hurts                                                        | Escape                                                         |
+| --- | ------------------------------------------------------ | ------------------------------------------------------------------- | -------------------------------------------------------------- |
+| 1   | Overriding BOM-managed dependency versions             | Creates version conflicts the BOM was designed to prevent           | Trust the BOM; override only with verified compatibility       |
+| 2   | Migrating javax to jakarta with find-and-replace       | Misses bytecode, generated code, and string literals in annotations | Use OpenRewrite AST-based recipes for complete coverage        |
+| 3   | Upgrading Boot without upgrading Java first            | Build succeeds locally but fails in CI or production on old JVM     | Pin Java 17+ across all environments before touching Boot      |
+| 4   | Skipping integration tests after OpenRewrite migration | Recipes handle syntax but cannot verify runtime wiring correctness  | Run full integration suite on every upgrade branch             |
+| 5   | Upgrading all microservices simultaneously             | One failure blocks the entire fleet deployment                      | Upgrade canary services first; roll out to fleet progressively |
 
 ### 🪜 Learning Ladder
 
@@ -9223,14 +9235,14 @@ breadth (more Spring projects at surface level).
 > maintenance is constant, but the tenants keep paying rent
 > because moving is expensive and the location has gravity.
 
- -> Enterprise codebases are the "tenants" - migrating
-    off Spring is a multi-year, multi-million-dollar effort
- -> The "location gravity" is the hiring ecosystem: teams,
-    training, libraries, and tooling all assume Spring
- -> "Rent" is the salary premium for developers who can
-    navigate, debug, and evolve these codebases
- -> New frameworks are "co-working spaces" - attractive
-    for startups but enterprises need the full building
+-> Enterprise codebases are the "tenants" - migrating
+off Spring is a multi-year, multi-million-dollar effort
+-> The "location gravity" is the hiring ecosystem: teams,
+training, libraries, and tooling all assume Spring
+-> "Rent" is the salary premium for developers who can
+navigate, debug, and evolve these codebases
+-> New frameworks are "co-working spaces" - attractive
+for startups but enterprises need the full building
 
 **Where this analogy breaks down:** Real estate does not
 undergo technology shifts. A serverless-first or AI-native
@@ -9321,23 +9333,23 @@ becomes architectural vocabulary.
 
 ```
 Career Decision Flow:
-                                        
-[Target Role?]                          
-  |                                     
-  +--Enterprise Backend--+              
-  |                      |              
-  |  [Existing Java?]    |              
-  |    YES -> Spring     |              
-  |    NO  -> Evaluate   |              
-  |                      |              
-  +--Startup/Greenfield--+              
-  |    Evaluate all      |              
-  |    options           |              
-  |                      |              
-  +--Cloud/Serverless----+              
-     Framework matters                  
-     less; infra skills                 
-     matter more                        
+
+[Target Role?]
+  |
+  +--Enterprise Backend--+
+  |                      |
+  |  [Existing Java?]    |
+  |    YES -> Spring     |
+  |    NO  -> Evaluate   |
+  |                      |
+  +--Startup/Greenfield--+
+  |    Evaluate all      |
+  |    options           |
+  |                      |
+  +--Cloud/Serverless----+
+     Framework matters
+     less; infra skills
+     matter more
 ```
 
 ```mermaid
@@ -9438,6 +9450,7 @@ target company profile.
 ### ⚖️ Trade-offs & Alternatives
 
 **BAD:**
+
 ```java
 // Career anti-pattern: surface Spring only
 @RestController
@@ -9451,6 +9464,7 @@ public class TodoController {
 ```
 
 **GOOD:**
+
 ```java
 // Career leverage: depth + architecture
 // Understanding WHY this configuration exists
@@ -9472,15 +9486,15 @@ public class SecurityConfig {
 }
 ```
 
-| Dimension          | Spring Deep   | Broad/Shallow | Alt Framework |
-|--------------------|---------------|---------------|---------------|
-| Enterprise demand  | Very high     | Medium        | Low-medium    |
-| Startup demand     | Medium        | Medium        | High          |
-| Salary ceiling     | High          | Medium        | Varies        |
-| Job market size    | Largest (Java)| Large         | Smaller       |
-| Learning cost      | 2-3 years     | 6 months      | 1-2 years     |
-| Risk of obsolesce  | Low (5yr)     | Low           | Medium        |
-| Portability        | Java ecosystem| Cross-stack   | Specific eco  |
+| Dimension         | Spring Deep    | Broad/Shallow | Alt Framework |
+| ----------------- | -------------- | ------------- | ------------- |
+| Enterprise demand | Very high      | Medium        | Low-medium    |
+| Startup demand    | Medium         | Medium        | High          |
+| Salary ceiling    | High           | Medium        | Varies        |
+| Job market size   | Largest (Java) | Large         | Smaller       |
+| Learning cost     | 2-3 years      | 6 months      | 1-2 years     |
+| Risk of obsolesce | Low (5yr)      | Low           | Medium        |
+| Portability       | Java ecosystem | Cross-stack   | Specific eco  |
 
 ### ⚡ Decision Snap
 
@@ -9499,17 +9513,18 @@ public class SecurityConfig {
 
 ### ⚠️ Top Traps
 
-| #  | Trap                               | Why It Bites                                              |
-|----|------------------------------------|-----------------------------------------------------------|
-| 1  | Tutorial-depth only                | Indistinguishable from thousands of candidates             |
-| 2  | Framework loyalty over judgment    | Choosing Spring when a simpler solution fits better        |
-| 3  | Ignoring adjacent skills           | Spring alone does not make a senior engineer               |
-| 4  | Chasing every new Spring project   | Spring Cloud Gateway, Spring AI - breadth without depth    |
-| 5  | Certification over demonstration   | A cert does not prove you can debug a production incident  |
+| #   | Trap                             | Why It Bites                                              |
+| --- | -------------------------------- | --------------------------------------------------------- |
+| 1   | Tutorial-depth only              | Indistinguishable from thousands of candidates            |
+| 2   | Framework loyalty over judgment  | Choosing Spring when a simpler solution fits better       |
+| 3   | Ignoring adjacent skills         | Spring alone does not make a senior engineer              |
+| 4   | Chasing every new Spring project | Spring Cloud Gateway, Spring AI - breadth without depth   |
+| 5   | Certification over demonstration | A cert does not prove you can debug a production incident |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SPR-101 Performance at Scale - Spring vs Quarkus vs
   Micronaut (understand the competitive landscape)
 - SPR-109 Spring Upgrade Strategy (understand ecosystem
@@ -9520,6 +9535,7 @@ Fits in 2025+ (evaluate when and how Spring expertise
 maximizes your career return)
 
 **Next steps:**
+
 - SPR-112 Topic Mastery Synthesis (integrate all Spring
   knowledge into a coherent mental model)
 
@@ -9533,6 +9549,7 @@ leverage only when it translates to architectural
 judgment and production credibility.
 
 **Further Reading:**
+
 - JetBrains Developer Ecosystem Survey (annual)
 - Stack Overflow Developer Survey (annual)
 - Spring Blog: release announcements and roadmap posts
@@ -9540,6 +9557,7 @@ judgment and production credibility.
 - Martin Fowler: "Microservices" and related articles
 
 **Revision Card:**
+
 1. Spring career leverage = demand (60%+ enterprise Java)
    x scarcity (deep internals knowledge) x durability
    (20-year ecosystem), divided by acquisition cost.
@@ -9637,14 +9655,14 @@ the architecture layers.
 > stores assets, and the building systems (security, HVAC,
 > fire alarms) run independently but protect everything.
 
- -> The lobby (REST controllers) handles all external
-    interaction and rejects unauthorized visitors
- -> The offices (service layer) contain business logic
-    and know nothing about HTTP or persistence details
- -> The vault (JPA repositories) manages data storage
-    with its own access controls and backup strategy
- -> Building systems (Security, Cache, Actuator, Config)
-    are cross-cutting and operate at every floor
+-> The lobby (REST controllers) handles all external
+interaction and rejects unauthorized visitors
+-> The offices (service layer) contain business logic
+and know nothing about HTTP or persistence details
+-> The vault (JPA repositories) manages data storage
+with its own access controls and backup strategy
+-> Building systems (Security, Cache, Actuator, Config)
+are cross-cutting and operate at every floor
 
 **Where this analogy breaks down:** In a real building,
 systems rarely conflict. In Spring, auto-configuration
@@ -9735,30 +9753,30 @@ not framework capabilities.
 
 ```
 Request Flow Through the Stack:
-                                        
-HTTP Request                            
-  |                                     
-  v                                     
-[Security Filter Chain]                 
-  | authenticate + authorize            
-  v                                     
-[DispatcherServlet]                     
-  | route to controller                 
-  v                                     
-[@RestController]                       
-  | validate input, delegate            
-  v                                     
-[@Service + @Transactional]             
-  | business logic                      
-  | check @Cacheable first              
-  v                                     
-[@Repository / JPA]                     
-  | SQL via Hibernate                   
-  v                                     
-[PostgreSQL]                            
-  |                                     
-  v                                     
-Response (JSON) <- back up the stack    
+
+HTTP Request
+  |
+  v
+[Security Filter Chain]
+  | authenticate + authorize
+  v
+[DispatcherServlet]
+  | route to controller
+  v
+[@RestController]
+  | validate input, delegate
+  v
+[@Service + @Transactional]
+  | business logic
+  | check @Cacheable first
+  v
+[@Repository / JPA]
+  | SQL via Hibernate
+  v
+[PostgreSQL]
+  |
+  v
+Response (JSON) <- back up the stack
 ```
 
 ```mermaid
@@ -9803,6 +9821,7 @@ returns 401. Pod logs show repeated restarts. No
 application logs because the app never reaches readiness.
 **Fix:** Explicitly permit actuator paths in the security
 configuration:
+
 ```java
 http.authorizeHttpRequests(auth -> auth
     .requestMatchers(
@@ -9898,6 +9917,7 @@ by ELK, Splunk, or any log aggregation platform.
 ### ⚖️ Trade-offs & Alternatives
 
 **BAD:**
+
 ```java
 // Everything in one class, no separation
 @RestController
@@ -9913,6 +9933,7 @@ public class UserController {
 ```
 
 **GOOD:**
+
 ```java
 // Layered with cross-cutting concerns
 @RestController
@@ -9943,15 +9964,15 @@ public class UserService {
 }
 ```
 
-| Dimension           | Full Reference | Minimal Boot | Custom Stack  |
-|---------------------|----------------|--------------|---------------|
-| Time to production  | 2-4 weeks      | 1-2 days     | Months        |
-| Operational maturity| High           | Low          | Varies        |
-| Team onboarding     | Fast (standard)| Fast         | Slow          |
-| Testing coverage    | Comprehensive  | Minimal      | Custom        |
-| Maintenance cost    | Predictable    | Low initially| High          |
-| Flexibility         | Medium         | High         | Maximum       |
-| Community support   | Extensive      | Extensive    | Limited       |
+| Dimension            | Full Reference  | Minimal Boot  | Custom Stack |
+| -------------------- | --------------- | ------------- | ------------ |
+| Time to production   | 2-4 weeks       | 1-2 days      | Months       |
+| Operational maturity | High            | Low           | Varies       |
+| Team onboarding      | Fast (standard) | Fast          | Slow         |
+| Testing coverage     | Comprehensive   | Minimal       | Custom       |
+| Maintenance cost     | Predictable     | Low initially | High         |
+| Flexibility          | Medium          | High          | Maximum      |
+| Community support    | Extensive       | Extensive     | Limited      |
 
 ### ⚡ Decision Snap
 
@@ -9972,17 +9993,18 @@ public class UserService {
 
 ### ⚠️ Top Traps
 
-| #  | Trap                                | Why It Bites                                                |
-|----|-------------------------------------|-------------------------------------------------------------|
-| 1  | Security filter permits everything  | Deployed with `.permitAll()` in production; data breach      |
-| 2  | No cache eviction strategy          | Stale data served for hours; users report wrong information  |
-| 3  | Actuator endpoints publicly exposed | `/actuator/env` leaks secrets; `/actuator/shutdown` is RCE   |
-| 4  | Testing only at integration level   | 15-minute builds, flaky CI, developers skip tests            |
-| 5  | Cloud Config without fallback       | Config server down means app cannot start; cascading failure |
+| #   | Trap                                | Why It Bites                                                 |
+| --- | ----------------------------------- | ------------------------------------------------------------ |
+| 1   | Security filter permits everything  | Deployed with `.permitAll()` in production; data breach      |
+| 2   | No cache eviction strategy          | Stale data served for hours; users report wrong information  |
+| 3   | Actuator endpoints publicly exposed | `/actuator/env` leaks secrets; `/actuator/shutdown` is RCE   |
+| 4   | Testing only at integration level   | 15-minute builds, flaky CI, developers skip tests            |
+| 5   | Cloud Config without fallback       | Config server down means app cannot start; cascading failure |
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SPR-104 Spring Architecture Whiteboard Sessions
   (understand how Spring components interact at the
   design level)
@@ -9994,6 +10016,7 @@ public class UserService {
 blueprint)
 
 **Next steps:**
+
 - SPR-112 Topic Mastery Synthesis (integrate all Spring
   knowledge into a unified mental model)
 
@@ -10007,6 +10030,7 @@ breaks singleton references). The reference architecture
 is not a list of components - it is a map of interactions.
 
 **Further Reading:**
+
 - Spring Boot Reference Documentation: Production-ready
   Features (official guide for actuator, health, metrics)
 - Spring Security Reference: Architecture chapter
@@ -10017,6 +10041,7 @@ is not a list of components - it is a map of interactions.
   real dependencies)
 
 **Revision Card:**
+
 1. The reference architecture layers: Security filter chain
    -> Controllers -> Services -> Repositories, with Cache,
    Config, Actuator, and Logging as cross-cutting concerns.
@@ -10298,8 +10323,9 @@ metrics, retry logic.
 **Pattern 3 - Convention over configuration.** Boot scans
 your classpath: H2 JAR present plus no DataSource defined
 means auto-configure an embedded database. This is not magic
+
 - it is conditional bean registration with well-defined
-precedence rules.
+  precedence rules.
 
 **Pattern 4 - Template method.** `JdbcTemplate` handles
 `Connection` acquisition, `Statement` creation, exception
@@ -10393,6 +10419,7 @@ at an unexpected level.
 ### ⚖️ Trade-offs & Alternatives
 
 **BAD:**
+
 ```java
 // Treating Spring as a service locator
 public class OrderService {
@@ -10405,6 +10432,7 @@ public class OrderService {
 ```
 
 **GOOD:**
+
 ```java
 // Embracing IoC - let the container wire
 public class OrderService {
@@ -10420,18 +10448,18 @@ public class OrderService {
 }
 ```
 
-| Dimension         | Spring Expert     | Spring User       |
-|--------------------|-------------------|-------------------|
-| Debugging          | Reasons from      | Searches Stack    |
-|                    | lifecycle phases  | Overflow          |
-| Architecture       | Designs with      | Copies starter    |
-|                    | module boundaries | project layouts   |
-| Performance        | Measures then     | Adds cache        |
-|                    | optimizes         | annotations       |
-| Upgrades           | Reads migration   | Waits for blog    |
-|                    | guide, plans      | post tutorials    |
-| Testing            | Tests slices      | Uses full         |
-|                    | and contracts     | @SpringBootTest   |
+| Dimension    | Spring Expert     | Spring User     |
+| ------------ | ----------------- | --------------- |
+| Debugging    | Reasons from      | Searches Stack  |
+|              | lifecycle phases  | Overflow        |
+| Architecture | Designs with      | Copies starter  |
+|              | module boundaries | project layouts |
+| Performance  | Measures then     | Adds cache      |
+|              | optimizes         | annotations     |
+| Upgrades     | Reads migration   | Waits for blog  |
+|              | guide, plans      | post tutorials  |
+| Testing      | Tests slices      | Uses full       |
+|              | and contracts     | @SpringBootTest |
 
 ### ⚡ Decision Snap
 
@@ -10450,13 +10478,13 @@ public class OrderService {
 
 ### ⚠️ Top Traps
 
-| Trap | Why it bites | Escape |
-|------|-------------|--------|
-| Self-invocation bypasses proxy | `@Transactional` or `@Cacheable` on method B called from method A in same class - proxy never sees the call | Extract to separate bean or use `AopContext.currentProxy()` |
-| Circular dependency masked by field injection | Field injection allows cycles that constructor injection correctly rejects - hiding design problems | Switch to constructor injection; cycles are a design smell |
-| `@PostConstruct` ordering assumptions | Your init method assumes another bean is fully initialized, but BPP ordering is not guaranteed across unrelated beans | Use `SmartLifecycle` with explicit phases for startup ordering |
-| Ignoring auto-config report | You override a bean but auto-config still creates a competing one because your condition does not match | Always run with `--debug` once to verify condition evaluation |
-| Testing with full context | `@SpringBootTest` loads everything; tests become slow, brittle, and test infrastructure rather than logic | Use `@WebMvcTest`, `@DataJpaTest`, `@MockBean` slices |
+| Trap                                          | Why it bites                                                                                                          | Escape                                                         |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Self-invocation bypasses proxy                | `@Transactional` or `@Cacheable` on method B called from method A in same class - proxy never sees the call           | Extract to separate bean or use `AopContext.currentProxy()`    |
+| Circular dependency masked by field injection | Field injection allows cycles that constructor injection correctly rejects - hiding design problems                   | Switch to constructor injection; cycles are a design smell     |
+| `@PostConstruct` ordering assumptions         | Your init method assumes another bean is fully initialized, but BPP ordering is not guaranteed across unrelated beans | Use `SmartLifecycle` with explicit phases for startup ordering |
+| Ignoring auto-config report                   | You override a bean but auto-config still creates a competing one because your condition does not match               | Always run with `--debug` once to verify condition evaluation  |
+| Testing with full context                     | `@SpringBootTest` loads everything; tests become slow, brittle, and test infrastructure rather than logic             | Use `@WebMvcTest`, `@DataJpaTest`, `@MockBean` slices          |
 
 ### 🪜 Learning Ladder
 
@@ -10487,18 +10515,20 @@ repeatedly." The experts do not know more annotations. They
 understand fewer, deeper abstractions.
 
 **Further Reading:**
+
 - Spring Framework Reference: Core Technologies - Container
   Overview (official docs, spring.io)
 - "Expert One-on-One J2EE Design and Development" by Rod
   Johnson - the philosophical foundation
 - Spring Framework source: `AbstractApplicationContext
-  .refresh()` - the 12-step startup sequence
+.refresh()` - the 12-step startup sequence
 - Spring Boot Reference: Auto-configuration - Understanding
   condition evaluation and ordering
 - Juergen Hoeller's conference talks on Spring internals
   (SpringOne recordings)
 
 **Revision Card:**
+
 1. The container lifecycle has a fixed sequence: load
    definitions, run BFPPs, instantiate, inject, run BPPs,
    init callbacks, lifecycle start, context event.
@@ -10859,6 +10889,7 @@ rather than business logic.
 ### ⚖️ Trade-offs & Alternatives
 
 **BAD:**
+
 ```java
 // Cargo-cult: @Transactional everywhere
 // without understanding propagation
@@ -10878,6 +10909,7 @@ public void chargePayment(Order order) {
 ```
 
 **GOOD:**
+
 ```java
 // Understands proxy boundary; separates
 // concerns into distinct beans
@@ -10895,18 +10927,18 @@ public class OrderService {
 }
 ```
 
-| Approach            | Velocity  | Resilience | Cost    |
-|---------------------|-----------|------------|---------|
-| Tutorial-first      | Fast      | Fragile    | High    |
-| (feels productive)  | start     | under      | rework  |
-|                     |           | pressure   | later   |
-| Fundamentals-first  | Slower    | Robust     | Lower   |
-| (feels slow)        | start     | under      | total   |
-|                     |           | pressure   | cost    |
-| Microservices-first | Exciting  | Brittle    | Very    |
-| (feels modern)      | demo      | at scale   | high    |
-| Monolith-first      | Boring    | Solid      | Low     |
-| (feels outdated)    | demo      | foundation | total   |
+| Approach            | Velocity | Resilience | Cost   |
+| ------------------- | -------- | ---------- | ------ |
+| Tutorial-first      | Fast     | Fragile    | High   |
+| (feels productive)  | start    | under      | rework |
+|                     |          | pressure   | later  |
+| Fundamentals-first  | Slower   | Robust     | Lower  |
+| (feels slow)        | start    | under      | total  |
+|                     |          | pressure   | cost   |
+| Microservices-first | Exciting | Brittle    | Very   |
+| (feels modern)      | demo     | at scale   | high   |
+| Monolith-first      | Boring   | Solid      | Low    |
+| (feels outdated)    | demo     | foundation | total  |
 
 ### ⚡ Decision Snap
 
@@ -10931,13 +10963,13 @@ public class OrderService {
 
 ### ⚠️ Top Traps
 
-| Trap | Why it bites | Escape |
-|------|-------------|--------|
-| Boot before Spring | You cannot debug what you do not understand; auto-config hides the mechanism | Build one app with manual config first |
-| Annotations as magic | Self-invocation bugs, propagation surprises, silent failures | Learn the proxy model; use programmatic equivalents once |
-| Microservices as default | Distributed monolith, operational overhead, debugging complexity | Start monolith; extract only with data-driven justification |
-| Reactive without measurement | Complex code, unreadable stack traces, limited library compatibility | Measure concurrency needs; try virtual threads first |
-| `@SpringBootTest` for everything | Slow tests, brittle assertions, testing framework not logic | Use test slices: `@WebMvcTest`, `@DataJpaTest`, `@JsonTest` |
+| Trap                             | Why it bites                                                                 | Escape                                                      |
+| -------------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Boot before Spring               | You cannot debug what you do not understand; auto-config hides the mechanism | Build one app with manual config first                      |
+| Annotations as magic             | Self-invocation bugs, propagation surprises, silent failures                 | Learn the proxy model; use programmatic equivalents once    |
+| Microservices as default         | Distributed monolith, operational overhead, debugging complexity             | Start monolith; extract only with data-driven justification |
+| Reactive without measurement     | Complex code, unreadable stack traces, limited library compatibility         | Measure concurrency needs; try virtual threads first        |
+| `@SpringBootTest` for everything | Slow tests, brittle assertions, testing framework not logic                  | Use test slices: `@WebMvcTest`, `@DataJpaTest`, `@JsonTest` |
 
 ### 🪜 Learning Ladder
 
@@ -10969,6 +11001,7 @@ The investment compounds because Spring reuses the same five
 patterns everywhere. Learn them once, recognize them forever.
 
 **Further Reading:**
+
 - "Expert One-on-One J2EE Design and Development" by Rod
   Johnson - the original problem statement that Spring solves
 - Spring Framework Reference: Core Technologies chapter -
@@ -10981,6 +11014,7 @@ patterns everywhere. Learn them once, recognize them forever.
   boundaries without service boundaries
 
 **Revision Card:**
+
 1. The corrected learning sequence is: container lifecycle,
    DI, AOP/proxies, web, data, Boot, testing, security,
    then production topics.
@@ -11315,12 +11349,12 @@ docs."
 // Same proxy. Different advice. One mental model.
 ```
 
-| Learning Strategy      | Speed    | Depth   | Transfer    | Risk               |
-| ---------------------- | -------- | ------- | ----------- | -------------------|
-| Breadth-first          | Fast     | Shallow | Low         | Fragile knowledge  |
-| Depth-first one path   | Slow     | Deep    | Medium      | Narrow expertise   |
-| Gateway-concept-first  | Moderate | Deep    | High        | Efficient mastery  |
-| Project-driven only    | Variable | Gaps    | Accidental  | Cargo-cult usage   |
+| Learning Strategy     | Speed    | Depth   | Transfer   | Risk              |
+| --------------------- | -------- | ------- | ---------- | ----------------- |
+| Breadth-first         | Fast     | Shallow | Low        | Fragile knowledge |
+| Depth-first one path  | Slow     | Deep    | Medium     | Narrow expertise  |
+| Gateway-concept-first | Moderate | Deep    | High       | Efficient mastery |
+| Project-driven only   | Variable | Gaps    | Accidental | Cargo-cult usage  |
 
 ### ⚡ Decision Snap
 
@@ -11339,13 +11373,13 @@ docs."
 
 ### ⚠️ Top Traps
 
-| #   | Trap                                  | Why it hurts                                                | Escape                                          |
-| --- | ------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------- |
-| 1   | Skipping AOP proxy fundamentals       | Every annotation-driven feature becomes a black box         | Trace one proxy end-to-end through BPP chain    |
-| 2   | Learning Boot before Core             | Cannot debug auto-config conflicts or override defaults     | Build one app without Boot, then add Boot       |
-| 3   | Studying modules in isolation         | Misses shared infrastructure and transferable patterns      | Map each new module to a cluster and gateway     |
-| 4   | Ignoring the lifecycle sequence       | Cannot diagnose startup failures or ordering issues         | Memorize the refresh() sequence                  |
-| 5   | Jumping to Cloud without Boot mastery | Cloud adds distributed complexity atop convention layers    | Master starters and actuator before cloud config |
+| #   | Trap                                  | Why it hurts                                             | Escape                                           |
+| --- | ------------------------------------- | -------------------------------------------------------- | ------------------------------------------------ |
+| 1   | Skipping AOP proxy fundamentals       | Every annotation-driven feature becomes a black box      | Trace one proxy end-to-end through BPP chain     |
+| 2   | Learning Boot before Core             | Cannot debug auto-config conflicts or override defaults  | Build one app without Boot, then add Boot        |
+| 3   | Studying modules in isolation         | Misses shared infrastructure and transferable patterns   | Map each new module to a cluster and gateway     |
+| 4   | Ignoring the lifecycle sequence       | Cannot diagnose startup failures or ordering issues      | Memorize the refresh() sequence                  |
+| 5   | Jumping to Cloud without Boot mastery | Cloud adds distributed complexity atop convention layers | Master starters and actuator before cloud config |
 
 ### 🪜 Learning Ladder
 
@@ -11380,7 +11414,7 @@ itself, made visible.
   flag to see every condition evaluation
 - Spring source code: github.com/spring-projects/spring-framework
   - reading `AbstractAutoProxyCreator` teaches more about
-  Spring's architecture than any tutorial
+    Spring's architecture than any tutorial
 
 **Revision Card:**
 
@@ -11513,11 +11547,11 @@ The coupling spectrum from most portable to most locked-in:
 
 ```
 PORTABLE <========================> LOCKED-IN
-                                              
+
 Plain Java      Interfaces   Spring     Boot
 domain objects  (ports)      @Component starters
 no annotations  no impl      @Tx, @DI  auto-config
-                                              
+
 |-- Domain --|-- Ports --|-- Adapters --|
 ```
 
@@ -11624,19 +11658,19 @@ The decision process for each codebase layer:
 
 ```
 For each class/package, ask:
-                                          
+
 1. Is this domain logic or infrastructure?
-   |                                      
-   +-> Domain: NO Spring imports allowed  
-   |                                      
-   +-> Infrastructure: continue to Q2     
-                                          
-2. Is framework switching realistic?      
-   |                                      
-   +-> No: embrace full Spring coupling   
-   |                                      
-   +-> Maybe: define port interface,      
-       implement as Spring adapter        
+   |
+   +-> Domain: NO Spring imports allowed
+   |
+   +-> Infrastructure: continue to Q2
+
+2. Is framework switching realistic?
+   |
+   +-> No: embrace full Spring coupling
+   |
+   +-> Maybe: define port interface,
+       implement as Spring adapter
 ```
 
 ```mermaid
@@ -11783,12 +11817,12 @@ class OrderConfig {
 }
 ```
 
-| Approach                | Dev Speed | Portability | Maintenance | Right For                  |
-| ----------------------- | --------- | ----------- | ----------- | -------------------------- |
-| Full Spring coupling    | Fast      | None        | Low         | Startups, small teams      |
-| Hexagonal domain only   | Moderate  | Core domain | Moderate    | Most production apps       |
-| Full ports-and-adapters | Slow      | High        | High        | Multi-framework orgs       |
-| Framework-agnostic      | Slowest   | Maximum     | Highest     | Library/SDK development    |
+| Approach                | Dev Speed | Portability | Maintenance | Right For               |
+| ----------------------- | --------- | ----------- | ----------- | ----------------------- |
+| Full Spring coupling    | Fast      | None        | Low         | Startups, small teams   |
+| Hexagonal domain only   | Moderate  | Core domain | Moderate    | Most production apps    |
+| Full ports-and-adapters | Slow      | High        | High        | Multi-framework orgs    |
+| Framework-agnostic      | Slowest   | Maximum     | Highest     | Library/SDK development |
 
 ### ⚡ Decision Snap
 
@@ -11808,13 +11842,13 @@ class OrderConfig {
 
 ### ⚠️ Top Traps
 
-| #   | Trap                                  | Why it hurts                                            | Escape                                             |
-| --- | ------------------------------------- | ------------------------------------------------------- | -------------------------------------------------- |
+| #   | Trap                                  | Why it hurts                                              | Escape                                              |
+| --- | ------------------------------------- | --------------------------------------------------------- | --------------------------------------------------- |
 | 1   | Abstracting everything "just in case" | Doubles development time for a migration that never comes | Abstract only at real boundaries with real adapters |
-| 2   | Spring annotations in domain entities | Couples core logic to framework; blocks reuse            | Map between domain and persistence/API objects     |
-| 3   | Confusing DI with framework coupling  | DI is a pattern, not a Spring feature; fear of @Inject   | Use constructor injection; it works in any DI      |
-| 4   | Ignoring implicit coupling            | Auto-config assumptions are harder to migrate than @Bean | Document which Boot behaviors you depend on        |
-| 5   | Treating lock-in as binary            | "We are locked in" stops analysis; lock-in is a spectrum | Quantify: what % of code, what migration cost?     |
+| 2   | Spring annotations in domain entities | Couples core logic to framework; blocks reuse             | Map between domain and persistence/API objects      |
+| 3   | Confusing DI with framework coupling  | DI is a pattern, not a Spring feature; fear of @Inject    | Use constructor injection; it works in any DI       |
+| 4   | Ignoring implicit coupling            | Auto-config assumptions are harder to migrate than @Bean  | Document which Boot behaviors you depend on         |
+| 5   | Treating lock-in as binary            | "We are locked in" stops analysis; lock-in is a spectrum  | Quantify: what % of code, what migration cost?      |
 
 ### 🪜 Learning Ladder
 

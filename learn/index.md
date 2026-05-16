@@ -33,6 +33,8 @@ COMPLEX) based on its level. Word targets:
 | [Java JVM](java-jvm/)                 | JVM  | INFRASTRUCTURE | scaffolded (132 kw, stubs) | `learn/java-jvm/`         |
 | [Java Concurrency](java-concurrency/) | JCC  | CS-CONCEPT     | scaffolded (92 kw, stubs)  | `learn/java-concurrency/` |
 | [Spring Ecosystem](spring/)           | SPR  | FRAMEWORK      | scaffolded (115 kw, stubs) | `learn/spring/`           |
+| [SQL](sql/)                           | SQL  | LANGUAGE       | scaffolded (142 kw, stubs) | `learn/sql/`              |
+| [Hibernate ORM](hibernate/)           | HIB  | FRAMEWORK      | scaffolded (115 kw, stubs) | `learn/hibernate/`        |
 
 ## Spec
 
