@@ -10,6 +10,7 @@ Checks (per keyword block, after auto-detecting its tier):
   - YAML frontmatter has all required fields.
   - `keywords[]` has at least 5 entries.
   - `keywords[]` matches order of `# Keyword Name` headings.
+  - `## Keywords` TOC with anchor links before first keyword.
   - Each keyword block has its tier's section list in order:
         SIMPLE       -> 9  sections   (L0, L1)
         INTERMEDIATE -> 13 sections   (L2, L3)
@@ -119,6 +120,18 @@ TIER_MARKERS = {
 
 class ValidationError(Exception):
     pass
+
+
+# ------------------------------------------------------------------
+# Anchor generation (kramdown GFM-style)
+# ------------------------------------------------------------------
+
+def heading_to_anchor(heading: str) -> str:
+    """Generate the kramdown GFM auto-ID for a heading."""
+    s = re.sub(r'^[^a-zA-Z]+', '', heading)
+    s = re.sub(r'[^a-zA-Z0-9 -]', '', s)
+    s = s.replace(' ', '-')
+    return s.lower()
 
 
 # ------------------------------------------------------------------
@@ -518,6 +531,55 @@ def validate_learning_ladder(
             )
 
 
+def validate_toc(
+    fields: dict, body: str, errors: list
+) -> None:
+    """Check that a ## Keywords TOC exists between frontmatter
+    and the first keyword, listing every keyword with a valid
+    anchor link."""
+    kws = fields.get("_keywords", [])
+    if not kws:
+        return
+
+    # The TOC must appear before the first H1 keyword heading.
+    first_h1 = re.search(r'^# ', body, re.MULTILINE)
+    if first_h1 is None:
+        return  # No keyword content yet.
+    preamble = body[:first_h1.start()]
+
+    if "## Keywords" not in preamble:
+        errors.append(
+            "missing '## Keywords' TOC before first keyword"
+        )
+        return
+
+    # Extract TOC link entries: [text](#anchor)
+    toc_links = re.findall(
+        r'\[([^\]]+)\]\(#([^)]+)\)', preamble
+    )
+    if len(toc_links) != len(kws):
+        errors.append(
+            f"TOC has {len(toc_links)} entries but "
+            f"keywords[] has {len(kws)}"
+        )
+        return
+
+    for i, (kw, (link_text, anchor)) in enumerate(
+        zip(kws, toc_links), 1
+    ):
+        if link_text != kw:
+            errors.append(
+                f"TOC entry {i}: text '{link_text}' "
+                f"does not match keyword '{kw}'"
+            )
+        expected_anchor = heading_to_anchor(kw)
+        if anchor != expected_anchor:
+            errors.append(
+                f"TOC entry {i}: anchor '#{anchor}' "
+                f"expected '#{expected_anchor}'"
+            )
+
+
 # ------------------------------------------------------------------
 # Driver
 # ------------------------------------------------------------------
@@ -545,6 +607,7 @@ def validate_file(path: Path, corpus: set) -> list:
     if status == "draft" and not blocks:
         return errors
 
+    validate_toc(fields, body, errors)
     validate_keyword_order(fields, blocks, errors)
 
     for kw_title, block in blocks:

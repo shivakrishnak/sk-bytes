@@ -29,6 +29,21 @@ keywords:
   - JLG-030 Java Collections Quick Recall Card
 ---
 
+## Keywords
+
+1. [JLG-016 Generics - Parameterized Types](#jlg-016-generics---parameterized-types)
+2. [JLG-017 Bounded Types and Wildcards](#jlg-017-bounded-types-and-wildcards)
+3. [JLG-018 Collection Interfaces - List, Set, Map](#jlg-018-collection-interfaces---list-set-map)
+4. [JLG-019 ArrayList vs LinkedList Decision](#jlg-019-arraylist-vs-linkedlist-decision)
+5. [JLG-020 HashMap Internals - Hashing and Buckets](#jlg-020-hashmap-internals---hashing-and-buckets)
+6. [JLG-021 Equals and HashCode Contract](#jlg-021-equals-and-hashcode-contract)
+7. [JLG-022 Iterators and ConcurrentModificationException](#jlg-022-iterators-and-concurrentmodificationexception)
+8. [JLG-028 Build a Generic Container Exercise](#jlg-028-build-a-generic-container-exercise)
+9. [JLG-029 Inventory CLI - Phase 2 (Collections)](#jlg-029-inventory-cli---phase-2-collections)
+10. [JLG-030 Java Collections Quick Recall Card](#jlg-030-java-collections-quick-recall-card)
+
+---
+
 # JLG-016 Generics - Parameterized Types
 
 **TL;DR** - Generics let one class work with any type while catching type errors at compile time, not runtime.

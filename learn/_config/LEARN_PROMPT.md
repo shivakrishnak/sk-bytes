@@ -495,6 +495,39 @@ CRITICAL ENCODING RULES:
   - All files: UTF-8 without BOM
 
 ----------------------------------------------------------------
+KEYWORD TOC (MANDATORY)
+----------------------------------------------------------------
+
+Every sub-topic file MUST have a `## Keywords` section between
+the closing `---` of the YAML frontmatter and the first
+`# Keyword Name` heading. Format:
+
+  ## Keywords
+
+  1. [JLG-001 Keyword Name](#anchor)
+  2. [JLG-002 Keyword Name](#anchor)
+  ...
+
+  ---
+
+  # JLG-001 Keyword Name
+
+Anchor generation (kramdown GFM auto-ID):
+  1. Strip leading non-alpha characters.
+  2. Remove all chars except a-zA-Z0-9, space, and hyphen.
+  3. Replace spaces with hyphens.
+  4. Lowercase.
+
+Example: `# JLG-014 Inventory CLI - Phase 1 (Java Basics)`
+  -> anchor: `jlg-014-inventory-cli---phase-1-java-basics`
+
+The validator checks:
+  - `## Keywords` exists before first `# Keyword`.
+  - Entry count matches `keywords[]` in frontmatter.
+  - Link text matches each keyword name exactly.
+  - Anchor matches the computed kramdown GFM ID.
+
+----------------------------------------------------------------
 TOPIC index.md FORMAT
 ----------------------------------------------------------------
 

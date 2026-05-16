@@ -26,6 +26,18 @@ keywords:
   - JLG-039 Java Serialization Security
 ---
 
+## Keywords
+
+1. [JLG-023 Checked vs Unchecked Exceptions](#jlg-023-checked-vs-unchecked-exceptions)
+2. [JLG-024 try-with-resources and AutoCloseable](#jlg-024-try-with-resources-and-autocloseable)
+3. [JLG-025 Catch Throwable Anti-Pattern](#jlg-025-catch-throwable-anti-pattern)
+4. [JLG-026 javac and the Compilation Model](#jlg-026-javac-and-the-compilation-model)
+5. [JLG-027 Maven Build Lifecycle Basics](#jlg-027-maven-build-lifecycle-basics)
+6. [JLG-038 Files, Paths, and NIO.2](#jlg-038-files-paths-and-nio2)
+7. [JLG-039 Java Serialization Security](#jlg-039-java-serialization-security)
+
+---
+
 # JLG-023 Checked vs Unchecked Exceptions
 
 **TL;DR** - Checked exceptions force callers to handle recoverable failures; unchecked exceptions signal programming bugs.

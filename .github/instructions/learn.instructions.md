@@ -118,6 +118,13 @@ Rules:
   the `# Keyword Name` H1 headings inside the file.
 - Keywords are separated by the double-rule divider:
   blank line, `---`, blank line, `---`, blank line.
+- A `## Keywords` TOC block MUST appear between the closing
+  `---` of frontmatter and the first `# Keyword` heading.
+  Each entry is a numbered markdown link:
+  `1. [Keyword Name](#anchor)` where the anchor follows
+  kramdown GFM rules (lowercase, remove non-alphanum except
+  spaces and hyphens, spaces to hyphens). The validator
+  enforces entry count, text match, and anchor correctness.
 
 ## 4. Formatting (non-negotiable)
 

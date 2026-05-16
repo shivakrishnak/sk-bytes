@@ -33,6 +33,25 @@ keywords:
   - JLG-046 Structured Concurrency - Language Surface
 ---
 
+## Keywords
+
+1. [JLG-031 Lambdas and Functional Interfaces](#jlg-031-lambdas-and-functional-interfaces)
+2. [JLG-032 Stream API - Map, Filter, Reduce](#jlg-032-stream-api---map-filter-reduce)
+3. [JLG-033 Optional and Null-Safety](#jlg-033-optional-and-null-safety)
+4. [JLG-034 var Local Type Inference (Java 10)](#jlg-034-var-local-type-inference-java-10)
+5. [JLG-035 Switch Expressions and Pattern Matching](#jlg-035-switch-expressions-and-pattern-matching)
+6. [JLG-036 Records, Sealed Types, and Patterns Together](#jlg-036-records-sealed-types-and-patterns-together)
+7. [JLG-037 Text Blocks and String Templates](#jlg-037-text-blocks-and-string-templates)
+8. [JLG-040 JLS - The Java Language Specification](#jlg-040-jls---the-java-language-specification)
+9. [JLG-041 Generics Are Not Reified - Type Erasure Reality](#jlg-041-generics-are-not-reified---type-erasure-reality)
+10. [JLG-042 Inventory CLI - Phase 3 (Streams + Records)](#jlg-042-inventory-cli---phase-3-streams--records)
+11. [JLG-043 Java Modern Features Self-Assessment](#jlg-043-java-modern-features-self-assessment)
+12. [JLG-044 Module System (JPMS) - Strong Encapsulation](#jlg-044-module-system-jpms---strong-encapsulation)
+13. [JLG-045 Virtual Threads - Language Surface (Java 21)](#jlg-045-virtual-threads---language-surface-java-21)
+14. [JLG-046 Structured Concurrency - Language Surface](#jlg-046-structured-concurrency---language-surface)
+
+---
+
 # JLG-031 Lambdas and Functional Interfaces
 
 **TL;DR** - Lambdas pass behavior as data via functional interfaces, eliminating verbose anonymous classes.

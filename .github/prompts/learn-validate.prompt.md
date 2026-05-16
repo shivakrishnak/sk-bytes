@@ -21,6 +21,8 @@ schema.
 3. Collect errors. Categorize:
    - **Frontmatter**: missing field, wrong type, unquoted title
      with colon, keywords <5.
+   - **TOC**: missing `## Keywords` section, wrong entry count,
+     link text mismatch, incorrect anchor.
    - **Structure**: missing / reordered / duplicate section for
      the detected tier (9 / 13 / 16). Tier-mismatch.
    - **Content**:
