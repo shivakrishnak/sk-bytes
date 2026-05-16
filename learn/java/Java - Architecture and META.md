@@ -289,13 +289,13 @@ The most impactful API design lessons from java.util:
 
 ### ⚖️ Trade-offs & Alternatives
 
-| Aspect        | Minimal API            | Rich API              | Fluent API           |
-| ------------- | ---------------------- | --------------------- | -------------------- |
-| Learning curve | low                   | high                  | moderate             |
-| Flexibility   | high (compose freely)  | built-in              | chain-specific       |
-| Evolution     | easy to extend         | hard to shrink        | moderate             |
-| Example       | `Collection` interface | Apache Commons Lang   | StringBuilder        |
-| Risk          | missing convenience    | bloated surface area  | hard to debug chains |
+| Aspect         | Minimal API            | Rich API             | Fluent API           |
+| -------------- | ---------------------- | -------------------- | -------------------- |
+| Learning curve | low                    | high                 | moderate             |
+| Flexibility    | high (compose freely)  | built-in             | chain-specific       |
+| Evolution      | easy to extend         | hard to shrink       | moderate             |
+| Example        | `Collection` interface | Apache Commons Lang  | StringBuilder        |
+| Risk           | missing convenience    | bloated surface area | hard to debug chains |
 
 ---
 
@@ -322,13 +322,13 @@ The most impactful API design lessons from java.util:
 
 ### ⚠️ Top Traps
 
-| #   | Misconception                          | Reality                                                                 |
-| --- | -------------------------------------- | ----------------------------------------------------------------------- |
-| 1   | More public methods = better API       | More surface = more maintenance burden and more ways to misuse          |
-| 2   | `Arrays.asList()` returns an immutable list | It returns a mutable fixed-size view backed by the original array  |
-| 3   | Returning `null` is fine for "not found" | Use `Optional` for methods that may not have a result               |
-| 4   | Concrete types are more helpful        | They lock callers to your implementation choices                        |
-| 5   | Deprecation means removal              | In Java, deprecated methods live forever; plan accordingly              |
+| #   | Misconception                               | Reality                                                           |
+| --- | ------------------------------------------- | ----------------------------------------------------------------- |
+| 1   | More public methods = better API            | More surface = more maintenance burden and more ways to misuse    |
+| 2   | `Arrays.asList()` returns an immutable list | It returns a mutable fixed-size view backed by the original array |
+| 3   | Returning `null` is fine for "not found"    | Use `Optional` for methods that may not have a result             |
+| 4   | Concrete types are more helpful             | They lock callers to your implementation choices                  |
+| 5   | Deprecation means removal                   | In Java, deprecated methods live forever; plan accordingly        |
 
 ---
 
@@ -608,14 +608,14 @@ In large organizations:
 
 ### ⚖️ Trade-offs & Alternatives
 
-| Aspect         | Java 21+             | Kotlin 2.x            | Scala 3           |
-| -------------- | -------------------- | ---------------------- | ------------------- |
-| Null safety    | annotations/Optional | compile-time (`?`)     | `Option`            |
-| Boilerplate    | moderate (records)   | low (data class)       | low (case class)    |
-| Concurrency    | virtual threads      | coroutines             | ZIO / Cats Effect   |
-| Hiring pool    | very large           | moderate               | small               |
-| JVM feature lag | none                | 6-12 months            | longer              |
-| Android        | legacy               | standard               | not used            |
+| Aspect          | Java 21+             | Kotlin 2.x         | Scala 3           |
+| --------------- | -------------------- | ------------------ | ----------------- |
+| Null safety     | annotations/Optional | compile-time (`?`) | `Option`          |
+| Boilerplate     | moderate (records)   | low (data class)   | low (case class)  |
+| Concurrency     | virtual threads      | coroutines         | ZIO / Cats Effect |
+| Hiring pool     | very large           | moderate           | small             |
+| JVM feature lag | none                 | 6-12 months        | longer            |
+| Android         | legacy               | standard           | not used          |
 
 ---
 
@@ -643,13 +643,13 @@ In large organizations:
 
 ### ⚠️ Top Traps
 
-| #   | Misconception                              | Reality                                                              |
-| --- | ------------------------------------------ | -------------------------------------------------------------------- |
-| 1   | Kotlin is always less verbose than Java    | Java records + var + pattern matching close much of the gap          |
-| 2   | Kotlin null safety eliminates NPEs         | Platform types (Java interop) can still produce NPEs at boundaries  |
-| 3   | Coroutines and virtual threads are the same | Coroutines are cooperative; virtual threads are preemptive           |
-| 4   | Switching from Java to Kotlin is easy      | Language is easy; ecosystem (build, libraries, testing) takes months |
-| 5   | Java is dying                              | Java 21 adoption is strong; virtual threads and Valhalla are major draws |
+| #   | Misconception                               | Reality                                                                  |
+| --- | ------------------------------------------- | ------------------------------------------------------------------------ |
+| 1   | Kotlin is always less verbose than Java     | Java records + var + pattern matching close much of the gap              |
+| 2   | Kotlin null safety eliminates NPEs          | Platform types (Java interop) can still produce NPEs at boundaries       |
+| 3   | Coroutines and virtual threads are the same | Coroutines are cooperative; virtual threads are preemptive               |
+| 4   | Switching from Java to Kotlin is easy       | Language is easy; ecosystem (build, libraries, testing) takes months     |
+| 5   | Java is dying                               | Java 21 adoption is strong; virtual threads and Valhalla are major draws |
 
 ---
 
@@ -672,12 +672,13 @@ In large organizations:
 
 **The Surprising Truth:**
 The biggest risk of choosing Kotlin is not the language itself
+
 - it is the single-vendor dependency. JetBrains controls the
-Kotlin compiler, standard library, and primary IDE experience.
-If JetBrains' priorities diverge from your project's needs,
-you have limited recourse. Java's multi-vendor ecosystem (Red
-Hat, Amazon Corretto, Azul, Eclipse Adoptium, Oracle) provides
-resilience that Kotlin cannot match.
+  Kotlin compiler, standard library, and primary IDE experience.
+  If JetBrains' priorities diverge from your project's needs,
+  you have limited recourse. Java's multi-vendor ecosystem (Red
+  Hat, Amazon Corretto, Azul, Eclipse Adoptium, Oracle) provides
+  resilience that Kotlin cannot match.
 
 **Further Reading:**
 
@@ -940,13 +941,13 @@ coverage). Common patterns:
 
 ### ⚖️ Trade-offs & Alternatives
 
-| Aspect       | Stay on Java 8      | Migrate to 21      | Migrate to 17      |
-| ------------ | -------------------- | ------------------- | ------------------- |
-| Security     | no patches (EOL)     | current patches     | patches until 2027  |
-| Features     | 2014 language        | virtual threads, etc| records, sealed     |
-| Performance  | baseline             | 30-50% GC better    | 20-40% GC better    |
-| Risk         | security debt        | migration effort    | moderate effort     |
-| Effort       | zero                 | high                | moderate            |
+| Aspect      | Stay on Java 8   | Migrate to 21        | Migrate to 17      |
+| ----------- | ---------------- | -------------------- | ------------------ |
+| Security    | no patches (EOL) | current patches      | patches until 2027 |
+| Features    | 2014 language    | virtual threads, etc | records, sealed    |
+| Performance | baseline         | 30-50% GC better     | 20-40% GC better   |
+| Risk        | security debt    | migration effort     | moderate effort    |
+| Effort      | zero             | high                 | moderate           |
 
 ---
 
@@ -973,13 +974,13 @@ coverage). Common patterns:
 
 ### ⚠️ Top Traps
 
-| #   | Misconception                             | Reality                                                                        |
-| --- | ----------------------------------------- | ------------------------------------------------------------------------------ |
-| 1   | Java 21 is backward-compatible with Java 8 | Bytecode is compatible; APIs and reflection access are not                     |
-| 2   | `--add-opens` flags are permanent          | They are escape hatches; track and remove as libraries update                  |
-| 3   | Only application code needs changes        | 80% of issues come from library dependencies                                   |
-| 4   | Performance improves automatically         | GC and JIT improve, but incorrect module path config can hurt startup          |
-| 5   | Migration is a one-time cost               | New LTS every 2 years requires ongoing upgrade discipline                      |
+| #   | Misconception                              | Reality                                                               |
+| --- | ------------------------------------------ | --------------------------------------------------------------------- |
+| 1   | Java 21 is backward-compatible with Java 8 | Bytecode is compatible; APIs and reflection access are not            |
+| 2   | `--add-opens` flags are permanent          | They are escape hatches; track and remove as libraries update         |
+| 3   | Only application code needs changes        | 80% of issues come from library dependencies                          |
+| 4   | Performance improves automatically         | GC and JIT improve, but incorrect module path config can hurt startup |
+| 5   | Migration is a one-time cost               | New LTS every 2 years requires ongoing upgrade discipline             |
 
 ---
 
@@ -1257,12 +1258,12 @@ any API you encounter, not just configuration.
 
 ### ⚖️ Trade-offs & Alternatives
 
-| Aspect       | Interface-first      | Class-first           | Annotation-first     |
-| ------------ | -------------------- | --------------------- | -------------------- |
-| Flexibility  | high (swap impl)     | low (locked to class) | high (DI framework)  |
-| Testability  | excellent (mock)     | requires subclassing  | requires DI context  |
-| Complexity   | moderate             | simple                | framework-dependent  |
-| Evolution    | add default methods  | add methods           | add annotations      |
+| Aspect      | Interface-first     | Class-first           | Annotation-first    |
+| ----------- | ------------------- | --------------------- | ------------------- |
+| Flexibility | high (swap impl)    | low (locked to class) | high (DI framework) |
+| Testability | excellent (mock)    | requires subclassing  | requires DI context |
+| Complexity  | moderate            | simple                | framework-dependent |
+| Evolution   | add default methods | add methods           | add annotations     |
 
 ---
 
@@ -1288,13 +1289,13 @@ any API you encounter, not just configuration.
 
 ### ⚠️ Top Traps
 
-| #   | Misconception                         | Reality                                                            |
-| --- | ------------------------------------- | ------------------------------------------------------------------ |
-| 1   | Good APIs need many methods           | Good APIs are minimal; add methods only when needed                |
-| 2   | The implementation drives the API     | The API should be designed for callers, not implementors           |
-| 3   | Internal classes can be public         | Every public class is a commitment; package-private is the default |
+| #   | Misconception                           | Reality                                                            |
+| --- | --------------------------------------- | ------------------------------------------------------------------ |
+| 1   | Good APIs need many methods             | Good APIs are minimal; add methods only when needed                |
+| 2   | The implementation drives the API       | The API should be designed for callers, not implementors           |
+| 3   | Internal classes can be public          | Every public class is a commitment; package-private is the default |
 | 4   | Returning null is fine for missing keys | Use Optional or throw; null forces callers to guess                |
-| 5   | One workshop teaches API design       | Design skill requires building and reviewing 5-10 APIs             |
+| 5   | One workshop teaches API design         | Design skill requires building and reviewing 5-10 APIs             |
 
 ---
 
@@ -1584,13 +1585,13 @@ specifically.
 
 ### ⚖️ Trade-offs & Alternatives
 
-| Aspect       | Self-practice       | Mock interview       | Study group          |
-| ------------ | ------------------- | -------------------- | -------------------- |
-| Feedback     | self-only           | external (realistic) | peer (variable)      |
-| Pressure     | low                 | high (realistic)     | moderate             |
-| Scheduling   | any time            | needs partner        | needs coordination   |
-| Cost         | free                | time (or paid mock)  | time                 |
-| Depth check  | honest self-eval    | interviewer probes   | peer probes          |
+| Aspect      | Self-practice    | Mock interview       | Study group        |
+| ----------- | ---------------- | -------------------- | ------------------ |
+| Feedback    | self-only        | external (realistic) | peer (variable)    |
+| Pressure    | low              | high (realistic)     | moderate           |
+| Scheduling  | any time         | needs partner        | needs coordination |
+| Cost        | free             | time (or paid mock)  | time               |
+| Depth check | honest self-eval | interviewer probes   | peer probes        |
 
 ---
 
@@ -1617,13 +1618,13 @@ specifically.
 
 ### ⚠️ Top Traps
 
-| #   | Misconception                           | Reality                                                            |
-| --- | --------------------------------------- | ------------------------------------------------------------------ |
-| 1   | Staff interviews test coding ability    | They test system thinking, trade-offs, and communication          |
-| 2   | There is one right answer               | Multiple approaches work; reasoning quality matters more          |
-| 3   | Memorizing keywords is sufficient       | Interviews probe until you reach the edge of your knowledge       |
-| 4   | You should never say "I don't know"     | Honest boundaries + investigation plan scores higher than bluffing |
-| 5   | 30 minutes of prep is enough            | Practice 3-5 scenarios with full structure + timing               |
+| #   | Misconception                        | Reality                                                            |
+| --- | ------------------------------------ | ------------------------------------------------------------------ |
+| 1   | Staff interviews test coding ability | They test system thinking, trade-offs, and communication           |
+| 2   | There is one right answer            | Multiple approaches work; reasoning quality matters more           |
+| 3   | Memorizing keywords is sufficient    | Interviews probe until you reach the edge of your knowledge        |
+| 4   | You should never say "I don't know"  | Honest boundaries + investigation plan scores higher than bluffing |
+| 5   | 30 minutes of prep is enough         | Practice 3-5 scenarios with full structure + timing                |
 
 ---
 
@@ -1923,13 +1924,13 @@ patterns:
 
 ### ⚖️ Trade-offs & Alternatives
 
-| Aspect          | Java (erasure)        | C# (reification)      | Kotlin (null-safe)  |
-| --------------- | --------------------- | ---------------------- | ------------------- |
-| Backward compat | 30 years unbroken     | broken at generics     | N/A (JVM guest)     |
-| Runtime types   | erased                | retained               | erased (on JVM)     |
-| Null handling   | null everywhere       | null + ?               | null-safe types     |
-| Boxing          | required for generics | value types avoid it   | same as Java (JVM)  |
-| Future          | Valhalla              | already unified        | follows JVM changes |
+| Aspect          | Java (erasure)        | C# (reification)     | Kotlin (null-safe)  |
+| --------------- | --------------------- | -------------------- | ------------------- |
+| Backward compat | 30 years unbroken     | broken at generics   | N/A (JVM guest)     |
+| Runtime types   | erased                | retained             | erased (on JVM)     |
+| Null handling   | null everywhere       | null + ?             | null-safe types     |
+| Boxing          | required for generics | value types avoid it | same as Java (JVM)  |
+| Future          | Valhalla              | already unified      | follows JVM changes |
 
 ---
 
@@ -1956,13 +1957,13 @@ patterns:
 
 ### ⚠️ Top Traps
 
-| #   | Misconception                             | Reality                                                                   |
-| --- | ----------------------------------------- | ------------------------------------------------------------------------- |
-| 1   | Generics exist at runtime                 | They are erased; `List<String>` is `List` at runtime                     |
-| 2   | `@NonNull` prevents null at runtime       | Annotations are metadata; they do not change the type system              |
-| 3   | Java's type system is objectively worse    | Erasure is a trade-off, not a defect; it preserved 10 years of bytecode  |
-| 4   | Valhalla will fix everything              | It addresses boxing and value types; null and erasure remain              |
-| 5   | Kotlin's null safety is complete          | Platform types (Java interop) can still produce NPEs                     |
+| #   | Misconception                           | Reality                                                                 |
+| --- | --------------------------------------- | ----------------------------------------------------------------------- |
+| 1   | Generics exist at runtime               | They are erased; `List<String>` is `List` at runtime                    |
+| 2   | `@NonNull` prevents null at runtime     | Annotations are metadata; they do not change the type system            |
+| 3   | Java's type system is objectively worse | Erasure is a trade-off, not a defect; it preserved 10 years of bytecode |
+| 4   | Valhalla will fix everything            | It addresses boxing and value types; null and erasure remain            |
+| 5   | Kotlin's null safety is complete        | Platform types (Java interop) can still produce NPEs                    |
 
 ---
 
@@ -2265,13 +2266,13 @@ The practical impact of Java's compatibility:
 
 ### ⚖️ Trade-offs & Alternatives
 
-| Aspect       | Java (extreme compat) | Python (broke compat) | Go (strong compat)   |
-| ------------ | --------------------- | --------------------- | -------------------- |
-| Break history | 3 minor breaks in 30y | 1 major break (2to3) | 0 breaks (Go 1.x)   |
-| Dead APIs    | many persist          | cleaned up            | minimal (young lang) |
-| Evolution    | slow, deliberate      | can be fast           | moderate             |
-| User trust   | very high             | recovered after 2020  | high                 |
-| Migration    | gradual, optional     | forced, painful       | not needed (yet)     |
+| Aspect        | Java (extreme compat) | Python (broke compat) | Go (strong compat)   |
+| ------------- | --------------------- | --------------------- | -------------------- |
+| Break history | 3 minor breaks in 30y | 1 major break (2to3)  | 0 breaks (Go 1.x)    |
+| Dead APIs     | many persist          | cleaned up            | minimal (young lang) |
+| Evolution     | slow, deliberate      | can be fast           | moderate             |
+| User trust    | very high             | recovered after 2020  | high                 |
+| Migration     | gradual, optional     | forced, painful       | not needed (yet)     |
 
 ---
 
@@ -2298,13 +2299,13 @@ The practical impact of Java's compatibility:
 
 ### ⚠️ Top Traps
 
-| #   | Misconception                                | Reality                                                                   |
-| --- | -------------------------------------------- | ------------------------------------------------------------------------- |
-| 1   | Backward compatibility means no new features | Java ships major features every 6 months; compat and evolution coexist    |
-| 2   | Python 3 was a mistake                       | The break was necessary; the mistake was underestimating migration cost   |
-| 3   | Deprecation means "will be removed soon"     | In Java, deprecated methods can persist for decades                       |
-| 4   | Breaking changes are always bad              | Sometimes necessary for security; the question is how, not whether        |
-| 5   | Java's old APIs are harmless                 | `Date` mutability and `Cloneable` brokenness cause real production bugs   |
+| #   | Misconception                                | Reality                                                                 |
+| --- | -------------------------------------------- | ----------------------------------------------------------------------- |
+| 1   | Backward compatibility means no new features | Java ships major features every 6 months; compat and evolution coexist  |
+| 2   | Python 3 was a mistake                       | The break was necessary; the mistake was underestimating migration cost |
+| 3   | Deprecation means "will be removed soon"     | In Java, deprecated methods can persist for decades                     |
+| 4   | Breaking changes are always bad              | Sometimes necessary for security; the question is how, not whether      |
+| 5   | Java's old APIs are harmless                 | `Date` mutability and `Cloneable` brokenness cause real production bugs |
 
 ---
 
@@ -2386,10 +2387,11 @@ scope. Java (1996) chose garbage collection instead:
 non-deterministic finalization. This worked for memory but
 failed for non-memory resources (files, sockets, locks).
 `try-with-resources` (Java 7, 2011) was Java's RAII equivalent
+
 - 15 years late. Lisp macros predate Java by 40 years (Lisp
-1.5, 1962). They allow syntax extension at compile time. Java
-has no macros; annotation processors (Java 5, 2004) and
-Lombok provide a fraction of that capability.
+  1.5, 1962). They allow syntax extension at compile time. Java
+  has no macros; annotation processors (Java 5, 2004) and
+  Lombok provide a fraction of that capability.
 
 ---
 
@@ -2660,19 +2662,19 @@ In production Java codebases:
 
 ### ⚖️ Trade-offs & Alternatives
 
-| Aspect          | C++ RAII             | Java TWR             | Rust ownership       |
-| --------------- | -------------------- | -------------------- | -------------------- |
-| Cleanup trigger | scope exit (always)  | scope exit (opt-in)  | scope exit (always)  |
-| Memory managed  | manual or smart ptr  | GC                   | ownership + borrow   |
-| Can leak        | if using raw pointer | if not using TWR     | compile-time prevent |
-| Syntax cost     | destructors          | try-with-resources   | lifetime annotations |
+| Aspect          | C++ RAII             | Java TWR            | Rust ownership       |
+| --------------- | -------------------- | ------------------- | -------------------- |
+| Cleanup trigger | scope exit (always)  | scope exit (opt-in) | scope exit (always)  |
+| Memory managed  | manual or smart ptr  | GC                  | ownership + borrow   |
+| Can leak        | if using raw pointer | if not using TWR    | compile-time prevent |
+| Syntax cost     | destructors          | try-with-resources  | lifetime annotations |
 
-| Aspect          | Lisp macros          | Java annotations     | Rust macros          |
-| --------------- | -------------------- | -------------------- | -------------------- |
-| Power           | full AST rewrite     | metadata + processor | pattern-based        |
-| Readability     | requires macro knowledge | clear (just metadata) | moderate          |
-| New syntax      | yes (unlimited)      | no                   | limited              |
-| Debugging       | hard (expanded code) | hard (generated code) | moderate            |
+| Aspect      | Lisp macros              | Java annotations      | Rust macros   |
+| ----------- | ------------------------ | --------------------- | ------------- |
+| Power       | full AST rewrite         | metadata + processor  | pattern-based |
+| Readability | requires macro knowledge | clear (just metadata) | moderate      |
+| New syntax  | yes (unlimited)          | no                    | limited       |
+| Debugging   | hard (expanded code)     | hard (generated code) | moderate      |
 
 ---
 
@@ -2701,13 +2703,13 @@ In production Java codebases:
 
 ### ⚠️ Top Traps
 
-| #   | Misconception                          | Reality                                                                  |
-| --- | -------------------------------------- | ------------------------------------------------------------------------ |
-| 1   | GC handles all resource cleanup        | GC handles memory only; files, sockets, locks need explicit close        |
-| 2   | `finalize()` is Java's destructor      | It is non-deterministic and deprecated; use try-with-resources           |
-| 3   | Java has no metaprogramming            | Annotation processors and bytecode manipulation (ASM, ByteBuddy) exist  |
-| 4   | Lombok is free                         | It hides critical code (equals, hashCode); debugging cost is real       |
-| 5   | RAII is only about memory              | RAII is about ANY resource with a lifetime: files, locks, connections    |
+| #   | Misconception                     | Reality                                                                |
+| --- | --------------------------------- | ---------------------------------------------------------------------- |
+| 1   | GC handles all resource cleanup   | GC handles memory only; files, sockets, locks need explicit close      |
+| 2   | `finalize()` is Java's destructor | It is non-deterministic and deprecated; use try-with-resources         |
+| 3   | Java has no metaprogramming       | Annotation processors and bytecode manipulation (ASM, ByteBuddy) exist |
+| 4   | Lombok is free                    | It hides critical code (equals, hashCode); debugging cost is real      |
+| 5   | RAII is only about memory         | RAII is about ANY resource with a lifetime: files, locks, connections  |
 
 ---
 
