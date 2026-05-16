@@ -10,7 +10,7 @@ category: Spring Ecosystem
 code: SPR
 folder: learn/spring/
 difficulty_range: medium
-status: draft
+status: complete
 version: 1
 generated_from: LEARN_KEYWORD_GENERATOR.md v1.0
 archetype: FRAMEWORK
@@ -36,7 +36,7 @@ keywords:
   - SPR-060 Monitoring Spring Applications in Production
   - SPR-061 Spring Boot 2.x to 3.x Migration Guide
   - SPR-062 Jakarta EE Namespace Migration (javax to jakarta)
-  - 'SPR-063 "Spring Beans Are Thread-Safe" is Wrong - Singleton Scope'
+  - SPR-063 "Spring Beans Are Thread-Safe" is Wrong - Singleton Scope
   - SPR-064 Spring Security OWASP Top 10 Alignment
   - SPR-065 Explain Spring DI at Every Level
   - SPR-066 Spring System Design Interview Patterns
@@ -78,7 +78,7 @@ keywords:
 
 # SPR-044 Bean Lifecycle and Initialization Callbacks
 
-**TL;DR** - Every Spring bean passes through a deterministic sequence of instantiation, dependency injection, aware callbacks, post-processors, init methods, usage, and destruction - knowing this sequence is how you debug initialization failures and hook custom logic at the right moment.
+**TL;DR** - Spring beans follow a fixed lifecycle: instantiate, inject, aware callbacks, post-processors, init, ready, destroy - know this order to debug startup failures.
 
 ### 🔥 The Problem in One Paragraph
 
@@ -90,9 +90,15 @@ The **Spring bean lifecycle** is the ordered sequence of phases a managed object
 
 ### 🧠 Mental Model
 
-> Think of a bean's lifecycle as an airport boarding process. The passenger (bean instance) is created at check-in (instantiation). Luggage is attached (property population). The passenger passes through identity checks (Aware callbacks), then security screening (BeanPostProcessors). They wait at the gate (@PostConstruct / afterPropertiesSet), receive final boarding instructions (custom init-method), and enter the plane (ready). When landing, they go through customs (@PreDestroy), baggage claim (DisposableBean), and exit (custom destroy-method).
+> Think of a bean's lifecycle as an airport boarding process.
 
-**Where this breaks down:** unlike an airport, Spring's
+- "Check-in" -> instantiation (constructor call)
+- "Luggage attached" -> property population (@Autowired)
+- "Security screening" -> BeanPostProcessors
+- "Gate wait" -> @PostConstruct / afterPropertiesSet
+- "Boarding" -> custom init-method, then ready
+
+**Where this analogy breaks down:** unlike an airport, Spring's
 lifecycle is strictly synchronous within a single bean.
 Two beans may initialize in parallel only with async bean
 initialization (Spring 6.2+), not by default.
@@ -140,32 +146,26 @@ flowchart TD
     K --> L["Custom destroy-method"]
 ```
 
-1. The container calls the constructor (or factory method) to create the raw instance.
-2. It injects dependencies - `@Autowired` fields, setter methods, constructor arguments already resolved in step 1.
-3. If the bean implements `BeanNameAware`, `BeanFactoryAware`, or `ApplicationContextAware`, the container calls each setter in that order.
-4. All registered `BeanPostProcessor` instances run their `postProcessBeforeInitialization` method against the bean.
-5. Init callbacks fire in order: `@PostConstruct` annotated method, then `InitializingBean.afterPropertiesSet()`, then the custom `init-method` declared in `@Bean(initMethod = "...")`.
-6. `BeanPostProcessor.postProcessAfterInitialization` runs - this is where AOP proxies are typically created, wrapping the original bean.
-7. The bean is ready and served from the context.
-8. On shutdown, destruction callbacks fire in order: `@PreDestroy`, then `DisposableBean.destroy()`, then custom `destroy-method`.
+1. Container calls the constructor (or factory method).
+2. Dependencies injected - `@Autowired` fields and setters.
+3. Aware callbacks: `BeanNameAware`, `BeanFactoryAware`, `ApplicationContextAware`.
+4. `BeanPostProcessor.postProcessBeforeInitialization` runs against the bean.
+5. Init callbacks fire in order: `@PostConstruct`, then `InitializingBean.afterPropertiesSet()`, then custom `init-method`.
+6. `BeanPostProcessor.postProcessAfterInitialization` runs - AOP proxies are typically created here.
+7. The bean is ready.
+8. On shutdown: `@PreDestroy`, then `DisposableBean.destroy()`, then custom `destroy-method`.
 
 **The BeanPostProcessor phase is the most consequential.**
-This is where Spring's own infrastructure hooks itself in.
-`AutowiredAnnotationBeanPostProcessor` handles `@Autowired`
-resolution. `CommonAnnotationBeanPostProcessor` handles
-`@PostConstruct` and `@PreDestroy`. `AbstractAutoProxyCreator`
-(the AOP infrastructure) wraps beans in proxies during
-`postProcessAfterInitialization`. A custom
-`BeanPostProcessor` runs against every singleton in the
-context unless you filter by type - a common source of
-unexpected side effects.
+`AutowiredAnnotationBeanPostProcessor` handles `@Autowired`.
+`CommonAnnotationBeanPostProcessor` handles `@PostConstruct`
+and `@PreDestroy`. `AbstractAutoProxyCreator` wraps beans
+in proxies. A custom `BeanPostProcessor` runs against every
+singleton unless you filter by type.
 
-**The destruction sequence only fires on graceful shutdown.**
-If the JVM is killed with `kill -9`, no `@PreDestroy` runs.
-`context.close()` or `context.registerShutdownHook()` triggers
-the sequence. In Spring Boot, the shutdown hook is registered
-by default, but in a standalone `AnnotationConfigApplicationContext`
-you must register it explicitly or call `close()`.
+**Destruction only fires on graceful shutdown.** `kill -9`
+bypasses `@PreDestroy`. Spring Boot registers a shutdown hook
+by default; standalone `AnnotationConfigApplicationContext`
+requires explicit `registerShutdownHook()` or `close()`.
 
 ### 🛠️ Worked Example
 
@@ -221,30 +221,17 @@ public class CacheWarmer {
 ```java
 @Configuration
 public class InfraConfig {
-
   @Bean(initMethod = "start",
         destroyMethod = "stop")
-  public ConnectionPool dataSourcePool() {
+  public ConnectionPool pool() {
     return new ConnectionPool(
-        "jdbc:postgresql://db:5432/app",
-        20 // max connections
-    );
-  }
-
-  @Bean
-  public CacheWarmer cacheWarmer(
-      ProductRepository repo) {
-    return new CacheWarmer(repo);
+        "jdbc:postgresql://db:5432/app", 20);
   }
 }
 ```
 
-The `ConnectionPool` calls `start()` during init-method
-phase and `stop()` during destroy-method phase. Spring
-resolves dependency ordering: if `CacheWarmer` depends on
-`DataSource`, the pool initializes first and destroys last.
-This implicit ordering is derived from the dependency graph,
-not from declaration order in the configuration class.
+Spring resolves dependency ordering from the dependency
+graph, not from declaration order.
 
 ### ⚖️ Trade-offs
 
@@ -258,14 +245,10 @@ not from declaration order in the configuration class.
 | @Bean(initMethod) | Spring-only      | low (name-based)   | after afterProperties |
 | BeanPostProcessor | Spring-only      | high               | wraps all beans       |
 
-Prefer `@PostConstruct` for application code because it is
-a Jakarta standard annotation, portable across DI frameworks.
-Use `InitializingBean` when you need framework-level
-guarantees (Spring's own infrastructure uses it extensively).
-Reserve `@Bean(initMethod)` for third-party classes you
-cannot annotate. Use `BeanPostProcessor` only when you
-need to intercept every bean - and scope it tightly
-with type checks.
+Prefer `@PostConstruct` for application code (Jakarta
+standard, portable). Use `InitializingBean` for
+framework-level guarantees. Reserve `@Bean(initMethod)`
+for third-party classes you cannot annotate.
 
 ### ⚡ Decision Snap
 
@@ -314,14 +297,11 @@ reference stored in the container is a wrapper, and
 This is not a bug - it is the mechanism behind `@Transactional`,
 `@Cacheable`, `@Async`, and every other proxy-based feature.
 
-Understanding this explains a class of subtle bugs: if you
-store `this` in a field during `@PostConstruct` (phase 7),
-you capture the raw instance, not the proxy. Any code that
-later calls methods on that stored reference bypasses the
-proxy, defeating AOP entirely. The proxy replacement happens
-three phases after `@PostConstruct`. This ordering is
-intentional - init callbacks see the real bean, and
-post-processors see the final product.
+Understanding this explains a class of subtle bugs: storing
+`this` in a field during `@PostConstruct` (phase 7) captures
+the raw instance, not the proxy. Code calling methods on
+that reference bypasses AOP. The proxy replacement happens
+three phases after `@PostConstruct`.
 
 ### 📇 Revision Card
 
@@ -347,9 +327,13 @@ You need logging on 40 service methods, transaction management on 30, security c
 
 ### 🧠 Mental Model
 
-> Think of AOP as a building security system. Every room (method) has a door. Instead of putting a lock, camera, and badge reader inside each room, you install them on the door frame (proxy). The room's occupant (business logic) is unaware of the security hardware. The security system (aspect) decides which doors get which checks (pointcut) and what happens at each door (advice).
+> Think of AOP as a building security system installed on door frames, not inside rooms.
 
-**Where this breaks down:** Spring AOP only intercepts
+- "Door frame" -> proxy wrapper around the bean
+- "Security camera" -> @Around advice recording method calls
+- "Badge reader" -> pointcut expression selecting which methods
+
+**Where this analogy breaks down:** Spring AOP only intercepts
 through the proxy - internal method calls within the same
 class bypass the door frame entirely, because they do not
 go through the proxy. Real security systems do not have
@@ -634,7 +618,7 @@ through the proxy?"
 
 # SPR-046 @Transactional Proxy Mechanism and Pitfalls
 
-**TL;DR** - Spring's `@Transactional` works through runtime proxies that intercept method calls, so any invocation path that bypasses the proxy - self-invocation, private methods, wrong exception types - silently disables transaction management without any error.
+**TL;DR** - `@Transactional` works through proxies - self-invocation, private methods, and wrong exception types silently bypass transaction management with no error or warning.
 
 ### 🔥 The Problem in One Paragraph
 
@@ -646,9 +630,13 @@ Spring implements declarative transaction management by wrapping `@Transactional
 
 ### 🧠 Mental Model
 
-> Think of the proxy as a receptionist sitting in front of an executive's office. Every visitor (caller) must go through the receptionist, who handles sign-in (begin transaction), escorting (delegation), and sign-out (commit/rollback). But if the executive calls their own phone extension from inside the office (self-invocation), the receptionist never sees that call. No sign-in sheet, no escort, no record. The call happens, but outside the receptionist's control.
+> Think of the proxy as a receptionist sitting in front of an executive's office.
 
-**Where this breaks down:** unlike a receptionist who is
+- "Visitor" -> external caller going through the proxy
+- "Receptionist" -> TransactionInterceptor (begin/commit/rollback)
+- "Internal phone call" -> self-invocation bypassing the proxy
+
+**Where this analogy breaks down:** unlike a receptionist who is
 physically separate, the proxy and the target share the
 same bean reference in the container. The `this` keyword
 always resolves to the raw target, never the proxy. This
@@ -739,7 +727,7 @@ the entire outer transaction as rollback-only.
 
 ### 🛠️ Worked Example
 
-**BAD - self-invocation kills transaction:**
+**BAD:**
 
 ```java
 @Service
@@ -759,7 +747,7 @@ public class OrderService {
 }
 ```
 
-**GOOD - inject self or extract to separate bean:**
+**GOOD:**
 
 ```java
 @Service
@@ -869,7 +857,7 @@ over the AOP infrastructure you learned in SPR-045.
 
 # SPR-047 Spring Security Filter Chain Architecture
 
-**TL;DR** - Spring Security is a chain of servlet filters orchestrated by `FilterChainProxy`, where each filter handles exactly one security concern in a fixed order, and understanding this chain is the key to debugging authentication failures, adding custom logic, and configuring multi-tenant security.
+**TL;DR** - Spring Security is a fixed-order chain of servlet filters - understanding this pipeline is the key to debugging auth failures and placing custom logic correctly.
 
 ### 🔥 The Problem in One Paragraph
 
@@ -881,9 +869,13 @@ The **Spring Security filter chain** is a servlet-level architecture consisting 
 
 ### 🧠 Mental Model
 
-> Think of the filter chain as airport security with multiple checkpoints in a fixed sequence. The first checkpoint checks your ticket format (CORS, headers). The next verifies your identity (authentication). The next checks if your boarding pass matches the gate (authorization). Each checkpoint is independent - it does one job and passes you forward. If any checkpoint rejects you, you never reach the gate. You cannot rearrange checkpoints because identity must be verified before authorization can happen.
+> Think of the filter chain as airport security with multiple checkpoints in a fixed sequence.
 
-**Where this breaks down:** unlike airport checkpoints,
+- "Ticket check" -> CorsFilter / header validation
+- "Identity verification" -> authentication filters
+- "Boarding pass gate match" -> AuthorizationFilter
+
+**Where this analogy breaks down:** unlike airport checkpoints,
 some filters do not block the chain on failure. For
 example, `AnonymousAuthenticationFilter` adds a default
 identity rather than rejecting. Not every filter is a
@@ -980,7 +972,7 @@ tests but fails in production" security bugs.
 
 ### 🛠️ Worked Example
 
-**BAD - custom filter at wrong position:**
+**BAD:**
 
 ```java
 @Bean
@@ -997,7 +989,7 @@ SecurityFilterChain bad(HttpSecurity http)
 }
 ```
 
-**GOOD - custom filter at correct position:**
+**GOOD:**
 
 ```java
 @Bean
@@ -1136,9 +1128,14 @@ OAuth 2.0 (RFC 6749) is a delegation framework where a resource owner grants a c
 
 ### 🧠 Mental Model
 
-Think of a hotel check-in desk. You (the user) show your passport (credentials) to the front desk (authorization server), not to the restaurant (resource server). The desk issues a room key card (access token) scoped to your floor. OIDC is the name badge they print alongside it - it proves _who_ you are. `oauth2Login()` is the lobby flow where you walk in and get the key. `oauth2ResourceServer()` is the door lock that reads the key but never talks to the front desk during normal operation - it trusts the cryptographic signature.
+> Think of a hotel check-in desk that issues key cards.
 
-**Where this breaks down:** Unlike a hotel key, JWTs carry claims that can go stale. A user revoked in the authorization server still holds a valid token until it expires, because the resource server validates the signature, not a live session.
+- "Front desk" -> authorization server (issues tokens)
+- "Room key card" -> access token (scoped, time-limited)
+- "Name badge" -> OIDC ID token (proves who you are)
+- "Door lock" -> resource server (validates key, never talks to desk)
+
+**Where this analogy breaks down:** unlike a hotel key, JWTs carry claims that can go stale. A user revoked in the authorization server still holds a valid token until it expires, because the resource server validates the signature, not a live session.
 
 ### ⚙️ How It Works
 
@@ -1215,7 +1212,7 @@ Client Credentials flow differs: there is no user. A service authenticates itsel
 
 ### 🛠️ Worked Example
 
-**BAD - Hardcoded issuer check, no audience validation:**
+**BAD:**
 
 ```java
 // Accepts tokens from ANY issuer matching
@@ -1230,7 +1227,7 @@ JwtDecoder jwtDecoder() {
 }
 ```
 
-**GOOD - Explicit issuer and audience validation:**
+**GOOD:**
 
 ```yaml
 # application.yml
@@ -1343,9 +1340,14 @@ JPA fetch types (`FetchType.LAZY` and `FetchType.EAGER`) control _when_ associat
 
 ### 🧠 Mental Model
 
-Think of a restaurant menu. EAGER is an all-you-can-eat buffet - everything is loaded whether you eat it or not. LAZY is ordering a la carte - each dish (association) arrives only when you ask for it, but if you order 50 items one by one, the waiter makes 50 trips (N+1). `@EntityGraph` is a prix fixe menu - you declare exactly which courses come together in one trip. Projections are a diet menu - you get only the fields you need, no extras on the plate.
+> Think of a restaurant menu with four ordering styles.
 
-**Where this breaks down:** Unlike a restaurant, LAZY associations throw `LazyInitializationException` if you try to access them after the persistence context (transaction) closes. The waiter has gone home.
+- "All-you-can-eat buffet" -> EAGER fetch (loads everything)
+- "A la carte" -> LAZY fetch (one dish per trip, N+1 risk)
+- "Prix fixe menu" -> @EntityGraph (declare courses upfront)
+- "Diet menu" -> projection (only the fields you need)
+
+**Where this analogy breaks down:** unlike a restaurant, LAZY associations throw `LazyInitializationException` if you try to access them after the persistence context (transaction) closes. The waiter has gone home.
 
 ### ⚙️ How It Works
 
@@ -1387,7 +1389,7 @@ The N+1 connection: if you load 50 orders (1 query) and then iterate to access `
 
 ### 🛠️ Worked Example
 
-**BAD - EAGER everywhere, N+1 hidden:**
+**BAD:**
 
 ```java
 @Entity
@@ -1405,7 +1407,7 @@ public class Order {
 }
 ```
 
-**GOOD - LAZY default, EntityGraph per use case:**
+**GOOD:**
 
 ```java
 @Entity
@@ -1486,13 +1488,19 @@ The fundamental trade-off is flexibility vs. safety. LAZY gives you flexibility 
 
 The biggest performance gains in Spring Data JPA rarely come from fetch type tuning. They come from projections. Most endpoints return lists of entities but only render three or four fields. Switching from `List<Order>` to `List<OrderSummary>` skips hydrating full entity graphs, avoids persistence context tracking overhead, and reduces GC pressure. Yet most teams spend hours debugging N+1 with `@EntityGraph` while ignoring the simpler fix: stop selecting columns you never read.
 
+### 📇 Revision Card
+
+1. Default `@ManyToOne` fetch is EAGER; default `@OneToMany` is LAZY - override explicitly to avoid surprises.
+2. `@EntityGraph` defines which associations to fetch per use case without hardcoding fetch types on the mapping.
+3. Interface projections avoid full entity hydration and persistence context tracking - use them for read-only list endpoints.
+
 ---
 
 ---
 
 # SPR-050 HikariCP Connection Pool Tuning
 
-**TL;DR** - HikariCP is Spring Boot's default connection pool, and the difference between a well-tuned pool and a default one is the difference between a service that survives traffic spikes and one that collapses under its own connection backlog.
+**TL;DR** - HikariCP is Spring Boot's default connection pool - proper sizing determines whether your service survives traffic spikes or collapses under connection backlog.
 
 ### 🔥 The Problem in One Paragraph
 
@@ -1504,9 +1512,14 @@ Your Spring Boot service handles 200 requests per second normally, then a downst
 
 ### 🧠 Mental Model
 
-> Think of a connection pool as a hotel shuttle service at an airport. The shuttle buses (connections) run between the terminal (application) and hotels (database). `maximumPoolSize` is the total number of buses you own. `minimumIdle` is how many buses wait at the terminal even when nobody is traveling. `connectionTimeout` is how long a passenger will stand in the queue before giving up. `maxLifetime` is when you retire an old bus and replace it with a new one. `leakDetectionThreshold` is a GPS alarm that fires if a bus has been out for too long without returning.
+> Think of a connection pool as a hotel shuttle service at an airport.
 
-**Where this breaks down:** unlike shuttle buses, database connections consume server-side memory and process slots. A pool of 50 connections is not "better" than 10 - PostgreSQL's default `max_connections` is 100, and every idle connection holds a backend process. More connections can mean worse throughput due to context switching on the database side.
+- "Total buses" -> maximumPoolSize
+- "Buses waiting at terminal" -> minimumIdle
+- "Passenger queue timeout" -> connectionTimeout
+- "Bus retirement age" -> maxLifetime
+
+**Where this analogy breaks down:** unlike shuttle buses, database connections consume server-side memory and process slots. A pool of 50 connections is not "better" than 10 - PostgreSQL's default `max_connections` is 100, and every idle connection holds a backend process. More connections can mean worse throughput due to context switching on the database side.
 
 ### ⚙️ How It Works
 
@@ -1697,7 +1710,7 @@ The HikariCP author's own recommendation is that most applications need a pool o
 
 # SPR-051 Database Migrations with Flyway and Liquibase
 
-**TL;DR** - Database migrations with Flyway or Liquibase give your schema a version history as disciplined as your code's Git log, and Spring Boot auto-runs them at startup so your schema and application always deploy in lockstep.
+**TL;DR** - Flyway or Liquibase version-control your schema like Git versions code - Spring Boot auto-runs migrations at startup so schema and application deploy in lockstep.
 
 ### 🔥 The Problem in One Paragraph
 
@@ -1709,9 +1722,13 @@ A developer adds a `status` column to the `orders` table on their laptop. They t
 
 ### 🧠 Mental Model
 
-> Think of database migrations as a ledger at a bank. Each migration is a numbered transaction entry (deposit, withdrawal, transfer). The ledger (history table) records every transaction that has been applied. You can only append new entries - you never erase or rewrite a past entry. When a new branch opens (new environment), it replays the entire ledger from entry one to reach the current state. If someone tampers with a past entry, the auditor (checksum validation) catches it immediately.
+> Think of database migrations as a numbered ledger at a bank.
 
-**Where this breaks down:** unlike a financial ledger, database migrations are not always reversible. An `ALTER TABLE DROP COLUMN` destroys data. Flyway Community edition has no built-in undo; rollback must be planned manually with compensating migrations.
+- "Ledger entry" -> one migration file (V1, V2, V3)
+- "Ledger book" -> history table (flyway_schema_history)
+- "Auditor checksum" -> hash validation on applied migrations
+
+**Where this analogy breaks down:** unlike a financial ledger, database migrations are not always reversible. An `ALTER TABLE DROP COLUMN` destroys data. Flyway Community edition has no built-in undo; rollback must be planned manually with compensating migrations.
 
 ### ⚙️ How It Works
 
@@ -1932,23 +1949,27 @@ The rule "never edit an applied migration" feels restrictive until you realize i
 
 # SPR-052 Spring Boot Actuator and Health Endpoints
 
-**TL;DR** Spring Boot Actuator exposes operational endpoints (/health, /metrics, /env, /beans, /loggers) that give load balancers, orchestrators, and operators a live window into application state - add one starter dependency and your app becomes production-observable.
+**TL;DR** - Actuator exposes /health, /metrics, /env, and /loggers endpoints giving orchestrators and operators a live window into application state with one starter dependency.
 
-### The Problem in One Paragraph
+### 🔥 The Problem in One Paragraph
 
 You deploy a Spring Boot service and Kubernetes marks it "Ready" because the JVM opened port 8080. Three minutes later the database connection pool is exhausted, Redis is unreachable, and the disk is 98% full - yet the pod keeps receiving traffic because nothing told the orchestrator the app is unhealthy. Without a structured way to expose internal health, configuration, and runtime state, teams resort to custom /status endpoints that are inconsistent across services, miss failure modes, and rot faster than the code they monitor.
 
-### Textbook Definition
+### 📘 Textbook Definition
 
 Spring Boot Actuator is a sub-project that adds production-ready features to a Spring Boot application. It auto-configures HTTP (or JMX) endpoints that expose health checks, metrics, environment properties, bean definitions, configuration mappings, thread dumps, and more. Health indicators aggregate component status (UP, DOWN, OUT_OF_SERVICE, UNKNOWN) into a composite result. Endpoints are secured by default and must be explicitly exposed through configuration.
 
-### Mental Model
+### 🧠 Mental Model
 
-Think of Actuator as the **instrument cluster on a car dashboard**. The engine (your application) already has sensors for oil pressure, coolant temperature, fuel level, and RPM. Actuator wires those sensors to gauges a driver (operator) can read at a glance. The /health endpoint is the check-engine light - a single UP/DOWN that hides complexity. The /metrics endpoint is the OBD-II diagnostic port - deep telemetry for specialists. The /env endpoint shows every dial and switch position.
+> Think of Actuator as the instrument cluster on a car dashboard.
 
-**Where this breaks down:** A dashboard is read-only; Actuator endpoints like /loggers and /env can mutate state at runtime (change log levels, refresh config). That write capability demands security controls a passive dashboard never needs.
+- "Check-engine light" -> /health endpoint (single UP/DOWN)
+- "OBD-II diagnostic port" -> /metrics endpoint (deep telemetry)
+- "Dial and switch positions" -> /env endpoint (config values)
 
-### How It Works
+**Where this analogy breaks down:** a dashboard is read-only; Actuator endpoints like /loggers and /env can mutate state at runtime (change log levels, refresh config). That write capability demands security controls a passive dashboard never needs.
+
+### ⚙️ How It Works
 
 ```
 Request        Actuator        Health
@@ -2014,9 +2035,9 @@ Health indicator execution runs on the request thread by default. A slow databas
 
 Endpoint security uses the same Spring Security filter chain as your main application. Best practice is to host actuator on a separate management port (`management.server.port=9090`) so internal-only traffic never traverses the public ingress. This lets you firewall management traffic at the network level rather than relying solely on path-based security rules.
 
-### Worked Example
+### 🛠️ Worked Example
 
-**BAD - Checking health without actuator:**
+**BAD:**
 
 ```java
 // Hand-rolled /status - misses half the failure
@@ -2027,7 +2048,7 @@ public String status() {
 }
 ```
 
-**GOOD - Custom HealthIndicator:**
+**GOOD:**
 
 ```java
 @Component
@@ -2084,7 +2105,7 @@ management:
 
 This separates management traffic, exposes Prometheus scraping, maps readiness to real dependencies, and enriches /info with git commit data for traceability.
 
-### Trade-offs
+### ⚖️ Trade-offs
 
 | Gain                                               | Cost                                                   |
 | -------------------------------------------------- | ------------------------------------------------------ |
@@ -2096,7 +2117,7 @@ This separates management traffic, exposes Prometheus scraping, maps readiness t
 
 Actuator gives you production observability essentially for free, but "for free" is deceptive if you skip security. An exposed /env endpoint leaks database passwords, API keys, and cloud credentials. An open /loggers endpoint lets an attacker set `root` to `TRACE` and flood your disk or stdout, potentially degrading the entire node. The management-port separation pattern plus Spring Security authorization on actuator paths is the minimum viable security posture.
 
-### Decision Snap
+### ⚡ Decision Snap
 
 **USE WHEN:** You need health probes for orchestrators, standardized operational endpoints, or a foundation for metrics and monitoring.
 
@@ -2104,7 +2125,7 @@ Actuator gives you production observability essentially for free, but "for free"
 
 **PREFER custom HealthIndicator WHEN:** Your service depends on an external system (payment gateway, message broker, partner API) that the built-in indicators do not cover.
 
-### Top Traps
+### ⚠️ Top Traps
 
 | Trap                                                        | Why it hurts                                                                     | Fix                                                       |
 | ----------------------------------------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------- |
@@ -2112,17 +2133,17 @@ Actuator gives you production observability essentially for free, but "for free"
 | Heavy health checks on liveness probe                       | Kubernetes restarts pods when a slow DB query times out the probe                | Use liveness=ping only; dependency checks go in readiness |
 | Forgetting `show-details: when-authorized`                  | Health details (connection strings, versions) visible to unauthenticated callers | Always require authorization for detail exposure          |
 
-### Learning Ladder
+### 🪜 Learning Ladder
 
 **Prerequisites:** SPR-007 (Spring Boot Auto-Configuration), SPR-034 (Application Properties and Profiles).
 **THIS:** SPR-052 - Actuator endpoints, health indicators, probe groups, endpoint security.
 **Next:** SPR-053 (Micrometer Metrics and Distributed Tracing), SPR-060 (Monitoring Spring Applications in Production).
 
-### The Surprising Truth
+### 💡 The Surprising Truth
 
 Most teams enable Actuator for /health and ignore the rest. The real power is /loggers - the ability to switch a single logger to DEBUG in production, reproduce the issue, and switch back, without a redeploy. Combined with /metrics for quantitative data and /env for confirming which profile is actually active, Actuator replaces half the "let me SSH into the box" emergency playbook with a single HTTP call.
 
-### Revision Card
+### 📇 Revision Card
 
 - Actuator auto-registers health indicators for detected infrastructure (DB, Redis, disk); composite status returns the worst across all indicators.
 - Separate management port + explicit endpoint include list + Spring Security authorization is the minimum security posture for production.
@@ -2134,23 +2155,27 @@ Most teams enable Actuator for /health and ignore the rest. The real power is /l
 
 # SPR-053 Micrometer Metrics and Distributed Tracing
 
-**TL;DR** Micrometer is the SLF4J of metrics - a vendor-neutral facade that lets Spring Boot auto-instrument JVM, HTTP, database, and cache metrics, then ship them to any backend (Prometheus, Datadog, CloudWatch) without coupling application code to a specific monitoring vendor.
+**TL;DR** - Micrometer is a vendor-neutral metrics facade that auto-instruments JVM, HTTP, and database metrics, shipping them to any backend without coupling code to a specific vendor.
 
-### The Problem in One Paragraph
+### 🔥 The Problem in One Paragraph
 
 Your Spring Boot service is in production and something is slow. Is it the database? The downstream HTTP call? GC pauses? You add `System.currentTimeMillis()` around suspect code, format the delta into a log line, deploy, grep logs, and compute percentiles in a spreadsheet. Next quarter the team switches from Graphite to Prometheus and every hand-rolled metric call must be rewritten. Meanwhile, a request spans three microservices and nobody can correlate the latency across them because each service logs independently with no shared identifier. You need a metrics abstraction that decouples instrumentation from backends, plus a tracing mechanism that threads a correlation ID through the entire call chain.
 
-### Textbook Definition
+### 📘 Textbook Definition
 
 Micrometer is a dimensional metrics facade for JVM-based applications. It provides meter primitives - Counter, Gauge, Timer, DistributionSummary, LongTaskTimer, and FunctionCounter - each decorated with key-value tags for dimensional analysis. A MeterRegistry binds these meters to a monitoring backend. Spring Boot auto-configures a CompositeMeterRegistry and registers dozens of built-in metrics (JVM memory, GC, Tomcat threads, HikariCP pool stats, HTTP server requests). Micrometer Tracing (the successor to Spring Cloud Sleuth) adds distributed tracing by propagating trace and span IDs across service boundaries, correlating metrics and logs within a single request flow.
 
-### Mental Model
+### 🧠 Mental Model
 
-Micrometer is like a **universal power adapter for metric plugs**. Your application produces metric signals in a standard shape (Timer, Counter). The adapter (MeterRegistry) converts that shape into whatever socket the monitoring system expects - Prometheus exposition format, Datadog API payloads, or CloudWatch PutMetricData calls. You pack one adapter per destination; the appliance (your code) never changes.
+> Micrometer is like a universal power adapter for metric plugs.
 
-**Where this breaks down:** A power adapter is passive and stateless. Micrometer registries actively aggregate, buffer, and sometimes pre-compute histograms and percentiles. Misconfiguring the registry (wrong histogram buckets, excessive tag cardinality) causes memory bloat or misleading dashboards - problems a simple adapter never has.
+- "Your device plug" -> metric recording API (Timer, Counter, Gauge)
+- "Adapter" -> MeterRegistry implementation per vendor
+- "Wall socket" -> monitoring backend (Prometheus, Datadog, etc.)
 
-### How It Works
+**Where this analogy breaks down:** a power adapter is passive and stateless. Micrometer registries actively aggregate, buffer, and sometimes pre-compute histograms and percentiles. Misconfiguring the registry (wrong histogram buckets, excessive tag cardinality) causes memory bloat or misleading dashboards - problems a simple adapter never has.
+
+### ⚙️ How It Works
 
 ```
 App Code       Micrometer        Registry
@@ -2236,9 +2261,9 @@ Dimensional tags are the key to useful dashboards but also the primary footprint
 
 Percentile histograms deserve careful configuration. `publishPercentiles()` computes percentiles client-side - convenient but inaccurate when aggregating across instances. `publishPercentileHistogram()` publishes histogram buckets that the backend aggregates server-side, producing accurate cross-instance percentiles at the cost of more time series (typically 50-70 buckets per Timer).
 
-### Worked Example
+### 🛠️ Worked Example
 
-**BAD - Vendor-coupled metric code:**
+**BAD:**
 
 ```java
 // Directly using Prometheus client - cannot
@@ -2249,7 +2274,7 @@ final Summary reqLatency = Summary.build()
     .register();
 ```
 
-**GOOD - Micrometer facade:**
+**GOOD:**
 
 ```java
 @Bean
@@ -2286,7 +2311,7 @@ management:
 
 This enables server-side histogram aggregation for HTTP latency, defines SLO buckets for alerting, and samples 10% of traces to balance observability against overhead.
 
-### Trade-offs
+### ⚖️ Trade-offs
 
 | Gain                                           | Cost                                                                          |
 | ---------------------------------------------- | ----------------------------------------------------------------------------- |
@@ -2298,7 +2323,7 @@ This enables server-side histogram aggregation for HTTP latency, defines SLO buc
 
 The facade pattern means you occasionally lose access to backend-native features. Prometheus native histograms and OpenTelemetry exemplars require specific Micrometer support. In practice, the portability benefit outweighs the gap for the vast majority of applications. If you need a backend-specific feature, you can register a backend-specific MeterFilter or access the underlying registry directly.
 
-### Decision Snap
+### ⚡ Decision Snap
 
 **USE WHEN:** You need production metrics, SLO-based alerting, or distributed trace correlation in a Spring Boot application.
 
@@ -2306,7 +2331,7 @@ The facade pattern means you occasionally lose access to backend-native features
 
 **PREFER OpenTelemetry bridge WHEN:** Your organization has standardized on OTel collectors and you want OTel-native span export alongside Micrometer metrics.
 
-### Top Traps
+### ⚠️ Top Traps
 
 | Trap                                                             | Why it hurts                                                              | Fix                                                                                           |
 | ---------------------------------------------------------------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
@@ -2314,17 +2339,17 @@ The facade pattern means you occasionally lose access to backend-native features
 | Using `publishPercentiles()` and aggregating across instances    | Client-computed percentiles are mathematically non-aggregatable           | Use `publishPercentileHistogram()` for server-side aggregation                                |
 | Setting trace sampling to 1.0 (100%) in production               | Massive trace volume overwhelms collector and storage                     | Use probability sampling (0.01-0.1) or rate-limiting sampler                                  |
 
-### Learning Ladder
+### 🪜 Learning Ladder
 
 **Prerequisites:** SPR-052 (Spring Boot Actuator and Health Endpoints).
 **THIS:** SPR-053 - Micrometer meter types, dimensional tagging, registry backends, distributed tracing with Micrometer Tracing.
 **Next:** SPR-060 (Monitoring Spring Applications in Production), SPR-058 (Spring Performance Tuning Checklist).
 
-### The Surprising Truth
+### 💡 The Surprising Truth
 
 Most teams think of metrics and tracing as separate concerns - one for dashboards, the other for request debugging. Micrometer Tracing unifies them: a Timer recording latency and a Span recording the same operation share context. When an SLO alert fires on `http.server.requests` p99, you follow the exemplar link from the metric directly to the trace that breached the threshold. This metrics-to-traces bridge eliminates the "I see the spike but cannot find the request" gap that plagues teams running metrics and tracing as isolated systems.
 
-### Revision Card
+### 📇 Revision Card
 
 - Micrometer is a vendor-neutral metrics facade; swap the registry dependency (Prometheus, Datadog, CloudWatch) without changing application code. Spring Boot auto-instruments JVM, HTTP, and pool metrics out of the box.
 - Use bounded, low-cardinality tags only; prefer `publishPercentileHistogram()` over `publishPercentiles()` for accurate cross-instance aggregation.
@@ -2348,9 +2373,13 @@ Your unit tests pass. Your H2-based integration tests pass. You deploy to stagin
 
 ### 🧠 Mental Model
 
-> Think of Testcontainers as a disposable lab. Before each experiment (test class), a technician wheels in a fresh lab bench with real equipment (Postgres, Redis, Kafka). You run your experiment on real hardware, record results, then the technician wheels the entire bench out and incinerates it. Next experiment gets a brand-new bench. No contamination between experiments.
+> Think of Testcontainers as a disposable lab for experiments.
 
-**Where this breaks down:** real labs take seconds to set up.
+- "Lab bench" -> Docker container (Postgres, Redis, Kafka)
+- "Experiment" -> test class running against real infrastructure
+- "Incinerate the bench" -> container destroyed after tests complete
+
+**Where this analogy breaks down:** real labs take seconds to set up.
 Docker containers take seconds too, but if you spin up a
 new container per test method (not per class), the cumulative
 startup time can dominate your test suite. Reuse strategies
@@ -2423,7 +2452,7 @@ containers filling up CI disk. Fix permissions instead.
 
 ### 🛠️ Worked Example
 
-**BAD - H2 pretending to be Postgres:**
+**BAD:**
 
 ```java
 // application-test.properties
@@ -2438,7 +2467,7 @@ spring.jpa.database-platform=\
 // and Flyway PG-specific DDL break silently.
 ```
 
-**GOOD - Testcontainers with @ServiceConnection (Boot 3.1+):**
+**GOOD:**
 
 ```java
 @SpringBootTest
@@ -2583,7 +2612,7 @@ ordering issues that no fake ever surfaced.
 
 # SPR-055 Spring Boot Build Plugins (Maven and Gradle)
 
-**TL;DR** - The Spring Boot build plugins (Maven and Gradle) package your application into executable fat JARs, manage dependency versions via the BOM, and support layered JARs for efficient Docker images.
+**TL;DR** - Spring Boot build plugins package your app into executable fat JARs, manage dependency versions via the BOM, and produce layered JARs for Docker.
 
 ### 🔥 The Problem in One Paragraph
 
@@ -2595,9 +2624,13 @@ The **spring-boot-maven-plugin** and **spring-boot-gradle-plugin** are build too
 
 ### 🧠 Mental Model
 
-> Think of the build plugin as a shipping department. Your code is the product. The plugin takes the product, packs it with all required parts (dependencies) into a single self-contained crate (fat JAR), stamps it with a manifest label ("start here: `Main-Class: JarLauncher`"), and arranges layers so that the heaviest, least-changing parts (libraries) sit at the bottom of the pallet (Docker layer) and frequently-changing parts (your code) sit on top. When you ship a code update, only the top layer changes.
+> Think of the build plugin as a shipping department for your application.
 
-**Where this breaks down:** the shipping analogy does not
+- "Packing into one crate" -> fat JAR (all deps bundled)
+- "Manifest label" -> executable JAR entry point (JarLauncher)
+- "Layered pallet" -> layered JAR for Docker layer caching
+
+**Where this analogy breaks down:** the shipping analogy does not
 capture the plugin's role in dependency version management.
 The BOM (Bill of Materials) is more like a compatibility
 chart - it says "these exact part versions are tested
@@ -2683,7 +2716,7 @@ and also reduces startup time for standard JVM execution.
 
 ### 🛠️ Worked Example
 
-**BAD - manual shade plugin with conflicts:**
+**BAD:**
 
 ```xml
 <!-- pom.xml -->
@@ -2713,7 +2746,7 @@ and also reduces startup time for standard JVM execution.
      No nested JAR support. -->
 ```
 
-**GOOD - Spring Boot Maven plugin:**
+**GOOD:**
 
 ```xml
 <!-- pom.xml -->
@@ -2857,23 +2890,27 @@ structure.
 
 # SPR-056 @Transactional Self-Invocation Anti-Pattern
 
-**TL;DR** - Calling a `@Transactional` method from another method in the same class bypasses the Spring proxy, so the transaction annotation is silently ignored - the most common Spring transaction bug.
+**TL;DR** - Calling a `@Transactional` method from within the same class bypasses the proxy, silently ignoring the transaction - the most common Spring transaction bug.
 
-### The Problem in One Paragraph
+### 🔥 The Problem in One Paragraph
 
 You annotate a method with `@Transactional`, write a test that calls it directly, and the transaction works. Then you add an internal helper in the same class that calls that transactional method, and suddenly the transaction silently disappears. No exception, no warning, no log entry - the annotation is simply ignored. Data inconsistency follows: partial writes commit, rollback rules never fire, and isolation guarantees vanish. This is the self-invocation anti-pattern, and it catches every Spring developer at least once because the proxy mechanism that powers `@Transactional` is invisible in source code. The method signature looks annotated. The code compiles. The unit test passes. But in production, the call path through the same class skips the proxy entirely.
 
-### Textbook Definition
+### 📘 Textbook Definition
 
 **Self-invocation** occurs when a method on a Spring-managed bean calls another method on the same bean instance using `this` (explicitly or implicitly). Because Spring's default AOP mechanism uses JDK dynamic proxies or CGLIB subclass proxies that wrap the bean externally, internal calls bypass the proxy. Any advice attached to the target method - `@Transactional`, `@Cacheable`, `@Async`, `@Retryable` - is not applied. The proxy only intercepts calls that arrive through the proxy reference, which means calls from external beans. A `this.doSomething()` call goes directly to the target object, never touching the proxy's interceptor chain.
 
-### Mental Model
+### 🧠 Mental Model
 
-> Picture a security checkpoint at a building entrance. Every visitor (external caller) must pass through the checkpoint (proxy), where guards apply rules (transaction begin, commit, rollback). But employees already inside the building (methods in the same class) walk directly between rooms through internal corridors. They never pass the checkpoint again. The security rules only apply at the entrance - not to internal movement.
+> Picture a security checkpoint at a building entrance.
 
-**Where this breaks down:** unlike a real building, you can restructure the code so that every "room" is in a separate building, forcing every call through a checkpoint. The analogy also does not capture that the proxy is a separate object wrapping the target - it is not a gate on a shared entrance.
+- "Visitor" -> external caller going through the proxy
+- "Checkpoint guard" -> TransactionInterceptor (begin/commit/rollback)
+- "Internal corridor" -> self-invocation bypassing the proxy
 
-### How It Works
+**Where this analogy breaks down:** unlike a real building, you can restructure the code so that every "room" is in a separate building, forcing every call through a checkpoint. The analogy also does not capture that the proxy is a separate object wrapping the target - it is not a gate on a shared entrance.
+
+### ⚙️ How It Works
 
 ```
   External caller
@@ -2901,7 +2938,7 @@ sequenceDiagram
     P->>P: Begin transaction
     P->>T: placeOrder()
     T->>T: this.updateInventory()
-    Note right of T: @Transactional IGNORED<br/>self-invocation bypasses proxy
+    Note right of T: @Transactional IGNORED
     T-->>P: return
     P->>P: Commit transaction
     P-->>C: return
@@ -2916,7 +2953,7 @@ sequenceDiagram
 
 **Detection is the hard part.** The code compiles, runs, and produces no error. The only symptoms are data inconsistency or missing rollback behavior. You can detect self-invocation by enabling `spring.aop.proxy-target-class=true` with debug logging on `org.springframework.transaction.interceptor`, then checking whether transaction boundaries appear in logs for the suspected method. If the log shows no "Creating new transaction" entry for the inner call, self-invocation is confirmed.
 
-### Worked Example
+### 🛠️ Worked Example
 
 **BAD:**
 
@@ -2947,7 +2984,7 @@ public class OrderService {
 
 Why it fails: `placeOrder` calls `this.updateInventory()` internally. The `REQUIRES_NEW` propagation never activates because the `TransactionInterceptor` on the proxy is never consulted. If `updateInventory` throws, the rollback rules of `REQUIRES_NEW` do not apply.
 
-**GOOD (Fix 1 - extract to separate bean):**
+**GOOD:**
 
 ```java
 @Service
@@ -3011,7 +3048,7 @@ public class OrderService {
 
 `TransactionTemplate` does not rely on proxy interception. It programmatically begins and commits the transaction, so self-invocation is irrelevant. This is the preferred fix when extracting to a separate bean would create an artificial service split.
 
-### Trade-offs
+### ⚖️ Trade-offs
 
 **Gain:** fixing self-invocation restores correct transaction boundaries, rollback isolation, and propagation behavior.
 **Cost:** every fix adds structural complexity - an extra bean, a template, an injected self-reference, or a build-time weaving step.
@@ -3025,13 +3062,13 @@ public class OrderService {
 
 Extract-to-separate-bean is the recommended default because it aligns with single responsibility and is the most maintainable. `TransactionTemplate` is best when the transactional logic is a small internal step that does not justify a new class. Self-injection (`@Autowired` of the same type) works but creates a circular dependency that requires `@Lazy` or setter injection. AspectJ load-time weaving eliminates the problem entirely but adds a Java agent, complicates builds, and makes debugging harder because the bytecode no longer matches the source.
 
-### Decision Snap
+### ⚡ Decision Snap
 
 **USE WHEN:** you see a `@Transactional` method called from within the same class and the transaction semantics must be honored - especially `REQUIRES_NEW`, isolation level, or rollback rules.
 **AVOID WHEN:** the inner method does not need its own transaction boundary and running in the caller's transaction is correct behavior.
 **PREFER extract-to-bean WHEN:** the inner logic represents a distinct responsibility. **PREFER TransactionTemplate WHEN:** extracting a class would be purely mechanical with no real separation of concerns.
 
-### Top Traps
+### ⚠️ Top Traps
 
 | #   | Trap                                              | Reality                                                                                               |
 | --- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
@@ -3039,7 +3076,7 @@ Extract-to-separate-bean is the recommended default because it aligns with singl
 | 2   | "I injected self with @Autowired, problem solved" | This creates a circular dependency - use @Lazy or setter injection and verify with integration tests  |
 | 3   | "Only @Transactional is affected"                 | Every proxy-based annotation is affected: @Cacheable, @Async, @Retryable, @Secured, custom AOP advice |
 
-### Learning Ladder
+### 🪜 Learning Ladder
 
 **Prerequisites:**
 
@@ -3052,11 +3089,11 @@ Extract-to-separate-bean is the recommended default because it aligns with singl
 
 - SPR-063 "Spring Beans Are Thread-Safe" is Wrong - Singleton Scope - another critical misconception about Spring internals
 
-### The Surprising Truth
+### 💡 The Surprising Truth
 
 The self-invocation problem is not a bug in Spring - it is an inherent limitation of the proxy pattern that Spring chose for simplicity. The framework developers considered this an acceptable trade-off because it avoids requiring a special compiler (AspectJ) or Java agent for basic usage. The Spring documentation explicitly warns about it, yet it remains the single most frequently reported "my transaction does not work" issue on Stack Overflow year after year - because developers read annotations as instructions to the JVM, not as metadata for an external proxy wrapper.
 
-### Revision Card
+### 📇 Revision Card
 
 - Self-invocation (`this.method()`) bypasses the Spring proxy, silently ignoring `@Transactional`, `@Cacheable`, `@Async`, and all proxy-based advice
 - Four fixes: extract to separate bean (preferred), `TransactionTemplate` (programmatic), inject self with `@Lazy` (circular ref risk), AspectJ weaving (build complexity)
@@ -3068,23 +3105,27 @@ The self-invocation problem is not a bug in Spring - it is an inherent limitatio
 
 # SPR-057 N+1 Query Anti-Pattern in Spring Data JPA
 
-**TL;DR** - The N+1 query problem fires 1 query for parent entities plus N separate queries for their children during iteration, turning a single list fetch into hundreds of database round-trips.
+**TL;DR** - N+1 fires one query for parents plus N queries for children during iteration, turning a list fetch into hundreds of database round-trips.
 
-### The Problem in One Paragraph
+### 🔥 The Problem in One Paragraph
 
 You load a list of 100 orders from the database. Each order has a `customer` field marked `@ManyToOne(fetch = LAZY)`. You iterate the list and call `order.getCustomer().getName()` in a loop. Hibernate fires 1 query to fetch all orders, then 100 individual queries to load each customer one by one. What should have been 1 or 2 queries becomes 101. At 10,000 orders, it becomes 10,001 queries. Response times explode, connection pools saturate, and database CPU spikes - all from code that looks like a simple getter call in a for-each loop. The N+1 problem is the single most common performance issue in Spring Data JPA applications, and it is invisible in source code because Hibernate's lazy proxy triggers the extra queries behind a method call that looks like in-memory field access.
 
-### Textbook Definition
+### 📘 Textbook Definition
 
 The **N+1 query problem** is a data access anti-pattern where an ORM executes 1 query to load a collection of N parent entities, then executes N additional queries to load a related association for each parent as it is accessed. It occurs when a relationship is fetched lazily (`FetchType.LAZY`) and the related entity is accessed during iteration. The total query count is `1 + N`, where N is the number of parent rows. The performance cost scales linearly with result set size and is amplified by network latency between the application and database.
 
-### Mental Model
+### 🧠 Mental Model
 
-> Imagine ordering food for a table of 20 people at a restaurant. Instead of collecting everyone's order and placing one request with the kitchen (a single JOIN query), the waiter walks to the kitchen 20 separate times - once per person. Each trip takes 5 seconds of walking. One combined trip: 5 seconds. Twenty individual trips: 100 seconds. The food is identical either way, but the delivery time is 20x worse.
+> Imagine ordering food for a table of 20 at a restaurant.
 
-**Where this breaks down:** unlike a restaurant, database round-trips also consume connection pool slots, create lock contention, and generate query parsing overhead on top of the raw latency. The real cost is worse than linear due to resource contention under load.
+- "One combined order" -> JOIN FETCH (single query)
+- "20 separate trips" -> N+1 lazy loading (1 + N queries)
+- "Kitchen capacity" -> connection pool slots consumed per trip
 
-### How It Works
+**Where this analogy breaks down:** unlike a restaurant, database round-trips also consume connection pool slots, create lock contention, and generate query parsing overhead on top of the raw latency. The real cost is worse than linear due to resource contention under load.
+
+### ⚙️ How It Works
 
 ```
   repo.findAll()
@@ -3130,7 +3171,7 @@ sequenceDiagram
 
 **Detection with Hibernate SQL logging.** Set `spring.jpa.show-sql=true` or `logging.level.org.hibernate.SQL=DEBUG` with `logging.level.org.hibernate.orm.jdbc.bind=TRACE` for parameter values. In the log output, look for repeated SELECT patterns with different bind parameter values. A sequence of identical SELECTs differing only in the WHERE clause parameter is the signature of N+1. Libraries like `datasource-proxy` or `Hibernate Statistics` can count queries per request for automated detection.
 
-### Worked Example
+### 🛠️ Worked Example
 
 **BAD:**
 
@@ -3155,7 +3196,7 @@ for (Order o : orders) {
 }
 ```
 
-**GOOD (Fix 1 - JOIN FETCH in JPQL):**
+**GOOD:**
 
 ```java
 public interface OrderRepository
@@ -3195,7 +3236,7 @@ public interface OrderRepository
 
 `@EntityGraph` tells Spring Data JPA to generate a JOIN FETCH for the specified paths without requiring a custom JPQL query. This keeps the derived query method name pattern while solving N+1. For multi-level associations (`items.product`), nested attribute paths load the entire object graph in one query. Watch for Cartesian product growth when joining multiple `@OneToMany` collections - Hibernate's `WARN HHH90003004` log message signals this.
 
-### Trade-offs
+### ⚖️ Trade-offs
 
 **Gain:** reducing N+1 queries to 1-2 queries eliminates per-row database round-trips, typically improving response times by 10-100x for large result sets.
 **Cost:** eager fetching via JOINs increases the size of individual SQL result sets and can produce Cartesian products when multiple collections are joined.
@@ -3209,14 +3250,14 @@ public interface OrderRepository
 
 `JOIN FETCH` and `@EntityGraph` are the primary fixes for `@ManyToOne` and `@OneToOne`. For `@OneToMany` collections, `@BatchSize(size = 50)` on the association (or globally via `spring.jpa.properties.hibernate.default_batch_fetch_size=50`) reduces N queries to `ceil(N/50)` without Cartesian product risk. DTO projections (interface or class-based) bypass entity loading entirely and are the best option when you only need specific columns.
 
-### Decision Snap
+### ⚡ Decision Snap
 
 **USE JOIN FETCH WHEN:** loading a `@ManyToOne` or `@OneToOne` association that you will always access - the Cartesian product risk is minimal for to-one relationships.
 **USE @BatchSize WHEN:** loading `@OneToMany` collections where JOIN FETCH would create a Cartesian explosion across multiple bag-typed collections.
 **USE DTO Projection WHEN:** you need a read-only view with specific columns and do not need managed entity instances.
 **AVOID WHEN:** the association is truly optional and accessed in less than 10% of code paths - LAZY fetch with no pre-loading is correct in that case.
 
-### Top Traps
+### ⚠️ Top Traps
 
 | #   | Trap                                 | Reality                                                                                                   |
 | --- | ------------------------------------ | --------------------------------------------------------------------------------------------------------- |
@@ -3224,7 +3265,7 @@ public interface OrderRepository
 | 2   | "JOIN FETCH is always safe"          | Joining two @OneToMany collections causes a Cartesian product and duplicate parent rows in the result     |
 | 3   | "show-sql is enough for detection"   | Console logs are hard to scan at scale - use Hibernate Statistics or datasource-proxy for query counting  |
 
-### Learning Ladder
+### 🪜 Learning Ladder
 
 **Prerequisites:**
 
@@ -3237,11 +3278,11 @@ public interface OrderRepository
 
 - SPR-058 Spring Performance Tuning Checklist - broader performance optimization patterns
 
-### The Surprising Truth
+### 💡 The Surprising Truth
 
 The N+1 problem is not a Hibernate bug - it is the mathematically correct behavior of lazy loading. Hibernate does exactly what LAZY semantics promise: load the association when first accessed. The problem is that developers mentally batch their intent ("load all customers for these orders") while the code expresses it one entity at a time. The real fix is not to fight lazy loading but to explicitly tell the persistence layer your access pattern - JOIN FETCH for always-needed associations, batch fetching for collections, and projections for read-only views. The most performant Spring Data JPA applications are the ones where every repository method has a deliberately chosen fetch strategy instead of relying on entity-level defaults.
 
-### Revision Card
+### 📇 Revision Card
 
 - N+1 fires 1 query for parents + N queries for children when a LAZY association is accessed in a loop - total cost scales linearly with result set size
 - Four fixes: `JOIN FETCH` in JPQL (best for to-one), `@EntityGraph` (annotation-based), `@BatchSize` (best for to-many collections), DTO projection (best for read-only)
@@ -3253,7 +3294,7 @@ The N+1 problem is not a Hibernate bug - it is the mathematically correct behavi
 
 # SPR-058 Spring Performance Tuning Checklist
 
-**TL;DR** - Ten high-impact performance levers - from connection pool sizing to GC tuning - that you walk through systematically before scaling hardware, because most Spring Boot bottlenecks are configuration problems, not capacity problems.
+**TL;DR** - Ten high-impact performance levers from pool sizing to GC tuning - walk them systematically before scaling hardware, because most Spring Boot bottlenecks are configuration problems.
 
 ### 🔥 The Problem in One Paragraph
 
@@ -3265,9 +3306,13 @@ A **Spring Performance Tuning Checklist** is a prioritized sequence of configura
 
 ### 🧠 Mental Model
 
-> Think of a Spring Boot application as a multi-lane highway. Each lane (Tomcat thread) carries a car (request). The highway has toll booths (database connections), weigh stations (serialization), and speed limits (JVM heap). A traffic jam does not mean you need more highway - it means one toll booth is closed (pool too small), or a weigh station is broken (N+1 queries), or the speed limit is set to 30 km/h (wrong GC). The checklist is the highway inspection sheet: walk booth by booth, fix each bottleneck, and traffic flows.
+> Think of a Spring Boot application as a multi-lane highway.
 
-**Where this breaks down:** unlike a highway where lanes are independent, Spring threads share the connection pool, heap, and CPU. Fixing one bottleneck can shift pressure to another, so you re-measure after each change rather than applying all fixes blindly.
+- "Lanes" -> Tomcat threads handling requests
+- "Toll booths" -> database connection pool
+- "Speed limit sign" -> JVM heap / GC configuration
+
+**Where this analogy breaks down:** unlike a highway where lanes are independent, Spring threads share the connection pool, heap, and CPU. Fixing one bottleneck can shift pressure to another, so you re-measure after each change rather than applying all fixes blindly.
 
 ### ⚙️ How It Works
 
@@ -3350,7 +3395,7 @@ flowchart TD
 
 ### 🛠️ Worked Example
 
-**BAD - defaults everywhere:**
+**BAD:**
 
 ```yaml
 # application.yml - no tuning at all
@@ -3363,7 +3408,7 @@ spring:
 # compression: off (default)
 ```
 
-**GOOD - systematic tuning:**
+**GOOD:**
 
 ```yaml
 spring:
@@ -3462,7 +3507,7 @@ Most Spring Boot performance problems are not code problems - they are default-c
 
 # SPR-059 Testing Strategy for Spring Applications
 
-**TL;DR** - Structure your Spring tests as a pyramid - 70% fast unit tests, 20% slice tests that load only one Spring layer, 10% full integration tests - so you get fast feedback loops without sacrificing confidence in wiring and configuration.
+**TL;DR** - Structure Spring tests as a pyramid: 70% unit tests, 20% slice tests loading one layer, 10% integration tests - fast feedback without sacrificing wiring confidence.
 
 ### 🔥 The Problem in One Paragraph
 
@@ -3474,9 +3519,13 @@ A **testing strategy for Spring applications** maps each category of risk (logic
 
 ### 🧠 Mental Model
 
-> Think of testing layers as quality gates in a factory. The first gate (unit tests) checks individual parts with calipers - fast, cheap, catches 70% of defects. The second gate (slice tests) assembles one subsystem and runs it on a test bench - slower, but catches wiring defects between parts. The third gate (integration tests) runs the entire assembled product - expensive, but catches system-level defects. You would never skip the caliper check and only run the final gate. You would also never stop at calipers and ship without a system test.
+> Think of testing layers as quality gates in a factory.
 
-**Where this breaks down:** unlike a factory where defects are physical and visible, software defects can hide in interactions between layers that no single test type covers. The pyramid is a heuristic, not a guarantee - you still need judgment about which interactions matter most.
+- "Caliper check" -> unit tests (fast, catches 70% of defects)
+- "Subsystem test bench" -> slice tests (one Spring layer)
+- "Full product run" -> integration tests (entire context)
+
+**Where this analogy breaks down:** unlike a factory where defects are physical and visible, software defects can hide in interactions between layers that no single test type covers. The pyramid is a heuristic, not a guarantee - you still need judgment about which interactions matter most.
 
 ### ⚙️ How It Works
 
@@ -3502,9 +3551,9 @@ Test Pyramid for Spring
 
 ```mermaid
 flowchart TD
-    A["Unit Tests - 70%\nPlain JUnit + Mockito\n< 1ms each"] --> B["Slice Tests - 20%\n@WebMvcTest @DataJpaTest\n~50-200ms each"]
-    B --> C["Integration Tests - 10%\n@SpringBootTest\n~2-10s each"]
-    C --> D["E2E Tests - ~2-5\nFull deployment\n~30-60s each"]
+    A["Unit Tests 70%"] --> B["Slice Tests 20%"]
+    B --> C["Integration Tests 10%"]
+    C --> D["E2E Tests ~2-5"]
 ```
 
 **Layer-by-layer breakdown:**
@@ -3525,7 +3574,7 @@ flowchart TD
 
 ### 🛠️ Worked Example
 
-**BAD - everything is @SpringBootTest:**
+**BAD:**
 
 ```java
 @SpringBootTest
@@ -3545,7 +3594,7 @@ class OrderServiceTest {
 }
 ```
 
-**GOOD - unit test for logic, slice for wiring:**
+**GOOD:**
 
 ```java
 // Unit test - no Spring, milliseconds
@@ -3893,7 +3942,7 @@ The single highest-value monitoring investment is not dashboards, traces, or fan
 
 # SPR-061 Spring Boot 2.x to 3.x Migration Guide
 
-**TL;DR** - Migrating Spring Boot 2.x to 3.x requires Java 17 minimum, a javax-to-jakarta namespace rename, Spring Security 6 DSL changes, and systematic property/API updates - plan it as a phased project, not a single commit.
+**TL;DR** - Spring Boot 2.x to 3.x migration requires Java 17, javax-to-jakarta rename, Security 6 DSL changes, and property updates - plan it as a phased project.
 
 ### 🔥 The Problem in One Paragraph
 
@@ -3971,7 +4020,7 @@ flowchart TD
 
 ### 🛠️ Worked Example
 
-**BAD (Boot 2.x Security - will not compile on 3.x):**
+**BAD:**
 
 ```java
 @Configuration
@@ -3993,7 +4042,7 @@ public class SecurityConfig
 
 Why it fails: `WebSecurityConfigurerAdapter` is deleted in Spring Security 6. `authorizeRequests()` and `antMatchers()` are removed.
 
-**GOOD (Boot 3.x Security):**
+**GOOD:**
 
 ```java
 @Configuration
@@ -4108,7 +4157,7 @@ The hardest part of the Boot 2-to-3 migration is not your own code - it is your 
 
 # SPR-062 Jakarta EE Namespace Migration (javax to jakarta)
 
-**TL;DR** - Spring Boot 3 requires Jakarta EE 9+ namespaces, meaning every `javax.servlet`, `javax.persistence`, and `javax.validation` import must become `jakarta.*` - but `javax.sql`, `javax.crypto`, and other Java SE packages stay untouched.
+**TL;DR** - Spring Boot 3 requires Jakarta EE 9+ namespaces - every `javax.servlet` and `javax.persistence` import becomes `jakarta.*`, but Java SE packages like `javax.sql` stay unchanged.
 
 ### 🔥 The Problem in One Paragraph
 
@@ -4120,9 +4169,13 @@ The **Jakarta EE namespace migration** is the bulk package rename from `javax.*`
 
 ### 🧠 Mental Model
 
-> Imagine a company splits into two firms. Firm A (Oracle/Java SE) keeps its original office addresses (`javax.sql`, `javax.crypto`). Firm B (Eclipse/Jakarta EE) must re-label every office door from `javax.servlet` to `jakarta.servlet` because Firm A owns the "javax" name on the building. The employees (classes) are identical - same desks, same work - but every piece of mail (import statement) must use the new address or it bounces.
+> Imagine a company splits into two firms after a trademark dispute.
 
-**Where this breaks down:** unlike a simple rename,
+- "Firm A offices" -> Java SE packages (javax.sql stays)
+- "Firm B re-labeled doors" -> Jakarta EE renames (javax.servlet -> jakarta.servlet)
+- "Mail address on envelopes" -> import statements in source code
+
+**Where this analogy breaks down:** unlike a simple rename,
 some libraries ship "bridge" artifacts that include both
 old and new packages, which does not map to the
 two-firm analogy.
@@ -4219,7 +4272,7 @@ it stays `javax`. If it required a separate EE dependency
 
 ### 🛠️ Worked Example
 
-**BAD - blind find-and-replace breaks Java SE imports:**
+**BAD:**
 
 ```java
 // Someone ran s/javax/jakarta/g globally
@@ -4231,7 +4284,7 @@ import jakarta.persistence.Entity; // correct
 // they must remain javax.*
 ```
 
-**GOOD - selective migration, Java SE untouched:**
+**GOOD:**
 
 ```java
 import javax.sql.DataSource;       // Java SE: keep
@@ -4366,9 +4419,13 @@ A developer creates a `@Service` class with an instance field that accumulates r
 
 ### 🧠 Mental Model
 
-> A singleton bean is like a single whiteboard in a shared office. Everyone can read it, everyone can write on it, and nobody is stopping two people from erasing each other's notes at the same time. The office manager (Spring) installed one whiteboard (singleton instance) and assigned everyone to use it. The office manager did not hire a guard to control who writes when - that is your job.
+> A singleton bean is like a single whiteboard in a shared office.
 
-**Where this breaks down:** some beans are genuinely
+- "One whiteboard" -> singleton instance shared by all threads
+- "Two people writing at once" -> concurrent field mutation (data race)
+- "Office manager" -> Spring container (creates one instance, no guard)
+
+**Where this analogy breaks down:** some beans are genuinely
 stateless (no whiteboard content to corrupt), which is
 why many singleton services work fine without explicit
 synchronization. The analogy overemphasizes the danger
@@ -4443,7 +4500,7 @@ result, a `SimpleDateFormat` instance, a mutable collection
 
 ### 🛠️ Worked Example
 
-**BAD - mutable field on a singleton bean:**
+**BAD:**
 
 ```java
 @Service
@@ -4467,7 +4524,7 @@ public class OrderService {
 }
 ```
 
-**GOOD - stateless design, thread-safe formatting:**
+**GOOD:**
 
 ```java
 @Service
@@ -4615,21 +4672,27 @@ concurrent request threads are about to share it.
 
 # SPR-064 Spring Security OWASP Top 10 Alignment
 
-**TL;DR** Spring Security provides built-in defenses that map directly to most OWASP Top 10 categories, but only if you understand which features cover which threats - and where gaps remain.
+**TL;DR** - Spring Security maps to most OWASP Top 10 categories with built-in defenses, but you must understand which features cover which threats and where gaps remain.
 
-### The Problem in One Paragraph
+### 🔥 The Problem in One Paragraph
 
 The OWASP Top 10 is the industry-standard checklist for web application security risks, yet most Spring developers treat security as "add Spring Security and we are done." This is dangerous. Spring Security covers access control, CSRF, session management, and password hashing out of the box - but it does nothing about injection if you write raw SQL, nothing about XSS if you bypass Thymeleaf's auto-escaping, and nothing about insecure deserialization if you accept arbitrary object streams. Without a systematic mapping from each OWASP category to the specific Spring feature (or manual discipline) that addresses it, teams ship applications with blind spots they never audited.
 
-### Textbook Definition
+### 📘 Textbook Definition
 
 OWASP Top 10 alignment means systematically mapping each of the ten most critical web application security risk categories (as defined by the Open Worldwide Application Security Project) to the framework features, configurations, and coding practices that mitigate them. For Spring, this means identifying which Spring Security filters, Spring MVC defaults, Spring Data behaviors, and developer responsibilities address each category.
 
-### Mental Model
+### 🧠 Mental Model
 
-Think of the OWASP Top 10 as a building inspection checklist - fire exits, electrical wiring, plumbing, structural integrity. Spring Security is like the building code that the contractor follows. The code handles many items automatically (fire-rated doors come standard), but some items require the contractor to make deliberate choices (you still have to install smoke detectors in the right rooms). The checklist does not care who handles each item - it only cares that every item is covered.
+> Think of the OWASP Top 10 as a building inspection checklist.
 
-### How It Works
+- "Fire-rated doors" -> built-in defenses (CSRF tokens, security headers)
+- "Smoke detector placement" -> explicit config (@PreAuthorize, CORS)
+- "Items not in building code" -> gaps Spring cannot cover (A04 Insecure Design)
+
+**Where this analogy breaks down:** a building code is static; the OWASP Top 10 changes every few years as the threat landscape shifts. Spring Security features may cover today's checklist but not tomorrow's additions.
+
+### ⚙️ How It Works
 
 ```
 OWASP Top 10            Spring Feature
@@ -4689,9 +4752,9 @@ flowchart LR
 
 **5. A07 Identification and Authentication Failures.** Spring Security protects against session fixation by migrating the session ID after login. Rate limiting login attempts requires additional work (a custom `AuthenticationFailureHandler` with a counter, or an external WAF). OAuth 2.0 / OIDC integration via `spring-boot-starter-oauth2-client` delegates credential management to identity providers.
 
-### Worked Example
+### 🛠️ Worked Example
 
-**BAD - broken access control via missing method security:**
+**BAD:**
 
 ```java
 // No @PreAuthorize - any authenticated user
@@ -4702,7 +4765,7 @@ public void deleteUser(@PathVariable Long id) {
 }
 ```
 
-**GOOD - layered access control:**
+**GOOD:**
 
 ```java
 @PreAuthorize("hasRole('ADMIN')")
@@ -4755,7 +4818,7 @@ SecurityFilterChain securityChain(HttpSecurity http)
 }
 ```
 
-### Trade-offs
+### ⚖️ Trade-offs
 
 | Gain                                     | Cost                                       |
 | ---------------------------------------- | ------------------------------------------ |
@@ -4766,7 +4829,7 @@ SecurityFilterChain securityChain(HttpSecurity http)
 
 Spring Security handles roughly six of the ten categories well out of the box. A04 (Insecure Design) is architectural - no framework prevents bad design. A06 (Vulnerable Components) requires dependency scanning tools like OWASP Dependency-Check or Snyk. A08 (Software and Data Integrity) is partially covered by signed JWTs but not by artifact verification. A10 (SSRF) requires manual URL validation. The honest assessment: Spring gives you strong building blocks for the access-control and authentication categories but leaves data integrity, supply chain, and design-level risks to your engineering discipline.
 
-### Decision Snap
+### ⚡ Decision Snap
 
 - Use `SecurityFilterChain` with deny-by-default for every application - no exceptions.
 - Use `@PreAuthorize` for business-rule authorization beyond URL patterns.
@@ -4774,7 +4837,7 @@ Spring Security handles roughly six of the ten categories well out of the box. A
 - Add OWASP Dependency-Check to your CI pipeline for A06 coverage.
 - Review your OWASP alignment quarterly, not just at launch.
 
-### Top Traps
+### ⚠️ Top Traps
 
 | Trap                                            | Why It Hurts                                                                | Fix                                                           |
 | ----------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------- |
@@ -4782,17 +4845,17 @@ Spring Security handles roughly six of the ten categories well out of the box. A
 | Relying only on URL patterns for access control | Missing method-level checks lets privilege escalation through service calls | Layer `@PreAuthorize` on service methods                      |
 | Using `nativeQuery` with string concatenation   | Bypasses JPA's parameterization, opens SQL injection                        | Use named parameters `:param` in native queries               |
 
-### Learning Ladder
+### 🪜 Learning Ladder
 
 - **Before this**: SPR-047 Spring Security Filter Chain Architecture, SPR-031 Spring Web fundamentals.
-- **This keyword**: mapping OWASP Top 10 to Spring Security features and identifying coverage gaps.
+- **THIS:** SPR-064 Spring Security OWASP Top 10 Alignment
 - **After this**: SPR-067 REST API Phase 3 - Security and OAuth for hands-on implementation.
 
-### The Surprising Truth
+### 💡 The Surprising Truth
 
 Spring Security's greatest vulnerability is not what it fails to do - it is what developers disable. Session fixation protection, CSRF tokens, secure headers - all ship enabled by default. Most real-world Spring security breaches trace back to a developer writing `.csrf().disable()` or `.headers().disable()` during development and never re-enabling them. The framework already solved the problem; the human undid the solution.
 
-### Revision Card
+### 📇 Revision Card
 
 - Spring Security provides built-in coverage for OWASP A01 (access control), A02 (crypto), A03 (injection via JPA), A05 (headers/CSRF), and A07 (session/auth) - but A04, A06, A08, A10 require external tooling or manual discipline.
 - Deny-by-default in `SecurityFilterChain` plus `@PreAuthorize` on service methods creates layered defense against broken access control.
@@ -4804,21 +4867,27 @@ Spring Security's greatest vulnerability is not what it fails to do - it is what
 
 # SPR-065 Explain Spring DI at Every Level
 
-**TL;DR** Spring Dependency Injection means the framework creates objects and wires them together so your code declares what it needs rather than building it - and that one idea looks completely different depending on how deep you go.
+**TL;DR** - Spring DI means the framework wires objects so code declares dependencies rather than building them - one idea that looks different at every experience level.
 
-### The Problem in One Paragraph
+### 🔥 The Problem in One Paragraph
 
 Dependency Injection is the single most important concept in Spring, yet it is explained poorly at almost every level. Beginners get "the container manages your beans" without understanding why that matters. Mid-level developers memorize `@Autowired` without grasping the inversion of control principle underneath. Seniors understand the mechanics but cannot articulate the architectural consequences. Principal engineers know the theory but struggle to explain it simply. The result is that DI becomes tribal knowledge - everyone "knows" it, but few can explain it clearly to someone one level below or above them. This keyword walks through five levels of explanation, each building on the last.
 
-### Textbook Definition
+### 📘 Textbook Definition
 
 Dependency Injection is a design pattern where an object receives its dependencies from an external source rather than creating them internally. In Spring, the IoC (Inversion of Control) container acts as that external source: it instantiates beans, resolves their dependencies via constructor parameters or setter methods, and manages their lifecycle. The container owns the object graph; your code owns the business logic.
 
-### Mental Model
+### 🧠 Mental Model
 
-Imagine ordering food at a restaurant. You (the class) tell the waiter (the container) what you want (declare dependencies). The kitchen (the framework) prepares the ingredients (creates the beans) and the waiter brings them to your table (injects them). You never walk into the kitchen to get your own food. If the restaurant changes suppliers (swaps an implementation), your meal still arrives the same way. That is DI: you declare, the framework delivers.
+> Imagine ordering food at a restaurant instead of cooking it yourself.
 
-### How It Works
+- "Waiter" -> Spring container (delivers dependencies)
+- "Menu order" -> constructor parameter (declares what you need)
+- "Kitchen" -> BeanFactory (creates and wires beans)
+
+**Where this analogy breaks down:** in a restaurant, you choose from a fixed menu. With DI, the container can auto-discover implementations, resolve conflicts with @Qualifier, and even proxy the meal (AOP) before it reaches your table.
+
+### ⚙️ How It Works
 
 ```
 Level 1 (Child):
@@ -4891,9 +4960,9 @@ The container resolves dependencies by type. If two beans implement `PaymentGate
 
 This enables strategies that would be impossible with hard-wired dependencies: feature flags via conditional bean registration (`@ConditionalOnProperty`), environment-specific wiring (`@Profile`), and runtime decoration via ordered post-processors. The container becomes a composition root - the single place where the entire object graph is assembled. Everything else is pure logic with declared inputs.
 
-### Worked Example
+### 🛠️ Worked Example
 
-**BAD - field injection hides dependencies:**
+**BAD:**
 
 ```java
 @Service
@@ -4909,7 +4978,7 @@ class ReportService {
 }
 ```
 
-**GOOD - constructor injection makes dependencies explicit:**
+**GOOD:**
 
 ```java
 @Service
@@ -4946,7 +5015,7 @@ void generateReport_sendsEmail() {
 }
 ```
 
-### Trade-offs
+### ⚖️ Trade-offs
 
 | Gain                                        | Cost                                                                |
 | ------------------------------------------- | ------------------------------------------------------------------- |
@@ -4957,7 +5026,7 @@ void generateReport_sendsEmail() {
 
 The deepest trade-off is cognitive: DI makes the runtime behavior invisible in the source code. When you read `OrderService`, you see a `PaymentGateway` interface - not which implementation runs in production. This is a feature when you have two implementations, and a cost when you have exactly one and the interface exists "for testability" that could be achieved by simply subclassing. Use DI to manage real variability, not hypothetical variability.
 
-### Decision Snap
+### ⚡ Decision Snap
 
 - Always use constructor injection - field injection is for legacy code only.
 - If a class has more than 7 constructor parameters, it has too many responsibilities - split it.
@@ -4965,7 +5034,7 @@ The deepest trade-off is cognitive: DI makes the runtime behavior invisible in t
 - Use `@Profile` for environment-specific beans, `@ConditionalOnProperty` for feature flags.
 - If you create an interface with exactly one implementation and no test fake, question whether you need the interface at all.
 
-### Top Traps
+### ⚠️ Top Traps
 
 | Trap                                      | Why It Hurts                                                    | Fix                                                                 |
 | ----------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------- |
@@ -4973,17 +5042,17 @@ The deepest trade-off is cognitive: DI makes the runtime behavior invisible in t
 | Circular dependencies between beans       | Startup fails or requires fragile `@Lazy` workarounds           | Redesign - extract shared logic into a third bean                   |
 | Creating interfaces for every single bean | Adds abstraction without value, clutters codebase               | Only create interfaces when multiple implementations or fakes exist |
 
-### Learning Ladder
+### 🪜 Learning Ladder
 
 - **Before this**: SPR-001 What is Spring Framework, SPR-003 Dependency Injection, SPR-041 core concepts.
-- **This keyword**: understanding DI at five levels of depth, from analogy to container internals.
+- **THIS:** SPR-065 Explain Spring DI at Every Level
 - **After this**: SPR-066 Spring System Design Interview Patterns for applying DI in architecture discussions.
 
-### The Surprising Truth
+### 💡 The Surprising Truth
 
 The real value of DI is not testability - mocking frameworks can inject fakes into nearly anything. The real value is that DI forces you to declare your dependencies explicitly. A constructor with eight parameters is a code smell you can see. A class with eight `new` statements buried in private methods hides the same coupling where no one reviews it. DI does not reduce coupling - it makes coupling visible. And visible coupling gets fixed.
 
-### Revision Card
+### 📇 Revision Card
 
 - DI means objects declare what they need and the container delivers it - the class never creates its own dependencies. Constructor injection is preferred because it enables `final` fields, compiler-enforced completeness, and plain-unit testing.
 - Under the hood, Spring reads `BeanDefinition` metadata, resolves the dependency graph, instantiates beans in order, and wraps them in proxies via `BeanPostProcessor` - which is why self-invocation bypasses `@Transactional`.
@@ -4995,7 +5064,7 @@ The real value of DI is not testability - mocking frameworks can inject fakes in
 
 # SPR-066 Spring System Design Interview Patterns
 
-**TL;DR** Five recurring Spring architecture patterns - REST+DB, event-driven, caching, security, and monitoring - form the backbone of nearly every system design interview answer involving Java backends.
+**TL;DR** - Five recurring Spring patterns - REST+DB, events, caching, security, monitoring - form the backbone of nearly every system design interview answer for Java backends.
 
 ### 🔥 The Problem in One Paragraph
 
@@ -5007,9 +5076,13 @@ A **system design interview pattern** is a reusable architectural building block
 
 ### 🧠 Mental Model
 
-Think of these five patterns as tools in a mechanic's rolling toolbox. The REST+DB pattern is the wrench - you reach for it on every job. Event-driven is the torque multiplier - it handles loads you cannot muscle through synchronously. The caching layer is the socket extension - it lets you reach a result without going deep into the engine every time. Security is the safety goggles - non-negotiable before you start work. Monitoring is the diagnostic scanner - it tells you whether the engine is healthy or about to fail.
+> Think of these five patterns as tools in a mechanic's toolbox.
 
-**Where this breaks down:** real systems combine all five simultaneously and the interactions between them (cache invalidation after events, security on async endpoints) matter more than each pattern in isolation.
+- "Wrench" -> REST+DB (reach for it on every job)
+- "Torque multiplier" -> event-driven (async heavy lifting)
+- "Diagnostic scanner" -> monitoring (healthy or about to fail)
+
+**Where this analogy breaks down:** real systems combine all five simultaneously and the interactions between them (cache invalidation after events, security on async endpoints) matter more than each pattern in isolation.
 
 ### ⚙️ How It Works
 
@@ -5068,7 +5141,7 @@ flowchart TB
 
 ### 🛠️ Worked Example
 
-**BAD - vague interview answer:**
+**BAD:**
 
 ```
 "I would use Spring Boot with a database
@@ -5078,7 +5151,7 @@ flowchart TB
 
 This tells the interviewer nothing. No component names, no configuration details, no trade-off awareness.
 
-**GOOD - structured five-pattern answer:**
+**GOOD:**
 
 ```
 "The service is a Spring Boot app exposing
@@ -5157,7 +5230,7 @@ The core tension is depth versus breadth. In a 45-minute interview, you cannot d
 ### 🪜 Learning Ladder
 
 - **Before this**: SPR-042 REST Controller basics, SPR-050 HikariCP tuning, SPR-048 OAuth 2.0.
-- **This keyword**: combining five Spring patterns into a coherent system design interview answer.
+- **THIS:** SPR-066 Spring System Design Interview Patterns
 - **After this**: SPR-069 Spring Self-Assessment Checkpoint to verify you can articulate each pattern under time pressure.
 
 ### 💡 The Surprising Truth
@@ -5176,7 +5249,7 @@ The pattern that separates good answers from great answers is not caching or sec
 
 # SPR-067 REST API Phase 3 - Security and OAuth
 
-**TL;DR** Phase 3 locks down the Phase 2 CRUD API by adding Spring Security as an OAuth 2.0 JWT resource server - a `SecurityFilterChain` bean, a JWT decoder, role-based endpoint protection, and tests that prove it all works without a running identity provider.
+**TL;DR** - Add Spring Security as an OAuth 2.0 JWT resource server to your CRUD API - SecurityFilterChain, JWT validation, role-based access, and zero-IdP tests.
 
 ### 🔥 The Problem in One Paragraph
 
@@ -5188,9 +5261,13 @@ An **OAuth 2.0 Resource Server** is an application that accepts access tokens (t
 
 ### 🧠 Mental Model
 
-Think of your API as a building. Phase 2 left the front door open - anyone could walk in and use any room. Adding Spring Security is like hiring a security guard (the filter chain) who checks ID badges (JWT tokens) at the entrance. The guard does not issue badges - that is the identity provider's job. The guard only verifies that the badge is genuine (signature validation), not expired (exp claim), and grants access to rooms based on the role printed on the badge (authorities). The `SecurityFilterChain` bean is your written policy telling the guard which doors require which badge level.
+> Think of your API as a building with a security guard at the entrance.
 
-**Where this breaks down:** unlike a physical guard, the filter chain runs as a series of servlet filters in a fixed order, and misconfiguring one filter (such as placing a permit-all rule before a role check) silently undermines the entire policy.
+- "ID badge" -> JWT token (signed, scoped, time-limited)
+- "Guard" -> SecurityFilterChain (validates badge, checks role)
+- "Written policy" -> SecurityFilterChain bean configuration
+
+**Where this analogy breaks down:** unlike a physical guard, the filter chain runs as a series of servlet filters in a fixed order, and misconfiguring one filter (such as placing a permit-all rule before a role check) silently undermines the entire policy.
 
 ### ⚙️ How It Works
 
@@ -5304,7 +5381,7 @@ JwtAuthenticationConverter jwtConverter() {
 
 ### 🛠️ Worked Example
 
-**BAD - security config that blocks everything:**
+**BAD:**
 
 ```java
 @Bean
@@ -5323,7 +5400,7 @@ SecurityFilterChain broken(
 
 Without `.oauth2ResourceServer(...)`, there is no mechanism to process the Bearer token. Every request arrives unauthenticated and gets rejected.
 
-**GOOD - correct filter chain with JWT:**
+**GOOD:**
 
 ```java
 @Bean
@@ -5427,7 +5504,7 @@ The fundamental trade-off of JWT-based resource servers is statelessness versus 
 ### 🪜 Learning Ladder
 
 - **Before this**: SPR-039 Spring Web MVC, SPR-048 OAuth 2.0 and OIDC, SPR-064 Spring Security OWASP alignment.
-- **This keyword**: adding OAuth 2.0 JWT resource server security to a CRUD API with role-based access and tests.
+- **THIS:** SPR-067 Securing the REST API (Phase 3) - adding OAuth 2.0 JWT resource server security to a CRUD API with role-based access and tests.
 - **After this**: SPR-068 Spring Performance Tuning Kata to optimize the secured API under load.
 
 ### 💡 The Surprising Truth
@@ -5446,7 +5523,203 @@ The hardest part of adding Spring Security is not the configuration - it is test
 
 # SPR-068 Spring Performance Tuning Kata
 
-> Entry stub. Generate full content using LEARN_PROMPT.md v1.0. Template: INTERMEDIATE.
+**TL;DR** - Take a deliberately slow Spring Boot app, apply the performance checklist step by step, measure each improvement with Actuator metrics, and build profiling discipline.
+
+### 🔥 The Problem in One Paragraph
+
+Reading a performance checklist is not the same as applying one. Engineers read SPR-058, nod along, then go back to production and apply optimizations in random order without measuring before or after. They turn off `open-in-view` and assume they fixed everything. They add a cache but never verify it gets hit. They shrink the connection pool without watching for connection-wait timeouts under load. The gap between knowing and doing is where performance regressions survive. This kata bridges that gap: you start with a deliberately broken Spring Boot app, apply one fix at a time, measure the delta after each fix, and build the muscle memory of the profile-measure-fix-measure cycle.
+
+### 📘 Textbook Definition
+
+A **performance tuning kata** is a repeatable hands-on exercise where you practice identifying, measuring, fixing, and verifying performance problems in a controlled environment. The term "kata" comes from martial arts - a choreographed pattern practiced until the movements become automatic. In software, the kata codifies the discipline of never optimizing without a measurement baseline and never declaring a fix without a measurement delta.
+
+### 🧠 Mental Model
+
+> Think of this kata as a cooking class with a deliberately ruined dish.
+
+- "Fix one problem at a time" -> change one config, measure
+- "Taste after each fix" -> re-run load test, check p99 latency
+- "Record impact" -> before/after Actuator metrics per fix
+
+**Where this analogy breaks down:** unlike cooking, software
+performance fixes can interact. Fixing N+1 queries may
+reduce connection pool pressure so much that pool tuning
+becomes unnecessary. Always re-measure after each fix
+because the landscape shifts.
+
+### ⚙️ How It Works
+
+```
+  Broken App (6 problems)
+       |
+  [1] Measure baseline (p50, p99, QPS)
+       |
+  [2] Fix open-in-view --------> measure
+       |
+  [3] Fix N+1 queries ---------> measure
+       |
+  [4] Right-size pool ----------> measure
+       |
+  [5] Add caching --------------> measure
+       |
+  [6] Tune logging level -------> measure
+       |
+  [7] Compare baseline vs final
+       |
+  Report: delta per fix, total gain
+```
+
+```mermaid
+flowchart TD
+    A["Broken App: 6 problems"] --> B["Measure baseline"]
+    B --> C["Fix open-in-view"]
+    C --> D["Measure delta"]
+    D --> E["Fix N+1 queries"]
+    E --> F["Measure delta"]
+    F --> G["Right-size connection pool"]
+    G --> H["Measure delta"]
+    H --> I["Add caching layer"]
+    I --> J["Measure delta"]
+    J --> K["Tune logging level"]
+    K --> L["Measure delta"]
+    L --> M["Compare baseline vs final"]
+    M --> N["Report: delta per fix"]
+```
+
+**The broken app setup.** You have a Spring Boot 3.x app
+with a `Product` entity that has a `@OneToMany` relationship
+to `Review` entities. The `/api/products` endpoint returns
+all products with their reviews. The app has these six
+deliberate problems:
+
+1. `spring.jpa.open-in-view=true` (default) - the Hibernate session stays open through the entire HTTP request, hiding lazy-loading exceptions but causing queries to fire during JSON serialization in the controller layer.
+2. No `@EntityGraph` or `JOIN FETCH` - each product triggers a separate query for its reviews (N+1 pattern from SPR-057).
+3. HikariCP `maximum-pool-size=50` on an app that needs 5-10 connections - wastes database connections and memory.
+4. No caching - identical product lookups hit the database on every request.
+5. Logging level set to `DEBUG` for `org.hibernate.SQL` and `org.springframework.web` - floods stdout with thousands of lines per request.
+6. No Actuator metrics endpoint enabled - you cannot measure anything until you enable it.
+
+**Step-by-step execution:**
+
+**Step 1 - Enable measurement.** Add `spring-boot-starter-actuator` and expose the `/actuator/metrics` and `/actuator/prometheus` endpoints. Set `management.endpoints.web.exposure.include=health,metrics,prometheus`. Without this, you are tuning blind. Run a baseline load test: 100 requests to `GET /api/products` using a tool like `hey`, `wrk`, or `ab`. Record p50 latency, p99 latency, and throughput (requests per second).
+
+**Step 2 - Disable open-in-view.** Set `spring.jpa.open-in-view=false` in `application.properties`. This forces all database access to happen inside `@Transactional` service methods. If your code was relying on lazy loading in the controller, it will now throw `LazyInitializationException` - which is the correct signal that your fetch strategy is wrong. Re-run the load test. Record the delta.
+
+**Step 3 - Fix the N+1 query.** In your repository, add a `@Query` with `JOIN FETCH` or use `@EntityGraph(attributePaths = "reviews")` on the `findAll` method. This collapses N+1 queries into a single query. Re-run the load test. This fix typically produces the largest single improvement.
+
+**Step 4 - Right-size the connection pool.** Change `spring.datasource.hikari.maximum-pool-size` from 50 to a value matching your workload. A common starting formula: `pool_size = (2 * CPU_cores) + disk_spindles`. For a 4-core dev machine with SSD, 10 is reasonable. Add `spring.datasource.hikari.connection-timeout=5000` and watch the `hikaricp.connections.active` metric. Re-run the load test.
+
+**Step 5 - Add caching.** Add `spring-boot-starter-cache`, annotate your main configuration with `@EnableCaching`, and annotate the service method with `@Cacheable("products")`. Use the default `ConcurrentMapCache` for this kata. After the load test, check `cache.gets{cache=products,result=hit}` in Actuator metrics to verify the cache is actually being used.
+
+**Step 6 - Tune logging.** Set `logging.level.org.hibernate.SQL=WARN` and `logging.level.org.springframework.web=INFO`. Debug logging in Hibernate generates one log line per SQL parameter binding - under load, this can be hundreds of thousands of lines per second, blocking the application thread on I/O. Re-run the load test.
+
+### 🛠️ Worked Example
+
+**BAD:**
+
+```java
+// "I think caching will help" - adds cache
+// without baseline measurement
+@Cacheable("products")
+public List<Product> getAll() {
+    return repo.findAll(); // still has N+1
+}
+// Deploys. Claims "we optimized performance."
+// No before/after numbers. No proof.
+```
+
+**GOOD:**
+
+```java
+// Step 1: baseline (measured via Actuator)
+// p50=320ms, p99=1200ms, QPS=45
+
+// Step 3 fix: add JOIN FETCH
+@Query("SELECT p FROM Product p "
+     + "JOIN FETCH p.reviews")
+List<Product> findAllWithReviews();
+
+// Step 3 result: p50=45ms, p99=180ms, QPS=310
+// Delta: 86% reduction in p50 latency
+```
+
+**Production measurement pattern:**
+
+```properties
+# application.properties - measurement infra
+management.endpoints.web.exposure\
+  .include=health,metrics,prometheus
+management.metrics.tags.application=product-svc
+spring.jpa.open-in-view=false
+spring.datasource.hikari.maximum-pool-size=10
+logging.level.org.hibernate.SQL=WARN
+```
+
+```java
+// Record per-endpoint latency automatically
+// via Micrometer's WebMvcMetricsFilter
+// Query: http_server_requests_seconds{uri=
+// "/api/products",quantile="0.99"}
+```
+
+### ⚖️ Trade-offs
+
+| Gain                                 | Cost                             |
+| ------------------------------------ | -------------------------------- |
+| Builds measurement discipline        | Takes 30-60 min to complete      |
+| Makes checklist knowledge actionable | Requires local tooling setup     |
+| Reveals fix interaction effects      | Results vary by hardware         |
+| Creates personal benchmark reference | Controlled env differs from prod |
+
+**Measurement vs intuition.** Engineers with experience
+often skip measurement because they "know" the fix. The
+kata forces the discipline of measuring even when you think
+you know the answer. This matters because in real systems,
+the biggest bottleneck is often not what you expect. The
+N+1 fix might give you 80% of the improvement, making
+the other five fixes nearly irrelevant - but you only
+know that if you measure each step.
+
+**Controlled environment vs production.** This kata runs on
+a local machine with small data sets. Real production
+performance depends on network latency, concurrent users,
+database size, and resource contention. The kata teaches
+the methodology - the specific numbers are not transferable.
+
+### ⚡ Decision Snap
+
+- **When to run this kata:** after reading SPR-058 (the
+  checklist) and before tuning a real application. Also
+  useful when onboarding to a team that owns a Spring Boot
+  service - run the kata first, then profile the real app
+  using the same methodology.
+- **When to skip:** if you have already profiled and tuned
+  a real Spring Boot app in production and have measurement
+  logs to prove it.
+
+### ⚠️ Top Traps
+
+| Trap                            | Why it hurts                                                | Fix                                                       |
+| ------------------------------- | ----------------------------------------------------------- | --------------------------------------------------------- |
+| Applying all fixes at once      | Cannot attribute improvement to any single fix              | One fix at a time, measure between each                   |
+| Skipping the baseline           | No reference point - "faster" means nothing without numbers | Always record p50, p99, QPS before first change           |
+| Measuring with DEBUG logging on | Logging I/O dominates latency, masking real bottlenecks     | Set logging to WARN before baseline, or fix logging first |
+
+### 🪜 Learning Ladder
+
+- **Before this:** SPR-058 Spring Performance Tuning Checklist (the theory), SPR-057 N+1 Query Anti-Pattern (the single biggest fix), SPR-050 HikariCP Connection Pool Tuning (pool sizing).
+- **After this:** SPR-069 Spring Self-Assessment Checkpoint to validate your understanding of all L3 topics.
+- **Builds on:** Actuator (SPR-052) for measurement, Micrometer (SPR-053) for metrics collection.
+
+### 💡 The Surprising Truth
+
+The single biggest performance improvement in most Spring Boot apps is fixing N+1 queries - not caching, not pool tuning, not logging. In this kata, the JOIN FETCH fix alone typically accounts for 70-85% of the total latency improvement. Caching helps, but only after the underlying queries are efficient - caching a slow query just delays the pain until the cache misses. The kata teaches this hierarchy of impact through direct measurement, which is far more convincing than reading it in a checklist. The second surprise: disabling `open-in-view` often causes the app to crash with `LazyInitializationException`, which feels like a regression but is actually the framework forcing you to confront a design problem you were ignoring.
+
+### 📇 Revision Card
+
+- Start every tuning session by enabling Actuator metrics and recording a baseline (p50, p99, QPS) before touching any code - optimizing without a baseline is guessing, not engineering.
+- Apply exactly one fix at a time and re-measure after each fix - the measurement delta tells you which fixes matter and which are noise; in most Spring Boot apps, fixing N+1 queries alone delivers the majority of the improvement.
+- The kata builds muscle memory for the profile-measure-fix-measure cycle so that when you face a real production performance incident, the methodology is automatic and you do not waste time on low-impact changes.
 
 ---
 
@@ -5454,4 +5727,244 @@ The hardest part of adding Spring Security is not the configuration - it is test
 
 # SPR-069 Spring Self-Assessment Checkpoint
 
-> Entry stub. Generate full content using LEARN_PROMPT.md v1.0. Template: INTERMEDIATE.
+**TL;DR** - Fifteen questions covering every L3 Internals and Design topic with expected answers and keywords to revisit - identify exactly which concepts need work before L4.
+
+### 🔥 The Problem in One Paragraph
+
+You have read 25 keywords covering bean lifecycle, AOP, proxies, security, JPA, connection pools, migrations, Actuator, metrics, testing, build plugins, anti-patterns, performance, migration guides, and thread safety. You feel like you understand them. But feeling is not knowing. Without deliberate recall testing, you cannot distinguish "I recognize this when I see it" from "I can explain this from memory and apply it." This checkpoint forces active recall: you read a question, attempt an answer before looking at the solution, and the gap between your answer and the expected answer tells you exactly which keyword to revisit. Spaced retrieval is the most effective learning technique - this checkpoint is the retrieval event.
+
+### 📘 Textbook Definition
+
+A **self-assessment checkpoint** is a structured set of questions that tests recall and application of previously studied material. Unlike an exam, the goal is not scoring - it is identifying gaps. Each question targets a specific concept, and the expected answer includes enough detail to distinguish superficial recognition from genuine understanding. The checkpoint also maps each question to its source keyword, creating a direct feedback loop: wrong answer leads to targeted review, not re-reading everything.
+
+### 🧠 Mental Model
+
+> Think of this checkpoint as a pilot's pre-flight checklist.
+
+- "Check each system" -> answer one question per L3 topic
+- "Failed check" -> weak answer (revisit that keyword)
+- "Grounded until fixed" -> do not move to L4 until gaps close
+
+**Where this analogy breaks down:** unlike a binary pass/fail on
+a physical system, conceptual understanding exists on a
+spectrum. A partial answer may indicate you need a quick
+refresher rather than a full re-read. Use the depth of
+your gap to decide how much review is needed.
+
+### ⚙️ How It Works
+
+```
+  For each of 15 questions:
+       |
+  [1] Read the question
+       |
+  [2] Write your answer (no peeking)
+       |
+  [3] Compare to expected answer
+       |
+  [4] If gap exists --> note keyword ID
+       |
+  [5] After all 15: review flagged keywords
+       |
+  [6] Re-attempt flagged questions
+```
+
+```mermaid
+flowchart TD
+    A["Read question"] --> B["Write your answer"]
+    B --> C["Compare to expected answer"]
+    C --> D{"Gap?"}
+    D -- Yes --> E["Flag keyword for review"]
+    D -- No --> F["Move to next question"]
+    E --> F
+    F --> G{"More questions?"}
+    G -- Yes --> A
+    G -- No --> H["Review flagged keywords"]
+    H --> I["Re-attempt flagged questions"]
+```
+
+**The 15 questions and expected answers:**
+
+**Q1. Name the exact order of initialization callbacks
+after property population.** (SPR-044)
+
+Expected: BPP `postProcessBefore` -> `@PostConstruct` ->
+`afterPropertiesSet()` -> custom `init-method` -> BPP
+`postProcessAfter`. `@PostConstruct` runs inside the
+`postProcessBefore` phase via `CommonAnnotationBeanPostProcessor`.
+
+**Q2. JDK dynamic proxy vs CGLIB proxy in Spring AOP?**
+(SPR-045)
+
+Expected: JDK proxy requires an interface; CGLIB subclasses
+the target directly (works without interfaces, cannot proxy
+`final`). Boot defaults to CGLIB since 2.x.
+
+**Q3. Why does self-invocation bypass `@Transactional`?**
+(SPR-046, SPR-056)
+
+Expected: `this.method()` calls the raw target, not the
+proxy. The transaction interceptor never fires. Fix: inject
+self, extract to separate bean, or `AopContext.currentProxy()`.
+
+**Q4. What happens when no `SecurityFilterChain` matches a
+request?** (SPR-047)
+
+Expected: `FilterChainProxy` finds no matching chain, so
+no security filters apply. Always end with
+`.anyRequest().denyAll()` or `.anyRequest().authenticated()`.
+
+**Q5. Three pieces of config for a Spring Boot JWT resource
+server?** (SPR-048, SPR-067)
+
+Expected: (1) `spring-boot-starter-oauth2-resource-server`
+dependency. (2) `jwt.issuer-uri` property. (3)
+`SecurityFilterChain` with `oauth2ResourceServer(o -> o.jwt(...))`.
+
+**Q6. N+1 query problem and how `@EntityGraph` solves it?**
+(SPR-049, SPR-057)
+
+Expected: 1 parent query + N child queries. `@EntityGraph`
+tells JPA to `LEFT JOIN FETCH` in a single query. Alternative:
+JPQL with explicit `JOIN FETCH`.
+
+**Q7. Starting formula for HikariCP `maximum-pool-size`?**
+(SPR-050)
+
+Expected: `(2 * CPU_cores) + disk_spindles`. For 4-core SSD,
+start with 10. Monitor `hikaricp.connections.pending` - zero
+means pool is large enough.
+
+**Q8. One advantage of Flyway over Liquibase and vice
+versa?** (SPR-051)
+
+Expected: Flyway uses plain SQL (DBA-readable). Liquibase
+uses database-agnostic changelog format (multi-dialect from
+one source).
+
+**Q9. How to add a custom health indicator?** (SPR-052)
+
+Expected: Implement `HealthIndicator`, override `health()`,
+register as `@Component`. Appears in `/actuator/health`
+automatically.
+
+**Q10. Micrometer type for currently active HTTP requests?**
+(SPR-053)
+
+Expected: `Gauge` (current value, goes up/down). Not
+`Counter` (only increases) or `Timer` (latency distributions).
+
+**Q11. Why Testcontainers over H2?** (SPR-054)
+
+Expected: H2 has dialect differences from production databases.
+Testcontainers runs the actual engine in Docker, validating
+real behavior. Trade-off: slower startup.
+
+**Q12. `spring-boot:repackage` vs standard `mvn package`?**
+(SPR-055)
+
+Expected: `mvn package` creates a standard JAR. `repackage`
+creates a fat JAR with all deps in `BOOT-INF/lib/` and
+`JarLauncher` as main class.
+
+**Q13. How to structure unit, slice, and integration tests?**
+(SPR-059)
+
+Expected: Unit (no Spring) for logic. Slice (`@WebMvcTest`,
+`@DataJpaTest`) for one layer. `@SpringBootTest` for
+end-to-end. Pyramid: many unit, fewer slice, fewest full.
+
+**Q14. Key `javax` to `jakarta` migration change?**
+(SPR-061, SPR-062)
+
+Expected: Boot 3.x requires Jakarta EE 9+. All `javax.*`
+EE packages become `jakarta.*`. Compile-breaking change.
+OpenRewrite automates it. Java SE `javax.*` stays.
+
+**Q15. Why is "Spring beans are thread-safe" wrong?**
+(SPR-063)
+
+Expected: Singleton beans are shared across threads with
+no synchronization. Mutable fields cause race conditions.
+Fix: stateless beans, prototype scope, `ThreadLocal`, or
+explicit synchronization.
+
+### 🛠️ Worked Example
+
+**BAD:**
+
+```text
+Read keyword SPR-046 again.
+Think "yes, I know about proxy self-invocation."
+Move on. No recall tested.
+Encounter the same bug in production 3 months
+later because recognition != recall.
+```
+
+**GOOD:**
+
+```text
+Q3: "Why does @Transactional self-invocation
+    fail?"
+My answer: "Something about proxies... the
+    method does not go through the proxy?"
+Expected: Proxy wrapper is bypassed when
+    calling this.method() directly. The
+    transaction interceptor never fires.
+    Fix: inject self, extract to separate
+    bean, or use AopContext.currentProxy().
+Gap: I forgot the three fix strategies.
+Action: Re-read SPR-056 fix section only.
+```
+
+
+### ⚖️ Trade-offs
+
+| Gain                               | Cost                               |
+| ---------------------------------- | ---------------------------------- |
+| Identifies specific knowledge gaps | Requires honest self-assessment    |
+| Creates targeted review plan       | Takes 20-30 min to complete        |
+| Reinforces long-term retention     | Uncomfortable when gaps appear     |
+| Maps gaps to specific keywords     | Questions cover breadth, not depth |
+
+**Active recall vs re-reading.** Testing yourself produces
+stronger retention than re-reading. The discomfort of not
+remembering is the signal that your brain is forming a
+stronger memory trace.
+
+**Breadth vs depth.** Fifteen questions test core concepts
+you should explain without notes. For deeper understanding,
+revisit the specific keyword's Worked Example.
+
+### ⚡ Decision Snap
+
+- **When to take this checkpoint:** after completing all
+  keywords SPR-044 through SPR-068. Take it once without
+  notes, flag gaps, review flagged keywords, then re-take
+  the flagged questions one week later for spaced repetition.
+- **When to skip:** if you are returning to a single keyword
+  for reference rather than studying the full L3 tier.
+
+### ⚠️ Top Traps
+
+| Trap                                          | Why it hurts                                              | Fix                                                                |
+| --------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------ |
+| Looking at answers before attempting your own | Triggers recognition, not recall - you feel you "knew" it | Cover the expected answer, write yours first                       |
+| Skipping questions you "obviously know"       | Obvious knowledge is the most likely to be shallow        | Answer every question - if it is truly easy, it takes 30 seconds   |
+| Reviewing all keywords after any failure      | Wastes time on material you already know                  | Only revisit the specific keyword(s) flagged by your wrong answers |
+
+### 🪜 Learning Ladder
+
+- **Before this:** All L3 keywords SPR-044 through SPR-068, especially the performance kata (SPR-068) which applies the checklist hands-on.
+- **After this:** SPR-070 and the Production and Cloud file - L4 topics that assume solid L3 foundations.
+- **If gaps found:** Revisit only the flagged keywords. Use the keyword ID next to each question to navigate directly.
+
+### 💡 The Surprising Truth
+
+Most engineers overestimate their understanding of topics they have recently read - the "illusion of competence." The only reliable way to distinguish recognition from recall is to test yourself without notes. These questions use "explain" and "name" (free recall) rather than "choose from options" because free recall is harder and more honest. Scoring below 12/15 on the first attempt is normal - it means the checkpoint is working, and targeted review will produce durable understanding.
+
+### 📇 Revision Card
+
+- Take the 15-question checkpoint after completing all L3 keywords (SPR-044 through SPR-068), answering each question from memory before checking the expected answer - the gap between your answer and the expected answer identifies exactly which keywords to revisit.
+- Each question maps to a specific keyword ID, so a wrong answer on Q7 means "re-read SPR-050 HikariCP Connection Pool Tuning" - not "re-read everything" - this turns a vague sense of uncertainty into a precise, targeted review plan.
+- Re-take only the flagged questions one week later to trigger spaced retrieval, which research consistently shows produces stronger long-term retention than re-reading the same material multiple times.
