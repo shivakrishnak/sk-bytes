@@ -6,12 +6,16 @@ INTERMEDIATE / COMPLEX), depth-first and progression-first.
 
 ## How instructions load
 
-| Context                  | Loads                                        |
-| ------------------------ | -------------------------------------------- |
-| Any interaction          | This file (lean overview + shared rules)     |
-| Editing `learn/**` files | `.github/instructions/learn.instructions.md` |
-| Using `/learn` agent     | Agent instructions + reads spec on demand    |
-| Using `@learn-*` prompts | Prompt-specific instructions                 |
+1. **Always**: this file loads (lean overview + shared rules).
+2. **Editing `learn/**`**: also loads
+`.github/instructions/learn.instructions.md`.
+3. **Using `/learn` agent**: also loads agent instructions
+   and reads spec on demand.
+4. **Using `@learn-*` prompts**: also loads prompt-specific
+   instructions.
+
+If any referenced file is missing or unreadable, halt and
+notify the user before proceeding.
 
 ## Quick reference
 
@@ -41,8 +45,11 @@ roadmap nodes, or learning paths - for any skill, language,
 framework, CS topic, free-text blob, or job description - MUST
 be generated through `learn/_config/LEARN_KEYWORD_GENERATOR.md`
 v1.0. The agent loads that file end to end before emitting any
-list. Halt and report if the file is unavailable or its version
-is not v1.0. No ad-hoc lists. No shortcuts.
+list. No ad-hoc lists. No shortcuts.
+
+**Fallback:** If `LEARN_KEYWORD_GENERATOR.md` is unavailable,
+corrupted, or not v1.0, halt immediately, notify the user,
+and do not generate any list.
 
 ## Shared rules
 
@@ -55,34 +62,48 @@ is not v1.0. No ad-hoc lists. No shortcuts.
 
 ### Formatting (non-negotiable)
 
-- No em dashes (U+2014) anywhere. No en dashes (U+2013) either.
-  Regular ASCII hyphens only.
-- Code lines max 70 chars.
-- Diagrams: DUAL format - ASCII first (max 59 chars wide), then
-  equivalent Mermaid block immediately below.
-- Supported Mermaid types: `flowchart`, `sequenceDiagram`,
-  `stateDiagram-v2`, `classDiagram`, `erDiagram`, `mindmap`.
-- BAD pattern before GOOD pattern in all code examples.
-- File MUST start at byte 0 with `---` (no BOM, no whitespace).
-- Double-quote any YAML title containing `: ` (colon + space).
+These rules are enforced by the validator. Apply them to
+every file under `learn/`.
+
+**Characters:** No em dashes (U+2014) or en dashes (U+2013).
+ASCII hyphens only.
+
+**Width limits:** Code lines max 70 chars. ASCII diagrams
+max 59 chars wide.
+
+**Diagrams:** DUAL format - ASCII block first, then equivalent
+Mermaid block immediately below. Supported Mermaid types:
+`flowchart`, `sequenceDiagram`, `stateDiagram-v2`,
+`classDiagram`, `erDiagram`, `mindmap`.
+
+**Code examples:** BAD pattern before GOOD pattern in every
+wrong-vs-right example.
+
+**File structure:** File starts at byte 0 with `---` (no BOM,
+no whitespace). Double-quote any YAML title containing `: `.
 
 ### Anti-hallucination
 
 - Never invent benchmarks, latency numbers, scale claims, CVE
   details, or "production stories".
-- Hedge when uncertain: "implementation-dependent", "typically",
-  "varies by version".
+- Hedge when implementation details are version-specific,
+  vendor-specific, or lack official documentation. Use phrases
+  like "implementation-dependent", "typically", "varies by
+  version". Do not hedge on well-documented API behavior or
+  language-spec guarantees.
 - Cite primary sources (RFCs, JEPs, official docs) where possible.
 
 ### Git workflow (non-negotiable)
 
 Every fix, addition, or edit MUST be committed immediately
 after validation passes. One logical change = one commit.
+Commit and push are separate actions: commit is automatic,
+push always requires explicit user approval.
 
 ```pwsh
 git add learn/ .github/
 git commit -m "<type>: <scope> - <description>"
-# Do NOT git push without explicit user approval
+# STOP here. Never run git push without user approval.
 ```
 
 Types: `feat` (content), `fix` (corrections), `refactor`,
