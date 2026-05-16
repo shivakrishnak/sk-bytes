@@ -44,6 +44,10 @@ COMPLEX) auto-selected from each keyword's level.
 - **Never bypass the keyword generator.** Topic, subtopic, and
   keyword lists come from LEARN_KEYWORD_GENERATOR.md v1.0, not
   improvisation.
+- **Commit after every fix.** Every edit must be committed
+  immediately after validation passes. One logical change =
+  one commit. Use conventional types: `feat`, `fix`,
+  `refactor`, `chore`, `docs`. Scope = topic/subtopic slug.
 - **Never push.** Stop at `git commit`. The user pushes.
 
 ## Capabilities

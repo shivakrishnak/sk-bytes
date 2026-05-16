@@ -1,0 +1,71 @@
+// sk-learn custom styles
+// Loaded by just-the-docs via _sass/custom/custom.scss
+
+// ── TOC keyword list spacing ──────────────────────────────
+// Ensure numbered list items have clear spacing between
+// the counter and the link text.
+.main-content > ol {
+  list-style-position: outside;
+  padding-left: 2.5em;
+
+  li {
+    padding-left: 0.4em;
+    margin-bottom: 0.15em;
+  }
+}
+
+// ── Keyword TOC section ───────────────────────────────────
+// Style the ## Keywords nav block between frontmatter and
+// first keyword heading.
+.main-content > h2#keywords {
+  font-size: 1.1em;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  color: var(--link-color, #7253ed);
+  border-bottom: none;
+}
+
+// ── Responsive tables ─────────────────────────────────────
+// Wrap tables in a scrollable container on narrow viewports.
+.main-content {
+  table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+
+    th {
+      white-space: nowrap;
+    }
+  }
+}
+
+// ── Keyword separator (double --- rule) ───────────────────
+// Reduce visual weight of the double <hr> between keywords.
+.main-content > hr + hr {
+  display: none;
+}
+
+// ── TL;DR highlight ──────────────────────────────────────
+// Make the TL;DR line stand out with a subtle background.
+.main-content > p > strong:first-child {
+  &:only-child {
+    // Avoid styling random bold paragraphs
+  }
+}
+
+// ── Revision Card visual ─────────────────────────────────
+// No extra styling needed - the emoji + bold provides
+// sufficient visual distinction.
+
+// ── Print styles ─────────────────────────────────────────
+@media print {
+  .main-content > hr {
+    page-break-after: always;
+  }
+
+  .main-content table {
+    display: table;
+    overflow-x: visible;
+  }
+}

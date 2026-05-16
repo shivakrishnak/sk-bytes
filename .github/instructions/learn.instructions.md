@@ -171,13 +171,42 @@ python learn/_config/learn_scaffold.py --file "java/Java - X.md"
 python learn/_config/learn_scaffold.py --file "..." --tier COMPLEX
 ```
 
-## 8. Git workflow
+## 8. Git workflow (non-negotiable)
+
+Every fix, addition, or edit MUST be committed immediately
+after validation passes. Do not batch unrelated changes.
+
+**Commit after every fix.** One logical change = one commit.
 
 ```pwsh
 git add learn/ .github/
-git commit -m "feat: <Topic> - <Subtopic>"
+git commit -m "<type>: <scope> - <description>"
 # Do NOT git push without explicit user approval.
 ```
+
+**Commit types:**
+
+| Type     | When                                       |
+| -------- | ------------------------------------------ |
+| feat     | New keyword, topic, or subtopic content    |
+| fix      | Correct content, formatting, or validation |
+| refactor | Restructure without changing meaning       |
+| chore    | Config, scaffold, tooling, CI changes      |
+| docs     | Spec, instructions, README updates         |
+
+**Scope:** topic/subtopic slug (e.g., `java/language-core`).
+
+**Examples:**
+
+```pwsh
+git commit -m "feat: java/language-core - add 5 keywords"
+git commit -m "fix: java/exceptions-io - repair broken table"
+git commit -m "chore: config - remove compress_html endings"
+git commit -m "docs: instructions - add commit-after-fix rule"
+```
+
+**Sequence:** edit -> validate -> fix errors -> commit.
+Never leave validated fixes uncommitted.
 
 ## 9. Shell
 

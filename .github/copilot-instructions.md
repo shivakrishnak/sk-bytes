@@ -74,13 +74,20 @@ is not v1.0. No ad-hoc lists. No shortcuts.
   "varies by version".
 - Cite primary sources (RFCs, JEPs, official docs) where possible.
 
-### Git workflow
+### Git workflow (non-negotiable)
+
+Every fix, addition, or edit MUST be committed immediately
+after validation passes. One logical change = one commit.
 
 ```pwsh
 git add learn/ .github/
-git commit -m "feat: <description>"
+git commit -m "<type>: <scope> - <description>"
 # Do NOT git push without explicit user approval
 ```
+
+Types: `feat` (content), `fix` (corrections), `refactor`,
+`chore` (config/tooling), `docs` (specs/instructions).
+Scope: topic/subtopic slug. Sequence: edit -> validate -> commit.
 
 ## Default behaviour
 

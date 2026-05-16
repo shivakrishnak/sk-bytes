@@ -65,11 +65,13 @@ liquid:
   strict_filters: false
 
 # ── Compress HTML output ────────────────────────────────────
+# NOTE: "endings: all" strips </th>, </thead>, </td> etc. and
+# breaks table header rendering. "blanklines: false" mangles
+# whitespace inside <pre> blocks and breaks Mermaid diagrams.
+# Only safe options are kept.
 compress_html:
   clippings: all
   comments: all
-  endings: all
-  blanklines: false
 
 # ── Compress CSS ────────────────────────────────────────────
 sass:
