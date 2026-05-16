@@ -1,5 +1,5 @@
 ---
-mode: agent
+agent: learn
 description: "Generate keyword list (L0..L6 + META) for a new or existing topic using LEARN_KEYWORD_GENERATOR.md v1.0. Emits folder, index.md, and per-subtopic stub files with frontmatter only."
 ---
 
@@ -29,14 +29,19 @@ then scaffold the folder + sub-topic stub files.
    `learn/_config/LEARN_KEYWORD_GENERATOR.md` v1.0.
 2. Generate the full keyword set:
    - Cover ALL levels L0..L6 + META per the table in Section 1.
-   - Apply Rules 1-25 (coverage, atomicity, anti-patterns,
-     practice, decision frameworks, retention, interview,
-     template tier, unlearn, META cross-domain transfer).
-   - Every keyword MUST declare its template tier
-     (Rule 23): SIMPLE / INTERMEDIATE / COMPLEX.
-   - At least 2 unlearn keywords per category (Rule 24).
-   - At least 2 META keywords from DIFFERENT source domains
-     (Rule 25).
+   - Apply Rules 1-25 from the keyword spec. Key groups:
+     **Coverage** (R1-R5): all levels, atomicity, no gaps.
+     **Quality** (R6-R15): anti-patterns, practice, decision
+     frameworks, retention, interview readiness.
+     **Tiers** (R23): every keyword declares SIMPLE /
+     INTERMEDIATE / COMPLEX.
+     **Unlearn** (R24): at least 2 unlearn keywords per
+     category.
+   - At least 2 META keywords from unrelated source domains
+     (Rule 25). A "source domain" is a distinct technical
+     area (e.g., Networking, Databases, OS, Distributed
+     Systems). Two META keywords must draw from different
+     areas to ensure cross-domain transfer.
 3. Group keywords into sub-topic files of **>=5 keywords**
    following the suggested split:
    - `{Topic} - Foundations.md` (L0 + L1)
@@ -48,7 +53,8 @@ then scaffold the folder + sub-topic stub files.
      `status: draft`, `version: 0`, plus the keyword list.
 5. Append the new topic to
    `learn/_config/topic-registry.md`.
-6. Run all 20 quality checks from Section 4. Report any failures.
+6. Run the 20 quality checks defined in Section 4 of
+   `LEARN_KEYWORD_GENERATOR.md` v1.0. Report any failures.
 
 ## Stub file frontmatter
 
