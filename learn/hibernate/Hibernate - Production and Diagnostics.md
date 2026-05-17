@@ -361,9 +361,9 @@ A reporting service loads 50,000 order entities per report generation. Each Orde
 
 **Prerequisites:**
 
-- Persistence Context at Every Level (L3) - conceptual
+- Explain Persistence Context at Every Level (L3) - conceptual
   understanding of PC behavior
-- Dirty Checking and L1 Cache Mechanics (L3) - dirty
+- Dirty Checking and First-Level Cache Internals (L3) - dirty
   checking overview
 
 **THIS:** HIB-072 First-Level Cache (Persistence Context)
@@ -1007,7 +1007,7 @@ A REST API serializes Order entities to JSON via Jackson. The serializer calls `
 
 **Prerequisites:**
 
-- Lazy vs Eager Fetching (L1) - why lazy loading exists
+- FetchType.LAZY vs FetchType.EAGER (L1) - why lazy loading exists
 - First-Level Cache (Persistence Context) Internals -
   proxies live in the L1 cache
 - LazyInitializationException Epidemic - the most common
@@ -1954,8 +1954,8 @@ Strategies
 
 - ORM Data Layer - Phase 4 (Production Hardening) - multi-
   tenancy as a production concern
-- Hibernate Architecture Deep Dive (L5) - SPI extension
-  points including tenancy
+- Hibernate Source Code Architecture and Bootstrap Sequence
+  (L5) - SPI extension points including tenancy
 
 ---
 
@@ -2278,8 +2278,8 @@ Integration
 
 - ORM Data Layer - Phase 4 (Production Hardening) - search
   as a production concern
-- Hibernate Architecture Deep Dive (L5) - SPI extension
-  points
+- Hibernate Source Code Architecture and Bootstrap Sequence
+  (L5) - SPI extension points
 
 ---
 
@@ -2583,10 +2583,10 @@ A financial services application implements audit logging via `PostInsertEventLi
 
 **Prerequisites:**
 
-- Persistence Context at Every Level (L3) - entity
+- Explain Persistence Context at Every Level (L3) - entity
   lifecycle stages
-- Dirty Checking and L1 Cache Mechanics (L3) - flush
-  triggers event dispatch
+- Dirty Checking and First-Level Cache Internals (L3) -
+  flush triggers event dispatch
 
 **THIS:** HIB-079 Interceptors and EventListener SPI
 
@@ -2596,7 +2596,8 @@ A financial services application implements audit logging via `PostInsertEventLi
   EventListener-based extension
 - Hibernate Search - Full-Text Indexing Integration -
   another EventListener-based extension
-- Hibernate Architecture Deep Dive (L5) - SPI design
+- Hibernate Source Code Architecture and Bootstrap Sequence
+  (L5) - SPI design
 
 ---
 
@@ -4490,7 +4491,7 @@ A Spring Boot API has OSIV enabled (default). All endpoints work. Performance te
 
 **Prerequisites:**
 
-- Lazy vs Eager Fetching (L1) - why lazy exists
+- FetchType.LAZY vs FetchType.EAGER (L1) - why lazy exists
 - JOIN FETCH in JPQL and HQL (L3) - the primary fix
 - Bytecode Enhancement and Proxy Generation Internals -
   how proxies trigger the exception

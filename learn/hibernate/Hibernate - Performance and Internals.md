@@ -3667,13 +3667,13 @@ adds. The runway analogy undersells how limited `update` is.
 
 ### ⚙️ How It Works
 
-| Value       | Behavior at startup                | Safe for prod? |
-| ----------- | ---------------------------------- | -------------- |
-| none        | Do nothing                         | Yes            |
-| validate    | Compare schema vs entities; fail if mismatch | Yes |
-| update      | ALTER TABLE to add missing cols/tables | No         |
-| create      | DROP ALL then CREATE               | No             |
-| create-drop | CREATE on start, DROP on close     | No             |
+| Value       | Behavior at startup                          | Safe for prod? |
+| ----------- | -------------------------------------------- | -------------- |
+| none        | Do nothing                                   | Yes            |
+| validate    | Compare schema vs entities; fail if mismatch | Yes            |
+| update      | ALTER TABLE to add missing cols/tables       | No             |
+| create      | DROP ALL then CREATE                         | No             |
+| create-drop | CREATE on start, DROP on close               | No             |
 
 ```text
   Development flow:
@@ -3759,12 +3759,12 @@ the safest for production.
 migrations. `create` destroys data. `validate` requires
 separate migration management.
 
-| Environment  | Recommended     | Reason               |
-| ------------ | --------------- | -------------------- |
-| Development  | update          | Quick iteration      |
-| Test/CI      | create-drop     | Clean state per run  |
-| Staging      | validate        | Match production     |
-| Production   | validate/none   | Safety first         |
+| Environment | Recommended   | Reason              |
+| ----------- | ------------- | ------------------- |
+| Development | update        | Quick iteration     |
+| Test/CI     | create-drop   | Clean state per run |
+| Staging     | validate      | Match production    |
+| Production  | validate/none | Safety first        |
 
 ---
 
@@ -3791,11 +3791,11 @@ separate migration management.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | `update` is safe because it only adds | `update` adds columns as nullable, cannot remove columns, cannot rename columns, and may lock large tables during ALTER. |
-| 2 | `validate` modifies the schema | `validate` is read-only. It compares and fails on mismatch. Zero DDL executed. |
-| 3 | hbm2ddl.auto is a migration tool | It is a convenience for development. Production migrations require Flyway or Liquibase for versioning, rollback, and review. |
+| #   | Misconception                         | Reality                                                                                                                      |
+| --- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `update` is safe because it only adds | `update` adds columns as nullable, cannot remove columns, cannot rename columns, and may lock large tables during ALTER.     |
+| 2   | `validate` modifies the schema        | `validate` is read-only. It compares and fails on mismatch. Zero DDL executed.                                               |
+| 3   | hbm2ddl.auto is a migration tool      | It is a convenience for development. Production migrations require Flyway or Liquibase for versioning, rollback, and review. |
 
 ---
 
@@ -3997,11 +3997,11 @@ extension features.
 (must use proprietary). Strict JPA compliance may miss useful
 Hibernate optimizations.
 
-| Annotation type  | Portability | Feature coverage |
-| ---------------- | ----------- | ---------------- |
-| JPA only         | Full        | 80% of needs     |
-| JPA + Hibernate  | Partial     | 99% of needs     |
-| Hibernate only   | None        | 100%             |
+| Annotation type | Portability | Feature coverage |
+| --------------- | ----------- | ---------------- |
+| JPA only        | Full        | 80% of needs     |
+| JPA + Hibernate | Partial     | 99% of needs     |
+| Hibernate only  | None        | 100%             |
 
 ---
 
@@ -4030,11 +4030,11 @@ Hibernate optimizations.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | JPA and Hibernate annotations are interchangeable | Some Hibernate annotations DUPLICATE JPA features (e.g., `@Cascade` vs JPA `cascade`). Using the Hibernate version adds coupling for no benefit. |
-| 2 | Hibernate-specific annotations break JPA compliance | Hibernate-specific annotations are additive. JPA providers ignore unknown annotations. But your code only works with Hibernate. |
-| 3 | Provider portability does not matter | Even if you never switch providers, Hibernate major version upgrades can change proprietary annotation behavior. JPA annotations are more stable. |
+| #   | Misconception                                       | Reality                                                                                                                                           |
+| --- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | JPA and Hibernate annotations are interchangeable   | Some Hibernate annotations DUPLICATE JPA features (e.g., `@Cascade` vs JPA `cascade`). Using the Hibernate version adds coupling for no benefit.  |
+| 2   | Hibernate-specific annotations break JPA compliance | Hibernate-specific annotations are additive. JPA providers ignore unknown annotations. But your code only works with Hibernate.                   |
+| 3   | Provider portability does not matter                | Even if you never switch providers, Hibernate major version upgrades can change proprietary annotation behavior. JPA annotations are more stable. |
 
 ---
 
@@ -4133,6 +4133,7 @@ OpenRewrite can handle the namespace change automatically.
 ### ⚙️ How It Works
 
 **Phase 1: Namespace (javax -> jakarta):**
+
 - Replace all `javax.persistence.*` with
   `jakarta.persistence.*`.
 - Replace all `javax.validation.*` with
@@ -4140,6 +4141,7 @@ OpenRewrite can handle the namespace change automatically.
 - Tools: OpenRewrite, IntelliJ migration assistant.
 
 **Phase 2: ID generation:**
+
 - `GenerationType.AUTO` in H5 = IDENTITY on MySQL.
   In H6 = SEQUENCE (with sequence emulation if needed).
 - Existing data with IDENTITY sequences may conflict.
@@ -4147,6 +4149,7 @@ OpenRewrite can handle the namespace change automatically.
   is what you need.
 
 **Phase 3: Query changes:**
+
 - Integer division: `5/2` was `2` in H5, is `2.5` in H6.
 - Implicit joins in multi-valued paths changed behavior.
 - Some HQL functions renamed or removed.
@@ -4242,12 +4245,12 @@ type safety, modernized query parser, and Jakarta EE alignment.
 removed APIs); testing overhead; potential ID generation
 conflicts.
 
-| Change category      | Effort   | Automation available |
-| -------------------- | -------- | -------------------- |
-| Namespace (javax)    | Low      | OpenRewrite          |
-| ID generation        | Medium   | Manual review        |
-| HQL semantics        | Medium   | Integration tests    |
-| Removed APIs         | Low-Med  | Compiler errors      |
+| Change category   | Effort  | Automation available |
+| ----------------- | ------- | -------------------- |
+| Namespace (javax) | Low     | OpenRewrite          |
+| ID generation     | Medium  | Manual review        |
+| HQL semantics     | Medium  | Integration tests    |
+| Removed APIs      | Low-Med | Compiler errors      |
 
 ---
 
@@ -4274,11 +4277,11 @@ conflicts.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | The migration is just a find-replace of javax to jakarta | Namespace is the easy part. Behavioral changes in ID generation, HQL semantics, and removed APIs require manual review. |
-| 2 | GenerationType.AUTO is the same in H5 and H6 | AUTO mapped to IDENTITY (MySQL) in H5. In H6, AUTO maps to SEQUENCE (with emulation). Existing IDENTITY tables may conflict. |
-| 3 | Integration tests cover all changes | HQL semantic changes (integer division, implicit joins) may produce different results without runtime errors. Verify query outputs. |
+| #   | Misconception                                            | Reality                                                                                                                             |
+| --- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | The migration is just a find-replace of javax to jakarta | Namespace is the easy part. Behavioral changes in ID generation, HQL semantics, and removed APIs require manual review.             |
+| 2   | GenerationType.AUTO is the same in H5 and H6             | AUTO mapped to IDENTITY (MySQL) in H5. In H6, AUTO maps to SEQUENCE (with emulation). Existing IDENTITY tables may conflict.        |
+| 3   | Integration tests cover all changes                      | HQL semantic changes (integer division, implicit joins) may produce different results without runtime errors. Verify query outputs. |
 
 ---
 
@@ -4382,18 +4385,21 @@ means missing useful optimizations.
 ### ⚙️ How It Works
 
 **JPA standard (portable):**
+
 - `EntityManager`, `EntityManagerFactory`
 - `TypedQuery`, `CriteriaQuery`
 - JPA annotations (`@Entity`, `@Column`, `@Version`, etc.)
 - `Persistence.createEntityManagerFactory("unit")`
 
 **Hibernate-specific (not portable):**
+
 - `Session`, `SessionFactory` (unwrapped from EM)
 - `StatelessSession` (no JPA equivalent)
 - `@BatchSize`, `@Formula`, `@NaturalId`
 - `session.createNativeQuery().addScalar()`
 
 **JPA has but Hibernate extends:**
+
 - `CriteriaBuilder` (Hibernate adds `HibernateCriteriaBuilder`)
 - Fetch profiles (JPA has `EntityGraph`, Hibernate adds
   `@FetchProfile`)
@@ -4475,11 +4481,11 @@ code intent.
 compliance may miss optimizations; unwrapping to Session is
 sometimes necessary.
 
-| Approach       | Portability | Feature access | Upgrade risk |
-| -------------- | ----------- | -------------- | ------------ |
-| JPA only       | Full        | 80%            | Low          |
-| JPA + H. annot.| Partial     | 95%            | Medium       |
-| Session API    | None        | 100%           | High         |
+| Approach        | Portability | Feature access | Upgrade risk |
+| --------------- | ----------- | -------------- | ------------ |
+| JPA only        | Full        | 80%            | Low          |
+| JPA + H. annot. | Partial     | 95%            | Medium       |
+| Session API     | None        | 100%           | High         |
 
 ---
 
@@ -4506,11 +4512,11 @@ sometimes necessary.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | Portability means you will switch JPA providers | Portability also means smoother Hibernate version upgrades. Provider switching is rare; version upgrades are inevitable. |
-| 2 | JPA standard is always sufficient | JPA lacks batch fetching, formula columns, natural IDs, dynamic update, and many other useful features. Hibernate extensions fill real gaps. |
-| 3 | Using any Hibernate annotation makes the code non-portable | JPA providers ignore unknown annotations. Hibernate annotations do not break EclipseLink - they just have no effect. The risk is behavioral, not compile-time. |
+| #   | Misconception                                              | Reality                                                                                                                                                        |
+| --- | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Portability means you will switch JPA providers            | Portability also means smoother Hibernate version upgrades. Provider switching is rare; version upgrades are inevitable.                                       |
+| 2   | JPA standard is always sufficient                          | JPA lacks batch fetching, formula columns, natural IDs, dynamic update, and many other useful features. Hibernate extensions fill real gaps.                   |
+| 3   | Using any Hibernate annotation makes the code non-portable | JPA providers ignore unknown annotations. Hibernate annotations do not break EclipseLink - they just have no effect. The risk is behavioral, not compile-time. |
 
 ---
 
@@ -4529,8 +4535,8 @@ sometimes necessary.
 
 - Monitoring Hibernate in Production - JPA standard
   statistics vs Hibernate-specific
-- Hibernate Architecture Deep Dive (L5) - understanding
-  what is JPA vs Hibernate at the architectural level
+- Hibernate Source Code Architecture and Bootstrap
+  Sequence (L5) - JPA vs Hibernate at architecture level
 
 ---
 
@@ -4614,6 +4620,7 @@ logging.
 ### ⚙️ How It Works
 
 **Hibernate Statistics:**
+
 1. Enable: `hibernate.generate_statistics=true`.
 2. Access: `sessionFactory.getStatistics()`.
 3. Counters: `getPrepareStatementCount()`,
@@ -4622,6 +4629,7 @@ logging.
 4. Reset per request: `statistics.clear()`.
 
 **p6spy:**
+
 1. Add p6spy dependency.
 2. Change JDBC URL: `jdbc:p6spy:postgresql://...`.
 3. Change driver: `com.p6spy.engine.spy.P6SpyDriver`.
@@ -4712,11 +4720,11 @@ Combined: full query observability.
 p6spy adds latency (microseconds per statement) and log
 volume.
 
-| Tool         | Shows what         | Overhead   | Production safe |
-| ------------ | ------------------ | ---------- | --------------- |
-| show_sql     | SQL without params | Low        | No (noisy)      |
-| Statistics   | Counters per Session| Very low  | Yes             |
-| p6spy        | SQL + params + time| Low-Medium | With sampling   |
+| Tool       | Shows what           | Overhead   | Production safe |
+| ---------- | -------------------- | ---------- | --------------- |
+| show_sql   | SQL without params   | Low        | No (noisy)      |
+| Statistics | Counters per Session | Very low   | Yes             |
+| p6spy      | SQL + params + time  | Low-Medium | With sampling   |
 
 ---
 
@@ -4744,11 +4752,11 @@ volume.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | `show_sql=true` shows bind parameter values | `show_sql` shows `?` placeholders. Use p6spy or `logging.level.org.hibernate.orm.jdbc.bind=trace` for actual values. |
-| 2 | Statistics API logs individual queries | Statistics only provides counters (total queries, loads, etc.). For individual query logging, use p6spy or Hibernate SQL logging. |
-| 3 | p6spy is for development only | p6spy can run in production with structured logging and sampling. Many teams use it for slow query detection. |
+| #   | Misconception                               | Reality                                                                                                                           |
+| --- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `show_sql=true` shows bind parameter values | `show_sql` shows `?` placeholders. Use p6spy or `logging.level.org.hibernate.orm.jdbc.bind=trace` for actual values.              |
+| 2   | Statistics API logs individual queries      | Statistics only provides counters (total queries, loads, etc.). For individual query logging, use p6spy or Hibernate SQL logging. |
+| 3   | p6spy is for development only               | p6spy can run in production with structured logging and sampling. Many teams use it for slow query detection.                     |
 
 ---
 
@@ -4852,6 +4860,7 @@ them is not physical but conceptual.
 ### ⚙️ How It Works
 
 **L2 Cache:**
+
 - Caches entities by type + ID.
 - Consulted on `em.find(Entity.class, id)`.
 - Stores dehydrated column values, not Java objects.
@@ -4859,6 +4868,7 @@ them is not physical but conceptual.
 - Does NOT cache query results (separate query cache).
 
 **Application Cache:**
+
 - Caches any object at the service method level.
 - `@Cacheable("products")` on a service method.
 - Stores the method's return value (DTO, list, aggregate).
@@ -4950,12 +4960,12 @@ Application cache is flexible and caches any shape of data.
 **Cost:** L2 stores dehydrated state (re-hydration cost on
 hit). Application cache requires explicit eviction management.
 
-| Aspect          | L2 Cache           | Application Cache   |
-| --------------- | ------------------ | ------------------- |
-| Cached object   | Entity by ID       | Any (DTO, list)     |
-| Integration     | Transparent        | Explicit            |
-| Eviction        | Automatic          | Manual (@CacheEvict)|
-| Best for        | Reference data     | Aggregates, lists   |
+| Aspect        | L2 Cache       | Application Cache    |
+| ------------- | -------------- | -------------------- |
+| Cached object | Entity by ID   | Any (DTO, list)      |
+| Integration   | Transparent    | Explicit             |
+| Eviction      | Automatic      | Manual (@CacheEvict) |
+| Best for      | Reference data | Aggregates, lists    |
 
 ---
 
@@ -4982,11 +4992,11 @@ hit). Application cache requires explicit eviction management.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | L2 cache caches query results | L2 entity cache caches by ID only. The query cache is a separate feature (and often counter-productive). |
-| 2 | Application cache replaces L2 | They serve different purposes. L2 is transparent for entity lookups. Application cache is explicit for service-layer results. |
-| 3 | Enabling both causes double caching | L2 caches entities; application cache caches DTOs/results. Unless you cache entities at the application layer too, there is no overlap. |
+| #   | Misconception                       | Reality                                                                                                                                 |
+| --- | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | L2 cache caches query results       | L2 entity cache caches by ID only. The query cache is a separate feature (and often counter-productive).                                |
+| 2   | Application cache replaces L2       | They serve different purposes. L2 is transparent for entity lookups. Application cache is explicit for service-layer results.           |
+| 3   | Enabling both causes double caching | L2 caches entities; application cache caches DTOs/results. Unless you cache entities at the application layer too, there is no overlap. |
 
 ---
 
@@ -5203,12 +5213,12 @@ miss.
 **Cost:** Requires Docker on CI and dev machines. Slower
 startup than H2 (2-5 seconds for container).
 
-| Aspect          | H2                 | Testcontainers       |
-| --------------- | ------------------ | -------------------- |
-| Dialect match   | No                 | Yes (real DB)        |
-| Native queries  | Often fail         | Work correctly       |
-| Startup time    | ~100ms             | 2-5 seconds          |
-| Docker required | No                 | Yes                  |
+| Aspect          | H2         | Testcontainers |
+| --------------- | ---------- | -------------- |
+| Dialect match   | No         | Yes (real DB)  |
+| Native queries  | Often fail | Work correctly |
+| Startup time    | ~100ms     | 2-5 seconds    |
+| Docker required | No         | Yes            |
 
 ---
 
@@ -5235,11 +5245,11 @@ startup than H2 (2-5 seconds for container).
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | H2 compatibility mode matches PostgreSQL perfectly | H2's PostgreSQL mode covers basic syntax but misses array types, partial indexes, jsonb operators, and many functions. |
-| 2 | Testcontainers tests are slow | Container reuse (`withReuse(true)`) keeps the container running across test runs. Startup cost is paid once. |
-| 3 | Testcontainers replaces all H2 usage | For simple JPQL-only tests without native queries, H2 is still viable. Testcontainers is essential for native SQL and DDL testing. |
+| #   | Misconception                                      | Reality                                                                                                                            |
+| --- | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | H2 compatibility mode matches PostgreSQL perfectly | H2's PostgreSQL mode covers basic syntax but misses array types, partial indexes, jsonb operators, and many functions.             |
+| 2   | Testcontainers tests are slow                      | Container reuse (`withReuse(true)`) keeps the container running across test runs. Startup cost is paid once.                       |
+| 3   | Testcontainers replaces all H2 usage               | For simple JPQL-only tests without native queries, H2 is still viable. Testcontainers is essential for native SQL and DDL testing. |
 
 ---
 
@@ -5438,13 +5448,13 @@ query alerting.
 operation); metrics storage and dashboarding infrastructure
 required.
 
-| Metric               | What it reveals          |
-| -------------------- | ------------------------ |
-| Statements per req   | N+1 regressions          |
-| Entity loads per sec | Workload profile         |
-| L2 cache hit rate    | Cache effectiveness      |
-| Slow query time      | Unoptimized queries      |
-| Connection wait time | Pool sizing issues       |
+| Metric               | What it reveals     |
+| -------------------- | ------------------- |
+| Statements per req   | N+1 regressions     |
+| Entity loads per sec | Workload profile    |
+| L2 cache hit rate    | Cache effectiveness |
+| Slow query time      | Unoptimized queries |
+| Connection wait time | Pool sizing issues  |
 
 ---
 
@@ -5470,11 +5480,11 @@ required.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | `generate_statistics=true` has significant overhead | The overhead is microseconds per operation. The observability it provides is worth orders of magnitude more. |
-| 2 | APM tools replace Hibernate-specific monitoring | APM shows request latency but not Hibernate internals (cache hit rate, entity loads, flush count). Hibernate metrics complement APM. |
-| 3 | Monitoring is only for debugging | Monitoring is for trend detection, capacity planning, and regression prevention - not just post-incident debugging. |
+| #   | Misconception                                       | Reality                                                                                                                              |
+| --- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | `generate_statistics=true` has significant overhead | The overhead is microseconds per operation. The observability it provides is worth orders of magnitude more.                         |
+| 2   | APM tools replace Hibernate-specific monitoring     | APM shows request latency but not Hibernate internals (cache hit rate, entity loads, flush count). Hibernate metrics complement APM. |
+| 3   | Monitoring is only for debugging                    | Monitoring is for trend detection, capacity planning, and regression prevention - not just post-incident debugging.                  |
 
 ---
 
@@ -5690,11 +5700,11 @@ permanent pattern recognition for N+1.
 **Cost:** Time investment; requires a working project with
 Hibernate statistics enabled and test data.
 
-| Fix strategy | Query count | Code change      | Reusable |
-| ------------ | ----------- | ---------------- | -------- |
-| JOIN FETCH   | 1           | New JPQL query   | Per query|
-| @BatchSize   | 1 + N/B     | Annotation       | Global   |
-| EntityGraph  | 1           | Annotation       | Reusable |
+| Fix strategy | Query count | Code change    | Reusable  |
+| ------------ | ----------- | -------------- | --------- |
+| JOIN FETCH   | 1           | New JPQL query | Per query |
+| @BatchSize   | 1 + N/B     | Annotation     | Global    |
+| EntityGraph  | 1           | Annotation     | Reusable  |
 
 ---
 
@@ -5720,11 +5730,11 @@ Hibernate statistics enabled and test data.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | Running the kata once is enough | Repeat until you can predict the query count BEFORE running the test. Prediction is the skill. |
-| 2 | Only one fix strategy matters | Each strategy has different trade-offs. Production code uses all three depending on context. |
-| 3 | The kata works without statistics enabled | Without `generate_statistics=true`, you cannot count queries. Statistics are the detection mechanism. |
+| #   | Misconception                             | Reality                                                                                               |
+| --- | ----------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| 1   | Running the kata once is enough           | Repeat until you can predict the query count BEFORE running the test. Prediction is the skill.        |
+| 2   | Only one fix strategy matters             | Each strategy has different trade-offs. Production code uses all three depending on context.          |
+| 3   | The kata works without statistics enabled | Without `generate_statistics=true`, you cannot count queries. Statistics are the detection mechanism. |
 
 ---
 
@@ -5823,6 +5833,7 @@ second transaction eventually proceeds.
 ### ⚙️ How It Works
 
 **Scenario 1: No locking**
+
 1. TX1 loads Product(quantity=10).
 2. TX2 loads Product(quantity=10).
 3. TX1 sets quantity=9, commits.
@@ -5830,6 +5841,7 @@ second transaction eventually proceeds.
 5. Result: quantity=9 (should be 8). Lost update.
 
 **Scenario 2: Optimistic (@Version)**
+
 1. TX1 loads Product(quantity=10, version=1).
 2. TX2 loads Product(quantity=10, version=1).
 3. TX1 sets quantity=9, commits (version=2).
@@ -5837,6 +5849,7 @@ second transaction eventually proceeds.
    matches 0 rows -> OptimisticLockException.
 
 **Scenario 3: Pessimistic**
+
 1. TX1 loads Product with `PESSIMISTIC_WRITE` (locked).
 2. TX2 attempts to load with `PESSIMISTIC_WRITE` -> BLOCKED.
 3. TX1 sets quantity=9, commits (lock released).
@@ -5949,11 +5962,11 @@ production.
 **Cost:** Multi-threaded tests are complex; timing-sensitive;
 requires TransactionTemplate or manual TX management.
 
-| Scenario     | Complexity | Learning value     |
-| ------------ | ---------- | ------------------- |
-| No locking   | Low        | See the problem     |
-| Optimistic   | Medium     | See the detection   |
-| Pessimistic  | High       | See the blocking    |
+| Scenario    | Complexity | Learning value    |
+| ----------- | ---------- | ----------------- |
+| No locking  | Low        | See the problem   |
+| Optimistic  | Medium     | See the detection |
+| Pessimistic | High       | See the blocking  |
 
 ---
 
@@ -5979,11 +5992,11 @@ requires TransactionTemplate or manual TX management.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | Multi-threaded tests are unreliable | Use CountDownLatch and explicit synchronization to control timing. Flaky tests indicate incorrect synchronization, not locking bugs. |
-| 2 | The exercise works with H2 | H2's locking behavior differs from PostgreSQL. Use Testcontainers for realistic locking tests. |
-| 3 | One scenario is enough | All three scenarios (no lock, optimistic, pessimistic) must be experienced to build complete intuition. |
+| #   | Misconception                       | Reality                                                                                                                              |
+| --- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | Multi-threaded tests are unreliable | Use CountDownLatch and explicit synchronization to control timing. Flaky tests indicate incorrect synchronization, not locking bugs. |
+| 2   | The exercise works with H2          | H2's locking behavior differs from PostgreSQL. Use Testcontainers for realistic locking tests.                                       |
+| 3   | One scenario is enough              | All three scenarios (no lock, optimistic, pessimistic) must be experienced to build complete intuition.                              |
 
 ---
 
@@ -6186,11 +6199,11 @@ optimized queries, concurrency safety, and monitoring.
 **Cost:** Significant development time; requires understanding
 of all preceding L3 keywords; more complex codebase.
 
-| Phase | Focus          | Production readiness |
-| ----- | -------------- | -------------------- |
-| 1     | CRUD           | Not ready            |
-| 2     | Relationships  | Partially ready      |
-| 3     | Performance    | Production ready     |
+| Phase | Focus         | Production readiness |
+| ----- | ------------- | -------------------- |
+| 1     | CRUD          | Not ready            |
+| 2     | Relationships | Partially ready      |
+| 3     | Performance   | Production ready     |
 
 ---
 
@@ -6219,11 +6232,11 @@ of all preceding L3 keywords; more complex codebase.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | Phase 3 is optional | Phase 2 code without Phase 3 optimization will have N+1, no locking, and no monitoring in production. It is not optional. |
-| 2 | You can skip to Phase 3 | Phase 3 builds on Phase 2 relationships. You need multi-entity mappings before optimizing them. |
-| 3 | One optimization is enough | N+1 fix, projections, locking, and monitoring are all needed. Each addresses a different production concern. |
+| #   | Misconception              | Reality                                                                                                                   |
+| --- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Phase 3 is optional        | Phase 2 code without Phase 3 optimization will have N+1, no locking, and no monitoring in production. It is not optional. |
+| 2   | You can skip to Phase 3    | Phase 3 builds on Phase 2 relationships. You need multi-entity mappings before optimizing them.                           |
+| 3   | One optimization is enough | N+1 fix, projections, locking, and monitoring are all needed. Each addresses a different production concern.              |
 
 ---
 
@@ -6446,11 +6459,11 @@ thinking.
 **Cost:** Requires hands-on experience with N+1, locking, and
 monitoring to answer authentically.
 
-| Answer depth   | Impression         | Demonstrates       |
-| -------------- | ------------------ | ------------------- |
-| Naming only    | Surface knowledge  | Read the docs       |
-| Mechanism      | Understanding      | Studied deeply      |
-| Trade-off + fix| Production skill   | Debugged real issues|
+| Answer depth    | Impression        | Demonstrates         |
+| --------------- | ----------------- | -------------------- |
+| Naming only     | Surface knowledge | Read the docs        |
+| Mechanism       | Understanding     | Studied deeply       |
+| Trade-off + fix | Production skill  | Debugged real issues |
 
 ---
 
@@ -6476,11 +6489,11 @@ monitoring to answer authentically.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | Knowing annotations is enough for L3 interviews | L3 expects you to diagnose production scenarios, not just name annotations. |
-| 2 | Performance questions have one right answer | Every performance fix has trade-offs. The best answers compare alternatives and explain when each applies. |
-| 3 | Locking is a minor interview topic | Locking trade-offs (optimistic vs pessimistic) are asked in every senior Hibernate interview. |
+| #   | Misconception                                   | Reality                                                                                                    |
+| --- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| 1   | Knowing annotations is enough for L3 interviews | L3 expects you to diagnose production scenarios, not just name annotations.                                |
+| 2   | Performance questions have one right answer     | Every performance fix has trade-offs. The best answers compare alternatives and explain when each applies. |
+| 3   | Locking is a minor interview topic              | Locking trade-offs (optimistic vs pessimistic) are asked in every senior Hibernate interview.              |
 
 ---
 
@@ -6499,8 +6512,8 @@ monitoring to answer authentically.
 
 - Hibernate Deep-Dive Interview Questions (L4) -
   expert-level interview preparation
-- Hibernate Architecture Deep Dive (L5) - foundational
-  knowledge for staff-level interviews
+- Hibernate Source Code Architecture and Bootstrap
+  Sequence (L5) - foundational for staff interviews
 
 ---
 
@@ -6583,21 +6596,21 @@ deep understanding, not just checking a box.
 
 **Locking Decision:**
 
-| Contention   | Strategy    | Mechanism               |
-| ------------ | ----------- | ----------------------- |
-| Low          | Optimistic  | @Version + retry        |
-| High/atomic  | Pessimistic | PESSIMISTIC_WRITE       |
-| Both on same | Combined    | @Version + FOR UPDATE   |
+| Contention   | Strategy    | Mechanism             |
+| ------------ | ----------- | --------------------- |
+| Low          | Optimistic  | @Version + retry      |
+| High/atomic  | Pessimistic | PESSIMISTIC_WRITE     |
+| Both on same | Combined    | @Version + FOR UPDATE |
 
 **Persistence Context:**
 
-| Operation           | Effect                    |
-| ------------------- | ------------------------- |
-| persist()           | Adds to PC (no INSERT yet)|
-| flush()             | Sends SQL (not committed) |
-| commit()            | Makes durable             |
-| clear()             | Releases all entities     |
-| merge()             | Returns NEW managed copy  |
+| Operation | Effect                     |
+| --------- | -------------------------- |
+| persist() | Adds to PC (no INSERT yet) |
+| flush()   | Sends SQL (not committed)  |
+| commit()  | Makes durable              |
+| clear()   | Releases all entities      |
+| merge()   | Returns NEW managed copy   |
 
 **Query Optimization Ladder:**
 
@@ -6700,11 +6713,11 @@ production deployment checklist.
 **Cost:** Compression sacrifices depth. Any surprising item
 requires re-reading the full keyword.
 
-| Usage           | Value          | Risk                |
-| --------------- | -------------- | -------------------- |
-| Pre-interview   | Quick refresh  | Shallow without study|
-| Pre-deploy      | Safety check   | Checklist is not exhaustive |
-| Gap detection   | Find weak areas| Must follow up       |
+| Usage         | Value           | Risk                        |
+| ------------- | --------------- | --------------------------- |
+| Pre-interview | Quick refresh   | Shallow without study       |
+| Pre-deploy    | Safety check    | Checklist is not exhaustive |
+| Gap detection | Find weak areas | Must follow up              |
 
 ---
 
@@ -6731,11 +6744,11 @@ requires re-reading the full keyword.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | This card replaces studying L3 keywords | It is a recall aid and gap detector, not a learning tool. |
-| 2 | All items here are equally important | N+1 fix, @Version, and DTO projections are the three highest-impact items. Prioritize them. |
-| 3 | The checklist is complete | This covers L3 essentials. L4 (production diagnostics) and L5 (architecture) add more. |
+| #   | Misconception                           | Reality                                                                                     |
+| --- | --------------------------------------- | ------------------------------------------------------------------------------------------- |
+| 1   | This card replaces studying L3 keywords | It is a recall aid and gap detector, not a learning tool.                                   |
+| 2   | All items here are equally important    | N+1 fix, @Version, and DTO projections are the three highest-impact items. Prioritize them. |
+| 3   | The checklist is complete               | This covers L3 essentials. L4 (production diagnostics) and L5 (architecture) add more.      |
 
 ---
 
@@ -6756,8 +6769,8 @@ requires re-reading the full keyword.
   debugging skills
 - Connection Pool Tuning (HikariCP) (L4) - infrastructure
   optimization
-- Hibernate Architecture Deep Dive (L5) - architectural
-  understanding
+- Hibernate Source Code Architecture and Bootstrap
+  Sequence (L5) - architectural understanding
 
 ---
 
