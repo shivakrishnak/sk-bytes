@@ -3691,13 +3691,13 @@ Key dashboard panels: (1) `hibernate_statements_total / http_requests_total` = q
 ### ⚙️ How It Works
 
 **Phase 1 - Counter initialization:**
-SessionFactory builds `StatisticsImplementor` with atomic long counters for each metric category (statements, loads, stores, cache operations).
+SessionFactory builds `StatisticsImplementor` with atomic long counters for each metric category (statements, loads, stores, cache operations). Internally, `StatisticsImplementor` uses `java.util.concurrent.atomic.LongAdder` (Hibernate 6) or `AtomicLong` (Hibernate 5) for thread-safe increments without lock contention. Query-level statistics are stored in a `ConcurrentHashMap<String, QueryStatisticsImpl>` keyed by HQL/JPQL string, tracking per-query execution count, max time, and row counts.
 
 **Phase 2 - Counter increment:**
-Every `Session.find()` increments `entityLoadCount`. Every `PreparedStatement.execute()` increments `prepareStatementCount`. Every L2 cache lookup increments `cacheHitCount` or `cacheMissCount`.
+Every `Session.find()` increments `entityLoadCount`. Every `PreparedStatement.execute()` increments `prepareStatementCount`. Every L2 cache lookup increments `cacheHitCount` or `cacheMissCount`. The `StatisticsImplementor` also records `queryExecutionMaxTime` and the corresponding `queryExecutionMaxTimeQueryString` - the slowest query seen since the last reset. This is critical: it tells you not just HOW MANY queries ran, but WHICH query was the slowest.
 
 **Phase 3 - Metric export:**
-Micrometer's `HibernateMetrics` polls counters periodically. Prometheus scrapes `/actuator/prometheus`. Grafana visualizes.
+Micrometer's `HibernateMetrics` binder registers gauge and counter metrics from the `Statistics` interface. Key Prometheus metric names: `hibernate_sessions_open_total` (sessions opened), `hibernate_statements_total` (JDBC statements prepared), `hibernate_entities_loads_total` (entities loaded), `hibernate_second_level_cache_requests_total` (with `result=hit|miss` tag). Prometheus scrapes `/actuator/prometheus`. Grafana visualizes. The binder reads counters on each scrape, so metric resolution depends on your Prometheus scrape interval (typically 15-30s).
 
 **Phase 4 - Per-request analysis:**
 Custom filter snapshots `prepareStatementCount` before and after the request. Delta = queries for this request. Log if delta > threshold.
@@ -3801,11 +3801,47 @@ Alert on requests with > 10 queries.
 Use request URI to identify the problematic endpoint.
 ```
 
+**Failure 3 - Micrometer metrics missing cache region breakdown:**
+
+**Symptom:** Grafana shows total L2 cache hit/miss counts but cannot distinguish which cache region is performing poorly. One region has 95% hit rate, another has 20%, and the aggregate masks the problem.
+
+**Root cause:** Default `HibernateMetrics` binder publishes aggregate cache counters. Per-region metrics require explicit configuration or a custom `MeterBinder` that iterates `statistics.getSecondLevelCacheRegionNames()` and publishes per-region hit/miss gauges.
+
+**Diagnostic:**
+
+```java
+String[] regions =
+    stats.getSecondLevelCacheRegionNames();
+for (String region : regions) {
+    CacheRegionStatistics crs =
+        stats.getCacheRegionStatistics(region);
+    log.info("{}: hits={} misses={}",
+        region, crs.getHitCount(),
+        crs.getMissCount());
+}
+```
+
+**Fix:** Register per-region metrics explicitly:
+
+```java
+for (String region : regions) {
+    Gauge.builder(
+        "hibernate.cache.region.hits",
+        stats,
+        s -> s.getCacheRegionStatistics(region)
+            .getHitCount())
+        .tag("region", region)
+        .register(meterRegistry);
+}
+```
+
 ---
 
 ### 🔬 Production Reality
 
 A team enables Hibernate statistics and discovers their application averages 4.2 queries per request - healthy. But percentile analysis reveals the 99th percentile is 67 queries per request. One endpoint (`/api/orders/search`) loads orders and lazily accesses customer, product, and shipping associations. The global average hides this because the endpoint is called infrequently (2% of traffic). Per-request query count logging immediately identifies the outlier. Fix: JOIN FETCH for the three associations. P99 query count drops from 67 to 3.
+
+**Prometheus/Grafana dashboard essentials:** Three panels every Hibernate dashboard needs: (1) Queries-per-request ratio: `rate(hibernate_statements_total[5m]) / rate(http_server_requests_seconds_count[5m])` - alert when this exceeds 10. (2) L2 cache hit ratio: `rate(hibernate_second_level_cache_requests_total{result="hit"}[5m]) / rate(hibernate_second_level_cache_requests_total[5m])` - alert when this drops below 0.8. (3) Session open rate: `rate(hibernate_sessions_open_total[5m])` - correlate with request rate to detect session leaks (sessions growing faster than requests indicates sessions not being closed). Entity load count per request is another key signal: a sudden spike in `hibernate_entities_loads_total` relative to request count typically means a new code path introduced eager fetching or a lazy collection is being touched in a loop.
 
 ---
 
