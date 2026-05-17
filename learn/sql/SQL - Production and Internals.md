@@ -201,8 +201,8 @@ sequenceDiagram
     HP-->>TX: Invisible - skip
 ```
 
-
 **BAD:**
+
 ```sql
 -- Assuming UPDATE is atomic
 UPDATE accounts SET balance = balance - 100
@@ -211,6 +211,7 @@ WHERE id = 1;
 ```
 
 **GOOD:**
+
 ```sql
 BEGIN ISOLATION LEVEL REPEATABLE READ;
 SELECT balance FROM accounts
@@ -450,8 +451,8 @@ sequenceDiagram
     Note over CR: Database open
 ```
 
-
 **BAD:**
+
 ```sql
 -- Disabling fsync for speed
 ALTER SYSTEM SET fsync = off;
@@ -459,6 +460,7 @@ ALTER SYSTEM SET fsync = off;
 ```
 
 **GOOD:**
+
 ```sql
 ALTER SYSTEM
 SET checkpoint_timeout = '10min';
@@ -701,8 +703,8 @@ stateDiagram-v2
     Load --> [*]: Return buffer
 ```
 
-
 **BAD:**
+
 ```sql
 -- 80% of RAM to shared_buffers
 ALTER SYSTEM
@@ -711,6 +713,7 @@ SET shared_buffers = '48GB';
 ```
 
 **GOOD:**
+
 ```sql
 -- 25% of RAM; OS caches the rest
 ALTER SYSTEM
@@ -949,8 +952,8 @@ flowchart LR
     LP2 --> T2["Tuple v2\ncurrent"]
 ```
 
-
 **BAD:**
+
 ```sql
 CREATE TABLE logs (
   id SERIAL,
@@ -960,6 +963,7 @@ CREATE TABLE logs (
 ```
 
 **GOOD:**
+
 ```sql
 CREATE TABLE logs (
   id SERIAL,
@@ -1200,8 +1204,8 @@ stateDiagram-v2
     UpdateStats --> [*]
 ```
 
-
 **BAD:**
+
 ```sql
 VACUUM FULL large_table;
 -- AccessExclusiveLock for hours
@@ -1209,6 +1213,7 @@ VACUUM FULL large_table;
 ```
 
 **GOOD:**
+
 ```sql
 ALTER TABLE large_table SET (
   autovacuum_vacuum_scale_factor
@@ -1448,8 +1453,8 @@ sequenceDiagram
     Note over S2: Still waiting
 ```
 
-
 **BAD:**
+
 ```sql
 BEGIN;
 SELECT * FROM orders
@@ -1460,6 +1465,7 @@ COMMIT;
 ```
 
 **GOOD:**
+
 ```sql
 BEGIN;
 UPDATE orders SET status = 'shipped'
@@ -1701,8 +1707,8 @@ sequenceDiagram
     C->>Row: UPDATE (lock xmax)
 ```
 
-
 **BAD:**
+
 ```sql
 UPDATE events SET archived = true
 WHERE created_at < '2023-01-01';
@@ -1710,6 +1716,7 @@ WHERE created_at < '2023-01-01';
 ```
 
 **GOOD:**
+
 ```sql
 UPDATE events SET archived = true
 WHERE id IN (
@@ -1949,8 +1956,8 @@ sequenceDiagram
     Note over B: Unblocked, proceeds
 ```
 
-
 **BAD:**
+
 ```sql
 -- Opposite lock order = deadlock
 -- TX1: UPDATE accounts WHERE id=1;
@@ -1960,6 +1967,7 @@ sequenceDiagram
 ```
 
 **GOOD:**
+
 ```sql
 -- Consistent lock order
 -- TX1: UPDATE accounts WHERE id=1;
@@ -2192,8 +2200,8 @@ flowchart TD
     WORK --> REL[pg_advisory_unlock]
 ```
 
-
 **BAD:**
+
 ```sql
 -- Session lock + PgBouncer tx mode
 SELECT pg_advisory_lock(42);
@@ -2201,6 +2209,7 @@ SELECT pg_advisory_lock(42);
 ```
 
 **GOOD:**
+
 ```sql
 BEGIN;
 SELECT pg_advisory_xact_lock(42);
@@ -2439,8 +2448,8 @@ flowchart TD
     B --> ACB
 ```
 
-
 **BAD:**
+
 ```sql
 SET enable_seqscan = off;
 SELECT * FROM large_table
@@ -2449,6 +2458,7 @@ WHERE status = 'active';
 ```
 
 **GOOD:**
+
 ```sql
 ANALYZE large_table;
 EXPLAIN ANALYZE
@@ -2692,8 +2702,8 @@ flowchart TD
     INTERP --> SEL[Return selectivity]
 ```
 
-
 **BAD:**
+
 ```sql
 SELECT * FROM orders
 WHERE status = 'pending';
@@ -2702,6 +2712,7 @@ WHERE status = 'pending';
 ```
 
 **GOOD:**
+
 ```sql
 ALTER TABLE orders
 ALTER COLUMN status
@@ -2954,8 +2965,8 @@ sequenceDiagram
     HT-->>PS: No match
 ```
 
-
 **BAD:**
+
 ```sql
 SET work_mem = '1MB';
 SELECT * FROM orders o
@@ -2964,6 +2975,7 @@ JOIN items i ON o.id = i.order_id;
 ```
 
 **GOOD:**
+
 ```sql
 SET work_mem = '256MB';
 SELECT * FROM orders o
@@ -3199,8 +3211,8 @@ sequenceDiagram
     MON->>MON: ALERT: regression detected
 ```
 
-
 **BAD:**
+
 ```sql
 -- No baseline comparison available
 EXPLAIN ANALYZE SELECT ...;
@@ -3208,6 +3220,7 @@ EXPLAIN ANALYZE SELECT ...;
 ```
 
 **GOOD:**
+
 ```sql
 CREATE EXTENSION pg_stat_statements;
 SELECT query, calls,
@@ -3449,8 +3462,8 @@ flowchart TD
     CK -->|"[2025,2026)"| NO2[Skip]
 ```
 
-
 **BAD:**
+
 ```sql
 SELECT * FROM events
 WHERE created_at > '2024-01-01';
@@ -3458,6 +3471,7 @@ WHERE created_at > '2024-01-01';
 ```
 
 **GOOD:**
+
 ```sql
 CREATE TABLE events (
   id BIGSERIAL,
@@ -3697,8 +3711,8 @@ sequenceDiagram
     EX->>EX: Scan only 2 partitions
 ```
 
-
 **BAD:**
+
 ```sql
 SELECT * FROM events
 WHERE user_id = 42;
@@ -3706,6 +3720,7 @@ WHERE user_id = 42;
 ```
 
 **GOOD:**
+
 ```sql
 SELECT * FROM events
 WHERE created_at >= '2024-06-01'
@@ -3967,14 +3982,15 @@ flowchart LR
     LD -->|DML messages| AW
 ```
 
-
 **BAD:**
+
 ```sql
 CREATE TABLE events (data JSONB);
 -- No PK: UPDATE/DELETE can't replicate
 ```
 
 **GOOD:**
+
 ```sql
 CREATE TABLE events (
   id BIGSERIAL PRIMARY KEY,
@@ -4219,8 +4235,8 @@ sequenceDiagram
     end
 ```
 
-
 **BAD:**
+
 ```sql
 INSERT INTO orders VALUES (...);
 -- Read from replica immediately:
@@ -4229,6 +4245,7 @@ SELECT * FROM orders WHERE id = ?;
 ```
 
 **GOOD:**
+
 ```sql
 INSERT INTO orders VALUES (...);
 -- Read-your-write: use PRIMARY
@@ -4466,8 +4483,8 @@ sequenceDiagram
     PGB->>PGB: Return conn to pool
 ```
 
-
 **BAD:**
+
 ```
 -- 500 direct connections
 -- max_connections = 500
@@ -4475,6 +4492,7 @@ sequenceDiagram
 ```
 
 **GOOD:**
+
 ```
 -- PgBouncer transaction mode
 -- 500 app conns -> 50 DB conns
@@ -4712,8 +4730,8 @@ sequenceDiagram
     PG->>PG: Open for connections
 ```
 
-
 **BAD:**
+
 ```sql
 -- pg_dump only, once per night
 -- RPO: up to 24 hours of data loss
@@ -4721,6 +4739,7 @@ sequenceDiagram
 ```
 
 **GOOD:**
+
 ```sql
 ALTER SYSTEM
 SET archive_mode = on;
@@ -4975,8 +4994,8 @@ sequenceDiagram
     APP->>PG: DML continues normally
 ```
 
-
 **BAD:**
+
 ```sql
 ALTER TABLE orders
 ADD COLUMN note TEXT NOT NULL
@@ -4985,6 +5004,7 @@ DEFAULT '';
 ```
 
 **GOOD:**
+
 ```sql
 ALTER TABLE orders
 ADD COLUMN note TEXT;
@@ -5223,8 +5243,8 @@ flowchart TD
     A --> B --> C --> D --> E --> F --> G
 ```
 
-
 **BAD:**
+
 ```bash
 ssh db1.internal
 rm -rf /var/opt/gitlab/postgresql/data
@@ -5232,6 +5252,7 @@ rm -rf /var/opt/gitlab/postgresql/data
 ```
 
 **GOOD:**
+
 ```bash
 # Distinct prompts + safeguards
 ssh prod-db1.gitlab.internal
@@ -5465,8 +5486,8 @@ flowchart LR
     REC --> FIX["Merge or discard\nbased on analysis"]
 ```
 
-
 **BAD:**
+
 ```
 -- Assume failover = zero data loss
 -- Semi-sync falls back to async
@@ -5475,6 +5496,7 @@ flowchart LR
 ```
 
 **GOOD:**
+
 ```
 -- Plan for reconciliation
 -- Monitor replication lag always
@@ -5724,8 +5746,8 @@ sequenceDiagram
     PG-->>APP: DELETE complete
 ```
 
-
 **BAD:**
+
 ```sql
 CREATE TABLE orders (
   id SERIAL PRIMARY KEY,
@@ -5736,6 +5758,7 @@ CREATE TABLE orders (
 ```
 
 **GOOD:**
+
 ```sql
 CREATE TABLE orders (
   id SERIAL PRIMARY KEY,
@@ -5984,8 +6007,8 @@ sequenceDiagram
     API-->>C: {items: [...], cursor: "def456"}
 ```
 
-
 **BAD:**
+
 ```sql
 SELECT * FROM products
 ORDER BY id
@@ -5994,6 +6017,7 @@ LIMIT 20 OFFSET 100000;
 ```
 
 **GOOD:**
+
 ```sql
 SELECT * FROM products
 WHERE id > 100000
@@ -6291,8 +6315,8 @@ sequenceDiagram
     Note over OPS,PG: Continuous monitoring
 ```
 
-
 **BAD:**
+
 ```sql
 -- Default autovacuum on 50M rows
 -- scale_factor = 0.2
@@ -6301,6 +6325,7 @@ sequenceDiagram
 ```
 
 **GOOD:**
+
 ```sql
 ALTER TABLE order_items SET (
   autovacuum_vacuum_scale_factor
@@ -6584,8 +6609,8 @@ flowchart TD
     V -->|"Wrong hypothesis"| H
 ```
 
-
 **BAD:**
+
 ```sql
 ALTER SYSTEM
 SET shared_buffers = '32GB';
@@ -6594,6 +6619,7 @@ SET shared_buffers = '32GB';
 ```
 
 **GOOD:**
+
 ```sql
 SELECT * FROM pg_stat_bgwriter;
 -- Check checkpoint write ratio
@@ -6866,8 +6892,8 @@ flowchart TD
     J -->|No| MD["Mid-level or below"]
 ```
 
-
 **BAD:**
+
 ```sql
 -- "How fix slow query?"
 -- Candidate: "Add an index."
@@ -6875,6 +6901,7 @@ flowchart TD
 ```
 
 **GOOD:**
+
 ```sql
 -- "First check pg_stat_statements.
 -- Then EXPLAIN ANALYZE the plan.
@@ -7189,8 +7216,8 @@ flowchart TD
     VE --> KMS3[TPM / Boot Key]
 ```
 
-
 **BAD:**
+
 ```sql
 CREATE TABLE keys (
   key_name TEXT, key_value TEXT
@@ -7199,6 +7226,7 @@ CREATE TABLE keys (
 ```
 
 **GOOD:**
+
 ```sql
 SELECT pgp_sym_encrypt(
   card_number,

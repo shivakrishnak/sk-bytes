@@ -226,27 +226,30 @@ ORDER BY m;
 
 **Cost:** Non-recursive CTEs may be inlined by the optimizer, so naming does not guarantee materialization. Older PostgreSQL versions (before 12) always materialized CTEs, which could hurt performance if the CTE returned many rows but only a few were needed downstream.
 
-| Aspect | CTE | Subquery | Temp Table |
-|--------|-----|----------|------------|
-| Readability | High - named | Low - nested | Medium |
-| Scope | Single query | Single query | Session |
-| Optimization | Inlined PG 12+ | Always inlined | Separate plan |
-| Reuse in query | Multiple refs | Must duplicate | Multiple refs |
+| Aspect         | CTE            | Subquery       | Temp Table    |
+| -------------- | -------------- | -------------- | ------------- |
+| Readability    | High - named   | Low - nested   | Medium        |
+| Scope          | Single query   | Single query   | Session       |
+| Optimization   | Inlined PG 12+ | Always inlined | Separate plan |
+| Reuse in query | Multiple refs  | Must duplicate | Multiple refs |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - A query has multiple logical steps that benefit from naming
 - The same intermediate result is referenced more than once in the query
 - You want to make a complex query reviewable and debuggable in code review
 
 **AVOID WHEN:**
+
 - A simple JOIN achieves the same result without extra abstraction
 - You need the result set to persist beyond a single statement (use temp tables)
 
 **PREFER subqueries WHEN:**
+
 - The intermediate result is trivial and naming adds noise
 - You specifically need the optimizer to inline the expression in older databases
 
@@ -254,23 +257,25 @@ ORDER BY m;
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | CTEs always materialize the result into memory | PostgreSQL 12+ inlines non-recursive CTEs by default; use MATERIALIZED hint to force it |
-| 2 | CTEs improve query performance over subqueries | CTEs improve readability, not speed - the planner often generates identical plans |
-| 3 | You can UPDATE through a CTE like a view | CTEs are read-only references; writable CTEs use DML inside the CTE itself with RETURNING |
+| #   | Misconception                                  | Reality                                                                                   |
+| --- | ---------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| 1   | CTEs always materialize the result into memory | PostgreSQL 12+ inlines non-recursive CTEs by default; use MATERIALIZED hint to force it   |
+| 2   | CTEs improve query performance over subqueries | CTEs improve readability, not speed - the planner often generates identical plans         |
+| 3   | You can UPDATE through a CTE like a view       | CTEs are read-only references; writable CTEs use DML inside the CTE itself with RETURNING |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-033 Subqueries - Scalar, Row, Table - CTEs replace nested subqueries
 - SQL-026 INNER JOIN - Matching Rows Across Tables - CTEs compose with joins naturally
 
 **THIS:** SQL-053 Common Table Expressions (CTEs)
 
 **Next steps:**
+
 - SQL-054 Recursive CTEs - Hierarchical Data - CTEs that reference themselves for tree traversal
 - SQL-055 Window Functions - ROW_NUMBER, RANK, DENSE_RANK - CTEs often wrap window function results for further filtering
 
@@ -434,27 +439,30 @@ SELECT * FROM cat_path ORDER BY path;
 
 **Cost:** Performance degrades on large trees without an index on the parent column. Cycles in data cause infinite recursion unless detected explicitly.
 
-| Aspect | Recursive CTE | Closure table |
-|--------|---------------|---------------|
-| Read complexity | Recursive scan | Simple JOIN |
-| Write complexity | Just insert FK | Maintain closure rows |
-| Depth flexibility | Unlimited | Unlimited |
-| Setup overhead | None | High |
+| Aspect            | Recursive CTE  | Closure table         |
+| ----------------- | -------------- | --------------------- |
+| Read complexity   | Recursive scan | Simple JOIN           |
+| Write complexity  | Just insert FK | Maintain closure rows |
+| Depth flexibility | Unlimited      | Unlimited             |
+| Setup overhead    | None           | High                  |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Hierarchy depth is unknown or varies (org charts, threaded comments, category trees)
 - You need per-row metadata like depth or full path during traversal
 - Data changes frequently and maintaining a closure table is too costly
 
 **AVOID WHEN:**
+
 - The hierarchy is fixed at a known shallow depth (e.g., always exactly 3 levels)
 - You query the tree thousands of times per second and read performance is critical
 
 **PREFER a closure table WHEN:**
+
 - Read-heavy workloads need constant-time ancestor or descendant checks
 - You can afford the extra storage and write overhead of maintaining closure rows
 
@@ -462,23 +470,25 @@ SELECT * FROM cat_path ORDER BY path;
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | Recursive CTEs detect cycles automatically | They do not; a cycle causes infinite recursion until the safety limit. Use CYCLE clause (SQL:2023) or track visited IDs manually |
-| 2 | UNION can replace UNION ALL in recursive CTEs | UNION deduplicates and may prevent the recursive step from seeing needed rows; always use UNION ALL unless you need dedup |
-| 3 | Recursive CTEs are slow for all hierarchies | With an index on the parent column, they perform well for typical depths under 20 levels |
+| #   | Misconception                                 | Reality                                                                                                                          |
+| --- | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Recursive CTEs detect cycles automatically    | They do not; a cycle causes infinite recursion until the safety limit. Use CYCLE clause (SQL:2023) or track visited IDs manually |
+| 2   | UNION can replace UNION ALL in recursive CTEs | UNION deduplicates and may prevent the recursive step from seeing needed rows; always use UNION ALL unless you need dedup        |
+| 3   | Recursive CTEs are slow for all hierarchies   | With an index on the parent column, they perform well for typical depths under 20 levels                                         |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-053 Common Table Expressions (CTEs) - recursive CTEs extend the WITH clause
 - SQL-029 Self-Joins - When a Table References Itself - recursive CTEs formalize the self-join pattern
 
 **THIS:** SQL-054 Recursive CTEs - Hierarchical Data
 
 **Next steps:**
+
 - SQL-060 Execution Plans Deep Dive - EXPLAIN ANALYZE - understand how the planner handles recursive plans
 - SQL-058 Correlated Subqueries and Lateral Joins - another pattern for per-row dependent queries
 
@@ -633,26 +643,29 @@ WHERE id IN (
 
 **Cost:** Window functions require sorting or indexing per partition. Large partitions with no supporting index force in-memory or on-disk sorts.
 
-| Aspect | ROW_NUMBER | RANK | DENSE_RANK |
-|--------|-----------|------|------------|
-| Ties | Unique (arbitrary) | Same, gaps after | Same, no gaps |
-| Top-N filter | Exact N rows | May return > N | May return > N |
-| Dedup | Ideal (pick 1) | Not suitable | Not suitable |
+| Aspect       | ROW_NUMBER         | RANK             | DENSE_RANK     |
+| ------------ | ------------------ | ---------------- | -------------- |
+| Ties         | Unique (arbitrary) | Same, gaps after | Same, no gaps  |
+| Top-N filter | Exact N rows       | May return > N   | May return > N |
+| Dedup        | Ideal (pick 1)     | Not suitable     | Not suitable   |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - You need top-N per group (top 3 orders per customer)
 - You need to deduplicate rows keeping the latest or highest-priority entry
 - You need sequential numbering within categories
 
 **AVOID WHEN:**
+
 - You only need aggregate values per group (use GROUP BY)
 - The dataset is small enough that application-side sorting is simpler
 
 **PREFER DENSE_RANK WHEN:**
+
 - Ties must share a rank and you need consecutive numbers for display
 - Business logic defines "top 3 price tiers" not "top 3 individual rows"
 
@@ -660,23 +673,25 @@ WHERE id IN (
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | WHERE rn <= 3 can go in the same SELECT as the window function | Window functions run after WHERE; you must wrap in a CTE or subquery first |
-| 2 | ROW_NUMBER is deterministic with ties | When ORDER BY values are equal, row assignment is arbitrary; add a tiebreaker column |
-| 3 | Window functions replace GROUP BY | Window functions add columns but keep all rows; GROUP BY collapses rows - different tools |
+| #   | Misconception                                                  | Reality                                                                                   |
+| --- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| 1   | WHERE rn <= 3 can go in the same SELECT as the window function | Window functions run after WHERE; you must wrap in a CTE or subquery first                |
+| 2   | ROW_NUMBER is deterministic with ties                          | When ORDER BY values are equal, row assignment is arbitrary; add a tiebreaker column      |
+| 3   | Window functions replace GROUP BY                              | Window functions add columns but keep all rows; GROUP BY collapses rows - different tools |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-031 Aggregate Functions - COUNT, SUM, AVG, MIN, MAX - window functions extend aggregation to per-row output
 - SQL-015 ORDER BY and LIMIT - ranking relies on ordering; window ORDER BY is the per-partition equivalent
 
 **THIS:** SQL-055 Window Functions - ROW_NUMBER, RANK, DENSE_RANK
 
 **Next steps:**
+
 - SQL-056 Window Functions - LAG, LEAD, NTILE - value-access window functions that compare rows to neighbors
 - SQL-057 Window Frames - ROWS vs RANGE vs GROUPS - controlling which rows participate in window calculations
 
@@ -819,27 +834,30 @@ FROM customers;
 
 **Cost:** Requires a meaningful ORDER BY to define "previous" and "next." Without an index matching the partition and order, the engine must sort the entire result set.
 
-| Aspect | LAG/LEAD | Self-join |
-|--------|----------|-----------|
-| Readability | One line per comparison | Extra JOIN per offset |
-| Performance | Single sort pass | Multiple table scans |
-| Flexibility | Any offset, default param | Manual per offset |
-| Edge cases | Built-in default | Manual NULL handling |
+| Aspect      | LAG/LEAD                  | Self-join             |
+| ----------- | ------------------------- | --------------------- |
+| Readability | One line per comparison   | Extra JOIN per offset |
+| Performance | Single sort pass          | Multiple table scans  |
+| Flexibility | Any offset, default param | Manual per offset     |
+| Edge cases  | Built-in default          | Manual NULL handling  |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - You need to compare a row to its immediate predecessor or successor (deltas, growth rates, gap detection)
 - You need to divide a result set into equal-sized buckets (quartiles, deciles)
 - The comparison is based on a clear ordering (date, sequence number)
 
 **AVOID WHEN:**
+
 - You need to aggregate over a range of rows (use SUM/AVG with a window frame instead)
 - There is no natural ordering to define "previous" and "next"
 
 **PREFER a self-join WHEN:**
+
 - You need to compare rows by a key relationship rather than positional offset
 - Your database version does not support window functions (rare today)
 
@@ -847,23 +865,25 @@ FROM customers;
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | LAG and LEAD require consecutive values in the ORDER BY column | They work on row position, not value - gaps in dates or IDs are irrelevant |
-| 2 | NTILE produces exactly equal bucket sizes | When rows do not divide evenly, earlier buckets get one extra row each |
-| 3 | LAG defaults to 0 when no previous row exists | The default is NULL unless you explicitly provide a third argument: LAG(rev, 1, 0) |
+| #   | Misconception                                                  | Reality                                                                            |
+| --- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| 1   | LAG and LEAD require consecutive values in the ORDER BY column | They work on row position, not value - gaps in dates or IDs are irrelevant         |
+| 2   | NTILE produces exactly equal bucket sizes                      | When rows do not divide evenly, earlier buckets get one extra row each             |
+| 3   | LAG defaults to 0 when no previous row exists                  | The default is NULL unless you explicitly provide a third argument: LAG(rev, 1, 0) |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-055 Window Functions - ROW_NUMBER, RANK, DENSE_RANK - foundational window function syntax and partitioning
 - SQL-015 ORDER BY and LIMIT - ordering defines what "previous" and "next" mean
 
 **THIS:** SQL-056 Window Functions - LAG, LEAD, NTILE
 
 **Next steps:**
+
 - SQL-057 Window Frames - ROWS vs RANGE vs GROUPS - control which rows participate in aggregate windows
 - SQL-082 Window Functions Practice Kata - hands-on exercises combining all window functions
 
@@ -1009,27 +1029,30 @@ FROM daily_revenue;
 
 **Cost:** Frame semantics are subtle and can differ across databases in edge cases. GROUPS is not supported in all databases (PostgreSQL 11+, recent MySQL, varies elsewhere).
 
-| Aspect | ROWS | RANGE | GROUPS |
-|--------|------|-------|--------|
-| Unit | Physical positions | ORDER BY values | Peer groups |
-| Tie handling | Each row separate | All peers together | Groups as units |
-| Support | All databases | All databases | PG 11+, varies |
-| Common use | Rolling sums/avgs | Value-range windows | Rank-based |
+| Aspect       | ROWS               | RANGE               | GROUPS          |
+| ------------ | ------------------ | ------------------- | --------------- |
+| Unit         | Physical positions | ORDER BY values     | Peer groups     |
+| Tie handling | Each row separate  | All peers together  | Groups as units |
+| Support      | All databases      | All databases       | PG 11+, varies  |
+| Common use   | Rolling sums/avgs  | Value-range windows | Rank-based      |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - You need a moving aggregate (average, sum) over a fixed count of rows
 - You need a value-range window (all sales within 30 days of current row)
 - Default frame behavior produces wrong results with tied ORDER BY values
 
 **AVOID WHEN:**
+
 - You are using ranking functions (ROW_NUMBER, RANK) which ignore frame clauses
 - The window is simply all preceding rows with no ties in the data
 
 **PREFER ROWS WHEN:**
+
 - You want deterministic per-row results regardless of ties
 - You are computing rolling averages over a fixed count of observations
 
@@ -1037,23 +1060,25 @@ FROM daily_revenue;
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | The default frame is ROWS UNBOUNDED PRECEDING | The default (with ORDER BY) is RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW - peers share the aggregate |
-| 2 | Frame clauses apply to ROW_NUMBER and RANK | Ranking functions ignore frames; frames only affect aggregate window functions like SUM, AVG, COUNT |
-| 3 | ROWS and RANGE always produce the same results | Only when ORDER BY values are unique; with ties they diverge - always specify explicitly |
+| #   | Misconception                                  | Reality                                                                                                      |
+| --- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| 1   | The default frame is ROWS UNBOUNDED PRECEDING  | The default (with ORDER BY) is RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW - peers share the aggregate |
+| 2   | Frame clauses apply to ROW_NUMBER and RANK     | Ranking functions ignore frames; frames only affect aggregate window functions like SUM, AVG, COUNT          |
+| 3   | ROWS and RANGE always produce the same results | Only when ORDER BY values are unique; with ties they diverge - always specify explicitly                     |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-055 Window Functions - ROW_NUMBER, RANK, DENSE_RANK - window syntax and PARTITION BY / ORDER BY
 - SQL-056 Window Functions - LAG, LEAD, NTILE - row-access functions that use adjacency
 
 **THIS:** SQL-057 Window Frames - ROWS vs RANGE vs GROUPS
 
 **Next steps:**
+
 - SQL-064 Query Performance Tuning Patterns - window performance depends on index support for ORDER BY
 - SQL-082 Window Functions Practice Kata - combine frames with aggregate and ranking functions
 
@@ -1198,27 +1223,30 @@ CROSS JOIN LATERAL (
 
 **Cost:** Without an index on the inner join column, LATERAL degrades to nested-loop with full scans per outer row. Can be slower than window functions when N is large relative to partition size.
 
-| Aspect | LATERAL | Window + CTE |
-|--------|---------|-------------|
-| Multi-row return | Yes, native | Yes, filter after |
-| Index usage | Inner scan per row | Full sort |
-| Limit per group | Native LIMIT | ROW_NUMBER filter |
-| Best for | Small N, indexed | Large N, full scan |
+| Aspect           | LATERAL            | Window + CTE       |
+| ---------------- | ------------------ | ------------------ |
+| Multi-row return | Yes, native        | Yes, filter after  |
+| Index usage      | Inner scan per row | Full sort          |
+| Limit per group  | Native LIMIT       | ROW_NUMBER filter  |
+| Best for         | Small N, indexed   | Large N, full scan |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - You need top-N rows per group with a hard LIMIT per group
 - The inner query is complex and applies per outer row
 - You want to avoid materializing the full window result when only a few rows per group are needed
 
 **AVOID WHEN:**
+
 - A simple window function with ROW_NUMBER achieves the same result
 - The outer table is very large and the inner query has no supporting index
 
 **PREFER window functions WHEN:**
+
 - You need the complete result set partitioned and ranked
 - The planner can sort once rather than executing N inner queries
 
@@ -1226,23 +1254,25 @@ CROSS JOIN LATERAL (
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | LATERAL always performs worse than window functions | With a supporting index, LATERAL + LIMIT often outperforms ROW_NUMBER by avoiding full-partition processing |
-| 2 | Correlated subqueries always execute once per row | The optimizer may rewrite them as hash or merge joins - check EXPLAIN |
-| 3 | CROSS JOIN LATERAL and LEFT JOIN LATERAL are the same | CROSS JOIN drops outer rows with no inner matches; LEFT JOIN preserves them with NULLs |
+| #   | Misconception                                         | Reality                                                                                                     |
+| --- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| 1   | LATERAL always performs worse than window functions   | With a supporting index, LATERAL + LIMIT often outperforms ROW_NUMBER by avoiding full-partition processing |
+| 2   | Correlated subqueries always execute once per row     | The optimizer may rewrite them as hash or merge joins - check EXPLAIN                                       |
+| 3   | CROSS JOIN LATERAL and LEFT JOIN LATERAL are the same | CROSS JOIN drops outer rows with no inner matches; LEFT JOIN preserves them with NULLs                      |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-033 Subqueries - Scalar, Row, Table - correlated subqueries extend basic subquery patterns
 - SQL-026 INNER JOIN - Matching Rows Across Tables - LATERAL is a parameterized join variant
 
 **THIS:** SQL-058 Correlated Subqueries and Lateral Joins
 
 **Next steps:**
+
 - SQL-060 Execution Plans Deep Dive - EXPLAIN ANALYZE - verify whether the planner rewrites your correlated subquery
 - SQL-064 Query Performance Tuning Patterns - LATERAL is a key pattern for top-N-per-group
 
@@ -1393,27 +1423,30 @@ ORDER BY GROUPING(region),
 
 **Cost:** Result sets grow large - CUBE of n columns produces 2^n grouping sets. The output mixes rows of different granularity, requiring the consumer to distinguish them.
 
-| Aspect | GROUPING SETS | UNION ALL |
-|--------|--------------|-----------|
-| Table scans | 1 | N per level |
-| Flexibility | Exact combos | Exact combos |
-| NULL ambiguity | GROUPING() resolves | Not present |
-| Result size | All levels combined | All levels combined |
+| Aspect         | GROUPING SETS       | UNION ALL           |
+| -------------- | ------------------- | ------------------- |
+| Table scans    | 1                   | N per level         |
+| Flexibility    | Exact combos        | Exact combos        |
+| NULL ambiguity | GROUPING() resolves | Not present         |
+| Result size    | All levels combined | All levels combined |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - You need subtotals, grand totals, or multi-dimensional roll-ups in a single query
 - A report requires aggregation at multiple granularity levels simultaneously
 - The same base query would otherwise be duplicated in UNION ALL chains
 
 **AVOID WHEN:**
+
 - You only need aggregation at one level (plain GROUP BY suffices)
 - The number of dimensions is large (CUBE of 6 columns = 64 grouping sets)
 
 **PREFER ROLLUP WHEN:**
+
 - Dimensions have a natural hierarchy (year > quarter > month)
 - You need subtotals at each hierarchical level but not every cross-combination
 
@@ -1421,23 +1454,25 @@ ORDER BY GROUPING(region),
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | NULL in a GROUPING SETS result always means "all values" | If the source data contains real NULLs, they are indistinguishable without the GROUPING() function |
-| 2 | CUBE and ROLLUP produce the same result | ROLLUP produces a hierarchical subset; CUBE produces all 2^n combinations |
-| 3 | GROUPING SETS are universally supported | Standard SQL:1999, but MySQL added partial support only in 8.0; SQLite does not support it |
+| #   | Misconception                                            | Reality                                                                                            |
+| --- | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| 1   | NULL in a GROUPING SETS result always means "all values" | If the source data contains real NULLs, they are indistinguishable without the GROUPING() function |
+| 2   | CUBE and ROLLUP produce the same result                  | ROLLUP produces a hierarchical subset; CUBE produces all 2^n combinations                          |
+| 3   | GROUPING SETS are universally supported                  | Standard SQL:1999, but MySQL added partial support only in 8.0; SQLite does not support it         |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-032 GROUP BY and HAVING - GROUPING SETS extend GROUP BY with multiple levels
 - SQL-031 Aggregate Functions - COUNT, SUM, AVG, MIN, MAX - aggregates power each grouping level
 
 **THIS:** SQL-059 GROUPING SETS, CUBE, ROLLUP
 
 **Next steps:**
+
 - SQL-072 Materialized Views - cache expensive multi-level aggregation results
 - SQL-064 Query Performance Tuning Patterns - optimize heavy CUBE queries with partial indexes
 
@@ -1577,28 +1612,31 @@ ROLLBACK;
 
 **Cost:** EXPLAIN ANALYZE runs the query - on a slow query, it takes just as long. On write queries, it performs the writes (wrap in ROLLBACK). BUFFERS adds minor overhead.
 
-| Aspect | EXPLAIN | EXPLAIN ANALYZE |
-|--------|---------|----------------|
-| Runs query | No | Yes |
-| Row counts | Estimated | Actual |
-| Timing | Estimated cost | Actual ms |
-| Buffer info | No | With BUFFERS |
-| Safe for writes | Yes | Only in ROLLBACK |
+| Aspect          | EXPLAIN        | EXPLAIN ANALYZE  |
+| --------------- | -------------- | ---------------- |
+| Runs query      | No             | Yes              |
+| Row counts      | Estimated      | Actual           |
+| Timing          | Estimated cost | Actual ms        |
+| Buffer info     | No             | With BUFFERS     |
+| Safe for writes | Yes            | Only in ROLLBACK |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - A query is slow and you need to find which plan node is the bottleneck
 - You suspect the planner is choosing a wrong plan (Seq Scan despite an index)
 - You want to verify that a newly created index is actually being used
 
 **AVOID WHEN:**
+
 - The query modifies data and you cannot wrap it in a transaction
 - You only need a quick sanity check on plan shape (plain EXPLAIN suffices)
 
 **PREFER EXPLAIN (without ANALYZE) WHEN:**
+
 - The query takes minutes and you want the plan instantly without execution
 - You are iterating on query structure and need rapid feedback
 
@@ -1606,23 +1644,25 @@ ROLLBACK;
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | EXPLAIN ANALYZE is read-only and safe | It executes the full query including INSERT, UPDATE, DELETE - always wrap mutations in BEGIN/ROLLBACK |
-| 2 | Low estimated cost means the query is fast | Cost units are arbitrary and not comparable across databases; actual time is what matters |
-| 3 | Seq Scan always means a missing index | Seq Scan is optimal for small tables or queries returning most rows; the planner chooses correctly when statistics are current |
+| #   | Misconception                              | Reality                                                                                                                        |
+| --- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | EXPLAIN ANALYZE is read-only and safe      | It executes the full query including INSERT, UPDATE, DELETE - always wrap mutations in BEGIN/ROLLBACK                          |
+| 2   | Low estimated cost means the query is fast | Cost units are arbitrary and not comparable across databases; actual time is what matters                                      |
+| 3   | Seq Scan always means a missing index      | Seq Scan is optimal for small tables or queries returning most rows; the planner chooses correctly when statistics are current |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-042 EXPLAIN - Reading Your First Query Plan - basic plan reading before deep analysis
 - SQL-040 Indexes - What They Are and Why They Matter - understand index usage in a plan
 
 **THIS:** SQL-060 Execution Plans Deep Dive - EXPLAIN ANALYZE
 
 **Next steps:**
+
 - SQL-061 Index Types - B-Tree, Hash, GIN, GiST, BRIN - choose the right index based on plan analysis
 - SQL-094 Query Planner and Cost-Based Optimization - understand why the planner makes its choices
 
@@ -1769,28 +1809,31 @@ CREATE INDEX idx_fts ON articles
 
 **Cost:** GIN indexes are expensive to maintain on write-heavy tables. BRIN indexes are useless if physical row order does not correlate with column values. Choosing wrong means wasted disk and write amplification.
 
-| Aspect | B-Tree | GIN | BRIN |
-|--------|--------|-----|------|
-| Size | Medium | Large | Tiny |
-| Write cost | Medium | High | Low |
-| Range queries | Yes | No | Yes (sorted) |
-| Multi-value | No | Yes | No |
-| Best for | General | Arrays/FTS | Time-series |
+| Aspect        | B-Tree  | GIN        | BRIN         |
+| ------------- | ------- | ---------- | ------------ |
+| Size          | Medium  | Large      | Tiny         |
+| Write cost    | Medium  | High       | Low          |
+| Range queries | Yes     | No         | Yes (sorted) |
+| Multi-value   | No      | Yes        | No           |
+| Best for      | General | Arrays/FTS | Time-series  |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - B-Tree: equality, range, ORDER BY on scalar columns (the default choice)
 - GIN: JSONB containment, array element search, full-text search
 - BRIN: very large tables where the indexed column correlates with physical row order
 
 **AVOID WHEN:**
+
 - Hash: you need range queries (hash supports equality only)
 - BRIN: rows are inserted in random order relative to the indexed column
 
 **PREFER GiST WHEN:**
+
 - You need nearest-neighbor queries on geometric or IP-range data
 - You need range-type overlap queries (tsrange, int4range)
 
@@ -1798,23 +1841,25 @@ CREATE INDEX idx_fts ON articles
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | B-Tree works for all query types | B-Tree cannot handle containment (@>), full-text (@@), or geometric (<->) operators |
-| 2 | BRIN is a drop-in replacement for B-Tree on large tables | BRIN only works when physical row order correlates with column values; random inserts make it useless |
-| 3 | Hash indexes are obsolete | Since PostgreSQL 10, hash indexes are WAL-logged and crash-safe; they are smaller than B-Tree for equality-only workloads |
+| #   | Misconception                                            | Reality                                                                                                                   |
+| --- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| 1   | B-Tree works for all query types                         | B-Tree cannot handle containment (@>), full-text (@@), or geometric (<->) operators                                       |
+| 2   | BRIN is a drop-in replacement for B-Tree on large tables | BRIN only works when physical row order correlates with column values; random inserts make it useless                     |
+| 3   | Hash indexes are obsolete                                | Since PostgreSQL 10, hash indexes are WAL-logged and crash-safe; they are smaller than B-Tree for equality-only workloads |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-041 B-Tree Index Basics - understand B-Tree before comparing with alternatives
 - SQL-040 Indexes - What They Are and Why They Matter - foundational index concepts
 
 **THIS:** SQL-061 Index Types - B-Tree, Hash, GIN, GiST, BRIN
 
 **Next steps:**
+
 - SQL-062 Composite Indexes and Column Order - B-Tree column ordering for multi-column queries
 - SQL-063 Covering Indexes (Index-Only Scans) - eliminate table lookups with included columns
 
@@ -1980,27 +2025,30 @@ ORDER BY created_at;
 
 **Cost:** Write overhead increases with each indexed column. The index only helps queries matching the leftmost prefix, not arbitrary column combinations.
 
-| Aspect | Composite index | Multiple single indexes |
-|--------|----------------|------------------------|
-| Query coverage | Prefix-matching only | Any single column |
-| Storage | One index, larger | Multiple smaller |
-| Write cost | One update | Multiple updates |
-| Sort elimination | If ORDER BY matches | Rarely |
+| Aspect           | Composite index      | Multiple single indexes |
+| ---------------- | -------------------- | ----------------------- |
+| Query coverage   | Prefix-matching only | Any single column       |
+| Storage          | One index, larger    | Multiple smaller        |
+| Write cost       | One update           | Multiple updates        |
+| Sort elimination | If ORDER BY matches  | Rarely                  |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Queries consistently filter on the same combination of columns
 - You want to eliminate both lookup and sort costs with one index
 - Equality columns precede range columns in your WHERE patterns
 
 **AVOID WHEN:**
+
 - Queries use the columns in unpredictable combinations
 - The leading column has very low selectivity (e.g., boolean with 50/50 split)
 
 **PREFER separate single-column indexes WHEN:**
+
 - Queries filter on different individual columns, not combinations
 - You need bitmap index scan combinations for complex OR conditions
 
@@ -2008,23 +2056,25 @@ ORDER BY created_at;
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | A composite index on (a, b) helps queries filtering only on b | No - the leftmost prefix rule requires a match on a first |
-| 2 | Column order in the index does not matter | Order is critical: (a, b) and (b, a) serve completely different query patterns |
-| 3 | Range conditions on one column do not affect subsequent columns | A range condition on column N prevents the index from being used for columns N+1, N+2, etc. |
+| #   | Misconception                                                   | Reality                                                                                     |
+| --- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| 1   | A composite index on (a, b) helps queries filtering only on b   | No - the leftmost prefix rule requires a match on a first                                   |
+| 2   | Column order in the index does not matter                       | Order is critical: (a, b) and (b, a) serve completely different query patterns              |
+| 3   | Range conditions on one column do not affect subsequent columns | A range condition on column N prevents the index from being used for columns N+1, N+2, etc. |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-061 Index Types - B-Tree, Hash, GIN, GiST, BRIN - understand B-Tree internals before optimizing column order
 - SQL-041 B-Tree Index Basics - B-Tree sorted structure is why column order matters
 
 **THIS:** SQL-062 Composite Indexes and Column Order
 
 **Next steps:**
+
 - SQL-063 Covering Indexes (Index-Only Scans) - add INCLUDE columns to eliminate table lookups
 - SQL-065 Implicit Conversions Kill Your Indexes - type mismatches bypass even well-designed composite indexes
 
@@ -2174,27 +2224,30 @@ LIMIT 50;
 
 **Cost:** Larger index size (INCLUDE columns add bytes per entry). Every INSERT/UPDATE must maintain the extra payload. Not useful if queries reference columns outside the index.
 
-| Aspect | Covering index | Regular index |
-|--------|---------------|---------------|
-| Heap access | None (if all-visible) | Per matching row |
-| Index size | Larger | Smaller |
-| Write overhead | Higher | Lower |
-| Query flexibility | Specific queries only | Any query shape |
+| Aspect            | Covering index        | Regular index    |
+| ----------------- | --------------------- | ---------------- |
+| Heap access       | None (if all-visible) | Per matching row |
+| Index size        | Larger                | Smaller          |
+| Write overhead    | Higher                | Lower            |
+| Query flexibility | Specific queries only | Any query shape  |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - A high-frequency query selects a small, fixed set of columns from a large table
 - EXPLAIN shows heap fetches dominating execution time after index lookup
 - The table is read-heavy and VACUUM runs regularly
 
 **AVOID WHEN:**
+
 - Queries frequently change which columns they select
 - The table is write-heavy and the extra index maintenance cost is prohibitive
 
 **PREFER a regular index WHEN:**
+
 - The query always needs columns that would make the covering index excessively wide
 - The table is small enough that heap fetches are fast regardless
 
@@ -2202,23 +2255,25 @@ LIMIT 50;
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | Index-only scans always avoid the heap | PostgreSQL must check the visibility map; recently modified pages force heap fetches until VACUUM marks them all-visible |
-| 2 | INCLUDE columns can be used in WHERE clauses | INCLUDE columns are payload only - they are not part of the index key and cannot be searched |
-| 3 | Adding every column to every index makes all queries fast | Bloated indexes slow writes, consume disk, and may not fit in memory - cover only your critical queries |
+| #   | Misconception                                             | Reality                                                                                                                  |
+| --- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| 1   | Index-only scans always avoid the heap                    | PostgreSQL must check the visibility map; recently modified pages force heap fetches until VACUUM marks them all-visible |
+| 2   | INCLUDE columns can be used in WHERE clauses              | INCLUDE columns are payload only - they are not part of the index key and cannot be searched                             |
+| 3   | Adding every column to every index makes all queries fast | Bloated indexes slow writes, consume disk, and may not fit in memory - cover only your critical queries                  |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-062 Composite Indexes and Column Order - covering indexes extend composite index concepts
 - SQL-060 Execution Plans Deep Dive - EXPLAIN ANALYZE - EXPLAIN reveals whether index-only scans are occurring
 
 **THIS:** SQL-063 Covering Indexes (Index-Only Scans)
 
 **Next steps:**
+
 - SQL-064 Query Performance Tuning Patterns - covering indexes are a key tuning pattern
 - SQL-089 VACUUM and Bloat Management (PostgreSQL) - VACUUM enables index-only scans by maintaining the visibility map
 
@@ -2374,27 +2429,30 @@ ANALYZE orders;
 
 **Cost:** Requires understanding execution plan output. The optimal fix may be non-obvious (e.g., a statistics refresh rather than an index).
 
-| Aspect | Systematic tuning | Guess-and-check |
-|--------|------------------|-----------------|
-| Time to fix | Predictable | Unpredictable |
-| Wasted indexes | Zero | Common |
-| Root cause found | Always | Sometimes |
-| Skill required | Medium | Low |
+| Aspect           | Systematic tuning | Guess-and-check |
+| ---------------- | ----------------- | --------------- |
+| Time to fix      | Predictable       | Unpredictable   |
+| Wasted indexes   | Zero              | Common          |
+| Root cause found | Always            | Sometimes       |
+| Skill required   | Medium            | Low             |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Any query takes longer than your performance SLA
 - A query that was fast suddenly becomes slow (plan regression)
 - You need to justify an optimization to your team with data
 
 **AVOID WHEN:**
+
 - The query runs once a year and speed does not matter
 - The table has fewer than a few thousand rows (everything is fast)
 
 **PREFER application-level caching WHEN:**
+
 - The same expensive query runs repeatedly with identical parameters
 - The data changes infrequently and staleness is acceptable
 
@@ -2402,23 +2460,25 @@ ANALYZE orders;
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | "Add an index" is always the answer | Stale statistics, bad query structure, or missing VACUUM are equally common causes |
-| 2 | Tuning is a one-time activity | Data grows, patterns change, and plans regress - tuning is continuous |
-| 3 | A fast query in dev will be fast in production | Production has different data distribution, concurrency, and cache behavior; always test with production-scale data |
+| #   | Misconception                                  | Reality                                                                                                             |
+| --- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| 1   | "Add an index" is always the answer            | Stale statistics, bad query structure, or missing VACUUM are equally common causes                                  |
+| 2   | Tuning is a one-time activity                  | Data grows, patterns change, and plans regress - tuning is continuous                                               |
+| 3   | A fast query in dev will be fast in production | Production has different data distribution, concurrency, and cache behavior; always test with production-scale data |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-060 Execution Plans Deep Dive - EXPLAIN ANALYZE - you must read plans before tuning
 - SQL-061 Index Types - B-Tree, Hash, GIN, GiST, BRIN - know which index type to apply
 
 **THIS:** SQL-064 Query Performance Tuning Patterns
 
 **Next steps:**
+
 - SQL-066 Slow Query Log Analysis - find which queries to tune first
 - SQL-097 Plan Regression and pg_stat_statements - track plan changes over time
 
@@ -2558,27 +2618,30 @@ WHERE created_at >= '2024-03-15'
 
 **Cost:** Requires vigilance at every query boundary - ORM-generated queries, dynamic SQL, and API parameters are common sources of mismatches.
 
-| Aspect | Matching types | Implicit conversion |
-|--------|---------------|-------------------|
-| Index usage | Yes | No (column cast) |
-| Scan type | Index Scan | Seq Scan |
-| Developer effort | Must know column types | Zero (but slow) |
-| ORM risk | Low if configured | High with auto-params |
+| Aspect           | Matching types         | Implicit conversion   |
+| ---------------- | ---------------------- | --------------------- |
+| Index usage      | Yes                    | No (column cast)      |
+| Scan type        | Index Scan             | Seq Scan              |
+| Developer effort | Must know column types | Zero (but slow)       |
+| ORM risk         | Low if configured      | High with auto-params |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - EXPLAIN shows Seq Scan on an indexed column with a simple equality filter
 - An ORM generates queries with parameter types that do not match column types
 - A query was fast and became slow after a schema change altered column types
 
 **AVOID WHEN:**
+
 - The table is small enough that Seq Scan is faster than index overhead
 - The conversion is intentional and you have an expression index
 
 **PREFER expression indexes WHEN:**
+
 - You cannot change the application's query (third-party code)
 - The conversion is a deliberate part of the data model (e.g., LOWER(email))
 
@@ -2586,23 +2649,25 @@ WHERE created_at >= '2024-03-15'
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | PostgreSQL always casts the literal, not the column | It depends on type precedence; integer-to-varchar comparisons may cast the column in some cases |
-| 2 | ORMs always send the correct parameter types | Many ORMs send all parameters as strings or use language-default numeric types, causing mismatches |
-| 3 | Adding more indexes fixes slow queries caused by implicit casts | No index of any type helps if the predicate applies a function to the column - fix the type mismatch instead |
+| #   | Misconception                                                   | Reality                                                                                                      |
+| --- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| 1   | PostgreSQL always casts the literal, not the column             | It depends on type precedence; integer-to-varchar comparisons may cast the column in some cases              |
+| 2   | ORMs always send the correct parameter types                    | Many ORMs send all parameters as strings or use language-default numeric types, causing mismatches           |
+| 3   | Adding more indexes fixes slow queries caused by implicit casts | No index of any type helps if the predicate applies a function to the column - fix the type mismatch instead |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-009 Data Types - Integers, Text, Dates, Booleans - type knowledge is the foundation
 - SQL-040 Indexes - What They Are and Why They Matter - understand why functions on columns prevent index use
 
 **THIS:** SQL-065 Implicit Conversions Kill Your Indexes
 
 **Next steps:**
+
 - SQL-064 Query Performance Tuning Patterns - implicit conversions are a common tuning target
 - SQL-066 Slow Query Log Analysis - slow query logs reveal queries suffering from implicit casts
 
@@ -2748,27 +2813,30 @@ SELECT pg_stat_statements_reset();
 
 **Cost:** pg_stat_statements consumes shared memory (configurable). Slow query logging adds I/O to the server log. Both require initial configuration.
 
-| Aspect | pg_stat_statements | Slow query log |
-|--------|-------------------|----------------|
-| Aggregation | Automatic | Manual parsing |
-| Overhead | Shared memory | Log I/O |
-| Query normalization | Yes ($1, $2) | Exact text |
-| Historical data | Accumulates until reset | Persists in log files |
+| Aspect              | pg_stat_statements      | Slow query log        |
+| ------------------- | ----------------------- | --------------------- |
+| Aggregation         | Automatic               | Manual parsing        |
+| Overhead            | Shared memory           | Log I/O               |
+| Query normalization | Yes ($1, $2)            | Exact text            |
+| Historical data     | Accumulates until reset | Persists in log files |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - You need to identify which queries consume the most database time
 - Performance degradation is gradual and you need to find the top offenders
 - You are establishing a performance baseline before a major release
 
 **AVOID WHEN:**
+
 - The database is a test instance with no meaningful traffic patterns
 - You already know the exact slow query from application-level monitoring
 
 **PREFER APM tools (Datadog, New Relic) WHEN:**
+
 - You need end-to-end latency including application and network time
 - You need correlation between slow queries and application endpoints
 
@@ -2776,23 +2844,25 @@ SELECT pg_stat_statements_reset();
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | Optimize the single slowest query first | A query taking 5s but running once per day matters less than a 200ms query running 100,000 times per day - sort by total_exec_time |
-| 2 | pg_stat_statements shows individual query executions | It normalizes queries and aggregates statistics; you see patterns, not individual calls |
-| 3 | Setting log_min_duration_statement = 0 captures slow queries | It logs every query, including sub-millisecond ones - use a meaningful threshold like 100-500ms |
+| #   | Misconception                                                | Reality                                                                                                                            |
+| --- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Optimize the single slowest query first                      | A query taking 5s but running once per day matters less than a 200ms query running 100,000 times per day - sort by total_exec_time |
+| 2   | pg_stat_statements shows individual query executions         | It normalizes queries and aggregates statistics; you see patterns, not individual calls                                            |
+| 3   | Setting log_min_duration_statement = 0 captures slow queries | It logs every query, including sub-millisecond ones - use a meaningful threshold like 100-500ms                                    |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-060 Execution Plans Deep Dive - EXPLAIN ANALYZE - you need plan reading skills to act on slow query findings
 - SQL-064 Query Performance Tuning Patterns - the tuning loop consumes slow query log output
 
 **THIS:** SQL-066 Slow Query Log Analysis
 
 **Next steps:**
+
 - SQL-097 Plan Regression and pg_stat_statements - track plan changes and performance regression over time
 - SQL-102 Connection Pooling - PgBouncer and HikariCP - slow queries under load may indicate connection exhaustion
 
@@ -2948,27 +3018,30 @@ LOOP:
 
 **Cost:** Higher isolation reduces concurrency. SERIALIZABLE may abort transactions that conflict, requiring application-level retry logic.
 
-| Aspect | READ COMMITTED | REPEATABLE READ | SERIALIZABLE |
-|--------|---------------|-----------------|-------------|
-| Concurrency | High | Medium | Lower |
-| Anomalies | Non-repeatable, phantom | None (in PG) | None |
-| Retry logic | Not needed | Rarely needed | Required |
-| Default in PG | Yes | No | No |
+| Aspect        | READ COMMITTED          | REPEATABLE READ | SERIALIZABLE |
+| ------------- | ----------------------- | --------------- | ------------ |
+| Concurrency   | High                    | Medium          | Lower        |
+| Anomalies     | Non-repeatable, phantom | None (in PG)    | None         |
+| Retry logic   | Not needed              | Rarely needed   | Required     |
+| Default in PG | Yes                     | No              | No           |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - READ COMMITTED: general OLTP where each statement needs current data
 - REPEATABLE READ: reports or multi-statement reads that need a consistent snapshot
 - SERIALIZABLE: financial transactions where any anomaly is unacceptable
 
 **AVOID WHEN:**
+
 - SERIALIZABLE: high-contention workloads where retry storms would degrade throughput
 - READ UNCOMMITTED: PostgreSQL maps this to READ COMMITTED anyway
 
 **PREFER READ COMMITTED WHEN:**
+
 - Individual statements are self-contained and do not depend on cross-statement consistency
 - Throughput matters more than multi-statement consistency
 
@@ -2976,23 +3049,25 @@ LOOP:
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | READ COMMITTED means you see a consistent view for the entire transaction | Each statement sees a new snapshot; re-reading the same row can return different values |
-| 2 | SERIALIZABLE means transactions run one at a time | It uses predicate locking and SSI (Serializable Snapshot Isolation) in PG - concurrent execution with conflict detection |
-| 3 | Higher isolation always means slower performance | REPEATABLE READ is often no slower than READ COMMITTED because it uses the same MVCC snapshot mechanism |
+| #   | Misconception                                                             | Reality                                                                                                                  |
+| --- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| 1   | READ COMMITTED means you see a consistent view for the entire transaction | Each statement sees a new snapshot; re-reading the same row can return different values                                  |
+| 2   | SERIALIZABLE means transactions run one at a time                         | It uses predicate locking and SSI (Serializable Snapshot Isolation) in PG - concurrent execution with conflict detection |
+| 3   | Higher isolation always means slower performance                          | REPEATABLE READ is often no slower than READ COMMITTED because it uses the same MVCC snapshot mechanism                  |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-038 Transactions - BEGIN, COMMIT, ROLLBACK - transaction boundaries are the foundation
 - SQL-039 ACID Properties - What They Actually Mean - isolation is the "I" in ACID
 
 **THIS:** SQL-067 Transaction Isolation Levels
 
 **Next steps:**
+
 - SQL-068 Read Phenomena - Dirty, Non-Repeatable, Phantom - understand the anomalies each level prevents
 - SQL-069 Optimistic vs Pessimistic Locking - isolation level choice affects locking strategy
 
@@ -3147,26 +3222,29 @@ COMMIT; -- One TX aborted: serialization
 
 **Cost:** Preventing more phenomena requires higher isolation, which increases abort rates (SERIALIZABLE) or reduces concurrency.
 
-| Phenomenon | READ COMMITTED | REPEATABLE READ | SERIALIZABLE |
-|-----------|---------------|-----------------|-------------|
-| Dirty read | Prevented | Prevented | Prevented |
-| Non-repeatable | Possible | Prevented | Prevented |
-| Phantom | Possible | Prevented (PG) | Prevented |
+| Phenomenon     | READ COMMITTED | REPEATABLE READ | SERIALIZABLE |
+| -------------- | -------------- | --------------- | ------------ |
+| Dirty read     | Prevented      | Prevented       | Prevented    |
+| Non-repeatable | Possible       | Prevented       | Prevented    |
+| Phantom        | Possible       | Prevented (PG)  | Prevented    |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - You are designing a transaction and need to know which anomalies can occur
 - A bug report describes data that "changed mid-transaction" and you need to classify the phenomenon
 - You are choosing an isolation level for a critical business operation
 
 **AVOID WHEN:**
+
 - Your transactions are single-statement (anomalies require multiple reads within a transaction)
 - The application is read-only against immutable data
 
 **PREFER REPEATABLE READ WHEN:**
+
 - Your transaction reads the same data multiple times and needs consistency
 - You want phantom prevention without the retry overhead of SERIALIZABLE (in PostgreSQL)
 
@@ -3174,23 +3252,25 @@ COMMIT; -- One TX aborted: serialization
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | READ COMMITTED prevents all read anomalies | It only prevents dirty reads; non-repeatable and phantom reads are still possible |
-| 2 | Phantoms only matter for SELECT COUNT queries | Any query with a range predicate can be affected - INSERT into a range you just checked empty |
-| 3 | Non-repeatable reads require the same row to be updated | They can also be caused by the row being deleted between reads |
+| #   | Misconception                                           | Reality                                                                                       |
+| --- | ------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| 1   | READ COMMITTED prevents all read anomalies              | It only prevents dirty reads; non-repeatable and phantom reads are still possible             |
+| 2   | Phantoms only matter for SELECT COUNT queries           | Any query with a range predicate can be affected - INSERT into a range you just checked empty |
+| 3   | Non-repeatable reads require the same row to be updated | They can also be caused by the row being deleted between reads                                |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-067 Transaction Isolation Levels - phenomena map directly to isolation levels
 - SQL-038 Transactions - BEGIN, COMMIT, ROLLBACK - anomalies occur within transaction boundaries
 
 **THIS:** SQL-068 Read Phenomena - Dirty, Non-Repeatable, Phantom
 
 **Next steps:**
+
 - SQL-069 Optimistic vs Pessimistic Locking - locking strategies are an alternative to isolation level changes
 - SQL-085 MVCC Internals - How Concurrent Reads Work - the mechanism that implements snapshot isolation in PostgreSQL
 
@@ -3352,28 +3432,31 @@ COMMIT;
 
 **Cost:** Pessimistic can deadlock and reduces throughput. Optimistic can retry-loop under high contention.
 
-| Aspect | Pessimistic | Optimistic |
-|--------|-----------|-----------|
-| Concurrency | Low (blocked) | High (no locks) |
-| Conflict handling | Prevention | Detection |
-| Deadlock risk | Yes | No |
-| Retry logic | Not needed | Required |
-| Best for | High contention | Low contention |
+| Aspect            | Pessimistic     | Optimistic      |
+| ----------------- | --------------- | --------------- |
+| Concurrency       | Low (blocked)   | High (no locks) |
+| Conflict handling | Prevention      | Detection       |
+| Deadlock risk     | Yes             | No              |
+| Retry logic       | Not needed      | Required        |
+| Best for          | High contention | Low contention  |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Pessimistic: contention is high and the cost of retrying is significant (inventory, seat reservation)
 - Optimistic: contention is low and most updates succeed on first attempt (CMS, config editing)
 - Optimistic: transactions span long user think-time (web forms)
 
 **AVOID WHEN:**
+
 - Pessimistic: transactions hold locks for seconds or minutes (web requests with user interaction)
 - Optimistic: a single hot row is updated by dozens of concurrent writers
 
 **PREFER optimistic WHEN:**
+
 - The read-to-write ratio is high and conflicts are rare
 - You cannot afford the throughput reduction of row-level locks
 
@@ -3381,23 +3464,25 @@ COMMIT;
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | Optimistic locking prevents lost updates automatically | It only detects them; the application must handle the conflict (retry or report to user) |
-| 2 | SELECT FOR UPDATE locks the row for reads too | It blocks other FOR UPDATE selects and writes, but plain SELECTs still read the row via MVCC |
-| 3 | Optimistic locking is always better because it avoids locks | Under high contention, optimistic causes retry storms that waste more resources than pessimistic blocking |
+| #   | Misconception                                               | Reality                                                                                                   |
+| --- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| 1   | Optimistic locking prevents lost updates automatically      | It only detects them; the application must handle the conflict (retry or report to user)                  |
+| 2   | SELECT FOR UPDATE locks the row for reads too               | It blocks other FOR UPDATE selects and writes, but plain SELECTs still read the row via MVCC              |
+| 3   | Optimistic locking is always better because it avoids locks | Under high contention, optimistic causes retry storms that waste more resources than pessimistic blocking |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-067 Transaction Isolation Levels - locking strategies interact with isolation levels
 - SQL-068 Read Phenomena - Dirty, Non-Repeatable, Phantom - lost updates are a phenomenon locking prevents
 
 **THIS:** SQL-069 Optimistic vs Pessimistic Locking
 
 **Next steps:**
+
 - SQL-070 Long Transaction Anti-Pattern - pessimistic locks held too long cause cascading problems
 - SQL-090 Row-Level vs Table-Level Locking - granularity of pessimistic locks
 
@@ -3549,27 +3634,30 @@ Why it's right: the transaction covers only the critical write. No snapshot bloc
 
 **Cost:** Requires restructuring application code to separate reads, external calls, and writes. May need optimistic locking to handle conflicts outside the transaction.
 
-| Aspect | Short TX | Long TX |
-|--------|---------|--------|
-| Dead tuple cleanup | Immediate | Blocked |
-| Table bloat | Minimal | Growing |
-| Lock duration | Milliseconds | Seconds/minutes |
-| Application complexity | Higher (split logic) | Lower (simple) |
+| Aspect                 | Short TX             | Long TX         |
+| ---------------------- | -------------------- | --------------- |
+| Dead tuple cleanup     | Immediate            | Blocked         |
+| Table bloat            | Minimal              | Growing         |
+| Lock duration          | Milliseconds         | Seconds/minutes |
+| Application complexity | Higher (split logic) | Lower (simple)  |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - You spot idle_in_transaction_session_timeout violations in logs
 - Table bloat is growing and autovacuum lag is increasing
 - Transactions span external I/O (API calls, file reads, user interaction)
 
 **AVOID WHEN:**
+
 - The transaction genuinely needs to hold a consistent snapshot for a complex multi-statement operation
 - The operation is purely database-internal (bulk ETL with no external calls)
 
 **PREFER read-outside-transaction pattern WHEN:**
+
 - The application reads data, processes it externally, then writes back
 - The read does not need transactional consistency with the write (use optimistic locking instead)
 
@@ -3577,23 +3665,25 @@ Why it's right: the transaction covers only the critical write. No snapshot bloc
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | Only write transactions cause bloat problems | A long-running read-only transaction also prevents autovacuum from cleaning dead tuples created by other transactions |
-| 2 | idle_in_transaction is harmless if no locks are held | The open snapshot prevents VACUUM, causing table bloat that affects all queries on the database |
-| 3 | Setting statement_timeout prevents long transactions | statement_timeout kills individual statements, not idle time between statements; use idle_in_transaction_session_timeout |
+| #   | Misconception                                        | Reality                                                                                                                  |
+| --- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| 1   | Only write transactions cause bloat problems         | A long-running read-only transaction also prevents autovacuum from cleaning dead tuples created by other transactions    |
+| 2   | idle_in_transaction is harmless if no locks are held | The open snapshot prevents VACUUM, causing table bloat that affects all queries on the database                          |
+| 3   | Setting statement_timeout prevents long transactions | statement_timeout kills individual statements, not idle time between statements; use idle_in_transaction_session_timeout |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-038 Transactions - BEGIN, COMMIT, ROLLBACK - understand transaction boundaries
 - SQL-069 Optimistic vs Pessimistic Locking - restructuring long transactions often requires optimistic locking
 
 **THIS:** SQL-070 Long Transaction Anti-Pattern
 
 **Next steps:**
+
 - SQL-089 VACUUM and Bloat Management (PostgreSQL) - the mechanics of dead tuple cleanup
 - SQL-092 Deadlock Detection and Resolution - long transactions increase deadlock probability
 
@@ -3749,27 +3839,30 @@ GRANT SELECT ON sales_summary TO analyst;
 
 **Cost:** Views are executed on every access (no caching). Complex views can hide expensive operations. Stacking views on views creates performance traps.
 
-| Aspect | View | Direct query | Materialized view |
-|--------|------|-------------|------------------|
-| Data freshness | Always current | Always current | Stale until refresh |
-| Storage | None | None | Yes |
-| Performance | Re-executed | Same | Pre-computed |
-| Reusability | Named, grantable | Copy-paste | Named, grantable |
+| Aspect         | View             | Direct query   | Materialized view   |
+| -------------- | ---------------- | -------------- | ------------------- |
+| Data freshness | Always current   | Always current | Stale until refresh |
+| Storage        | None             | None           | Yes                 |
+| Performance    | Re-executed      | Same           | Pre-computed        |
+| Reusability    | Named, grantable | Copy-paste     | Named, grantable    |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Multiple queries share the same join and filter logic
 - You need a security boundary between users and raw tables
 - You want to simplify complex queries into composable named pieces
 
 **AVOID WHEN:**
+
 - The view's underlying query is expensive and called frequently (use materialized view)
 - You are stacking views 3+ levels deep, hiding performance problems
 
 **PREFER materialized views WHEN:**
+
 - The underlying data changes infrequently and query performance matters
 - The computation is expensive and the same result is read many times
 
@@ -3777,23 +3870,25 @@ GRANT SELECT ON sales_summary TO analyst;
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | Views store data and improve query performance | Views store only the query definition; they re-execute on every access |
-| 2 | All views are read-only | Simple views (no aggregation, DISTINCT, or UNION) are automatically updatable in PostgreSQL |
-| 3 | Views prevent all direct table access | Views are an additional access path; you must explicitly REVOKE table permissions to enforce the boundary |
+| #   | Misconception                                  | Reality                                                                                                   |
+| --- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| 1   | Views store data and improve query performance | Views store only the query definition; they re-execute on every access                                    |
+| 2   | All views are read-only                        | Simple views (no aggregation, DISTINCT, or UNION) are automatically updatable in PostgreSQL               |
+| 3   | Views prevent all direct table access          | Views are an additional access path; you must explicitly REVOKE table permissions to enforce the boundary |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-012 SELECT and FROM - Reading Data - views wrap SELECT statements
 - SQL-026 INNER JOIN - Matching Rows Across Tables - views commonly encapsulate join logic
 
 **THIS:** SQL-071 Views - Logical Abstraction over Tables
 
 **Next steps:**
+
 - SQL-072 Materialized Views - views that cache their results for performance
 - SQL-078 GRANT, REVOKE, and Role-Based Access - views are most powerful when combined with access control
 
@@ -3950,27 +4045,30 @@ SELECT cron.schedule(
 
 **Cost:** Data is stale between refreshes. REFRESH is expensive (full re-query). Storage cost for the materialized result.
 
-| Aspect | Materialized view | Regular view | App cache |
-|--------|------------------|-------------|-----------|
-| Read speed | Fast (table scan) | Slow (re-query) | Fast |
-| Freshness | Stale until refresh | Always current | Stale |
-| Indexable | Yes | Via base tables | No |
-| Invalidation | Manual REFRESH | Automatic | Custom logic |
+| Aspect       | Materialized view   | Regular view    | App cache    |
+| ------------ | ------------------- | --------------- | ------------ |
+| Read speed   | Fast (table scan)   | Slow (re-query) | Fast         |
+| Freshness    | Stale until refresh | Always current  | Stale        |
+| Indexable    | Yes                 | Via base tables | No           |
+| Invalidation | Manual REFRESH      | Automatic       | Custom logic |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - An expensive aggregation query is read frequently but the underlying data changes slowly
 - Dashboard or reporting queries need sub-second response times
 - You want to avoid building and maintaining application-level caching
 
 **AVOID WHEN:**
+
 - Data must be real-time and staleness is unacceptable
 - The underlying query is already fast (regular view or direct query suffices)
 
 **PREFER regular views WHEN:**
+
 - Data freshness is more important than read speed
 - The underlying query is fast enough for the access pattern
 
@@ -3978,23 +4076,25 @@ SELECT cron.schedule(
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | REFRESH MATERIALIZED VIEW is instant | It re-executes the full underlying query; on large datasets this can take minutes |
-| 2 | CONCURRENTLY refresh requires no special setup | It requires a unique index on the materialized view; without it, PostgreSQL rejects the command |
-| 3 | Materialized views auto-refresh when base data changes | They do not; you must explicitly REFRESH or schedule it via pg_cron or application logic |
+| #   | Misconception                                          | Reality                                                                                         |
+| --- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| 1   | REFRESH MATERIALIZED VIEW is instant                   | It re-executes the full underlying query; on large datasets this can take minutes               |
+| 2   | CONCURRENTLY refresh requires no special setup         | It requires a unique index on the materialized view; without it, PostgreSQL rejects the command |
+| 3   | Materialized views auto-refresh when base data changes | They do not; you must explicitly REFRESH or schedule it via pg_cron or application logic        |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-071 Views - Logical Abstraction over Tables - materialized views extend the view concept
 - SQL-040 Indexes - What They Are and Why They Matter - indexing materialized views is essential for read performance
 
 **THIS:** SQL-072 Materialized Views
 
 **Next steps:**
+
 - SQL-116 CQRS and Read/Write Separation Architecture - materialized views are a building block for read-optimized architectures
 - SQL-064 Query Performance Tuning Patterns - materialized views are a tuning pattern for expensive aggregations
 
@@ -4174,28 +4274,31 @@ $$ LANGUAGE plpgsql;
 
 **Cost:** Business logic in the database is harder to version-control, test, and debug. Deployment requires schema migrations. Procedural SQL is less expressive than application languages.
 
-| Aspect | Stored function | Application code |
-|--------|----------------|-----------------|
-| Network trips | 1 | N per step |
-| Atomicity | Natural (one TX) | Must manage TX |
-| Testability | Harder | Easier |
-| Deployment | Schema migration | App deploy |
-| Language power | Limited (PL/pgSQL) | Full language |
+| Aspect         | Stored function    | Application code |
+| -------------- | ------------------ | ---------------- |
+| Network trips  | 1                  | N per step       |
+| Atomicity      | Natural (one TX)   | Must manage TX   |
+| Testability    | Harder             | Easier           |
+| Deployment     | Schema migration   | App deploy       |
+| Language power | Limited (PL/pgSQL) | Full language    |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Multi-step operations need atomicity and you want to reduce round-trips
 - Multiple applications share the same database and need consistent logic
 - Performance-critical paths benefit from eliminating network latency
 
 **AVOID WHEN:**
+
 - Business logic is complex and benefits from full-language testing and debugging
 - Your team does not have DBA expertise to maintain procedural SQL
 
 **PREFER application-layer logic WHEN:**
+
 - Logic changes frequently and deploying schema migrations is costly
 - You need rich testing frameworks, debuggers, and IDE support
 
@@ -4203,23 +4306,25 @@ $$ LANGUAGE plpgsql;
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | Functions and procedures are the same thing | In PostgreSQL, only procedures (CREATE PROCEDURE, CALL) can issue COMMIT/ROLLBACK; functions cannot |
-| 2 | Stored functions always improve performance | They reduce round-trips but add CPU load to the database server; compute-heavy logic may be better in the application |
-| 3 | PL/pgSQL functions are compiled | They are interpreted at runtime; performance-critical functions should use SQL language or C extensions |
+| #   | Misconception                               | Reality                                                                                                               |
+| --- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| 1   | Functions and procedures are the same thing | In PostgreSQL, only procedures (CREATE PROCEDURE, CALL) can issue COMMIT/ROLLBACK; functions cannot                   |
+| 2   | Stored functions always improve performance | They reduce round-trips but add CPU load to the database server; compute-heavy logic may be better in the application |
+| 3   | PL/pgSQL functions are compiled             | They are interpreted at runtime; performance-critical functions should use SQL language or C extensions               |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-044 CASE Expressions and Conditional Logic - procedural logic builds on conditional SQL
 - SQL-038 Transactions - BEGIN, COMMIT, ROLLBACK - procedures manage transactions internally
 
 **THIS:** SQL-073 Stored Procedures and Functions
 
 **Next steps:**
+
 - SQL-074 Triggers - Use Cases and Dangers - triggers call functions automatically on data changes
 - SQL-079 Testing SQL - Unit, Integration, Fixtures - strategies for testing stored logic
 
@@ -4382,27 +4487,30 @@ EXECUTE FUNCTION set_updated_at();
 
 **Cost:** Hidden control flow makes debugging harder. Trigger chains can cascade unpredictably. Performance overhead on every affected row.
 
-| Aspect | Trigger | Application logic |
-|--------|---------|------------------|
-| Enforcement | Guaranteed (DB level) | Best-effort |
-| Visibility | Hidden from app code | Explicit |
-| Debugging | Harder (implicit) | Easier (explicit) |
-| Performance | Per-row overhead | Batch-friendly |
+| Aspect      | Trigger               | Application logic |
+| ----------- | --------------------- | ----------------- |
+| Enforcement | Guaranteed (DB level) | Best-effort       |
+| Visibility  | Hidden from app code  | Explicit          |
+| Debugging   | Harder (implicit)     | Easier (explicit) |
+| Performance | Per-row overhead      | Batch-friendly    |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Audit logging must be tamper-proof and universal (no bypass path)
 - Derived columns (updated_at, computed fields) must always be consistent
 - Multiple applications share the database and must all follow the same rules
 
 **AVOID WHEN:**
+
 - Business logic is complex and multi-step (use application code)
 - Trigger chains would create cascading effects that are hard to reason about
 
 **PREFER application logic WHEN:**
+
 - The behavior is specific to one application, not a universal data rule
 - You need rich error handling, conditional logic, and testability
 
@@ -4410,23 +4518,25 @@ EXECUTE FUNCTION set_updated_at();
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | Triggers fire only on application-level changes | They fire on any data change: migrations, manual SQL, replication - this can cause surprises |
-| 2 | BEFORE triggers cannot modify the incoming data | BEFORE triggers can change NEW column values; this is how auto-computed columns work |
-| 3 | Trigger execution order is predictable | When multiple triggers exist on the same event, they fire in alphabetical order by name in PostgreSQL |
+| #   | Misconception                                   | Reality                                                                                               |
+| --- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| 1   | Triggers fire only on application-level changes | They fire on any data change: migrations, manual SQL, replication - this can cause surprises          |
+| 2   | BEFORE triggers cannot modify the incoming data | BEFORE triggers can change NEW column values; this is how auto-computed columns work                  |
+| 3   | Trigger execution order is predictable          | When multiple triggers exist on the same event, they fire in alphabetical order by name in PostgreSQL |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-073 Stored Procedures and Functions - triggers call stored functions
 - SQL-038 Transactions - BEGIN, COMMIT, ROLLBACK - triggers execute within the calling transaction
 
 **THIS:** SQL-074 Triggers - Use Cases and Dangers
 
 **Next steps:**
+
 - SQL-085 MVCC Internals - How Concurrent Reads Work - triggers interact with MVCC visibility
 - SQL-075 Schema Migration Fundamentals - triggers must be managed during migrations
 
@@ -4481,7 +4591,7 @@ A **schema migration** is a versioned script that applies an incremental DDL cha
 ### ⚙️ How It Works
 
 1. Each migration is a numbered file containing DDL
-   statements (e.g., V001__create_users.sql).
+   statements (e.g., V001\_\_create_users.sql).
 2. A migration tool (Flyway, Liquibase, or framework
    built-in) tracks applied versions in a metadata
    table (schema_version or flyway_schema_history).
@@ -4577,27 +4687,30 @@ WHERE shipping_address IS NULL
 
 **Cost:** Requires discipline (never manual DDL). Rollback of destructive changes is impossible without data loss. Migration ordering conflicts in team workflows.
 
-| Aspect | Migrations | Manual DDL |
-|--------|-----------|-----------|
-| Repeatability | Yes | No |
-| Environment sync | Automatic | Manual |
-| Rollback | Partial (up/down) | None |
-| Audit trail | Metadata table | Memory |
+| Aspect           | Migrations        | Manual DDL |
+| ---------------- | ----------------- | ---------- |
+| Repeatability    | Yes               | No         |
+| Environment sync | Automatic         | Manual     |
+| Rollback         | Partial (up/down) | None       |
+| Audit trail      | Metadata table    | Memory     |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Multiple environments (dev, staging, prod) must stay in sync
 - Multiple developers change the schema concurrently
 - You need an audit trail of every schema change
 
 **AVOID WHEN:**
+
 - You are prototyping with a throwaway database that will be recreated from scratch
 - The schema is managed by an ORM's auto-migration feature that you trust completely
 
 **PREFER explicit migration files WHEN:**
+
 - You need fine-grained control over DDL execution order and locking behavior
 - ORM auto-migrations produce unsafe or non-performant DDL
 
@@ -4605,23 +4718,25 @@ WHERE shipping_address IS NULL
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | Every migration should have a rollback script | DROP COLUMN destroys data; some changes are inherently irreversible without a backup |
-| 2 | Migrations run instantly on any table size | ALTER TABLE can lock a table for the duration; large tables require online migration techniques |
-| 3 | Editing an already-applied migration file is safe | Migration tools checksum applied files; editing a deployed migration causes a checksum mismatch and deployment failure |
+| #   | Misconception                                     | Reality                                                                                                                |
+| --- | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 1   | Every migration should have a rollback script     | DROP COLUMN destroys data; some changes are inherently irreversible without a backup                                   |
+| 2   | Migrations run instantly on any table size        | ALTER TABLE can lock a table for the duration; large tables require online migration techniques                        |
+| 3   | Editing an already-applied migration file is safe | Migration tools checksum applied files; editing a deployed migration causes a checksum mismatch and deployment failure |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-010 CREATE TABLE and DROP TABLE - DDL statements are the content of migrations
 - SQL-034 Normalization - 1NF, 2NF, 3NF - schema evolution requires understanding relational design
 
 **THIS:** SQL-075 Schema Migration Fundamentals
 
 **Next steps:**
+
 - SQL-076 Flyway and Liquibase - Migration Tooling - specific tools for managing migrations
 - SQL-104 Zero-Downtime Schema Migrations - advanced techniques for migrating without service interruption
 
@@ -4675,8 +4790,8 @@ Your team has agreed that schema changes must be versioned migration scripts. No
 
 ### ⚙️ How It Works
 
-1. Flyway: place SQL files named V1__description.sql,
-   V2__description.sql in a migrations folder. Run
+1. Flyway: place SQL files named V1**description.sql,
+   V2**description.sql in a migrations folder. Run
    flyway migrate. Flyway applies unapplied versions
    in order and records them in
    flyway_schema_history.
@@ -4777,28 +4892,31 @@ Why it's right: Flyway tracks the version, validates checksums, and prevents re-
 
 **Cost:** Flyway's SQL-first approach is simple but database-specific. Liquibase's abstraction adds complexity but enables cross-database portability.
 
-| Aspect | Flyway | Liquibase |
-|--------|--------|-----------|
-| Format | SQL files (versioned) | XML/YAML/JSON/SQL |
-| Learning curve | Low | Medium |
-| DB portability | Write per-DB SQL | Abstract changesets |
-| Rollback | Manual (undo scripts) | Auto-generated (partial) |
-| Spring Boot | First-class | First-class |
+| Aspect         | Flyway                | Liquibase                |
+| -------------- | --------------------- | ------------------------ |
+| Format         | SQL files (versioned) | XML/YAML/JSON/SQL        |
+| Learning curve | Low                   | Medium                   |
+| DB portability | Write per-DB SQL      | Abstract changesets      |
+| Rollback       | Manual (undo scripts) | Auto-generated (partial) |
+| Spring Boot    | First-class           | First-class              |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Flyway: your team writes SQL confidently and targets a single database engine
 - Liquibase: you need cross-database portability or prefer declarative change descriptions
 - Either: you need CI/CD integration for automated schema deployment
 
 **AVOID WHEN:**
+
 - The application uses an ORM with built-in migration support that your team trusts (e.g., Django, Rails)
 - Schema changes are rare and manual DDL with documentation suffices
 
 **PREFER Flyway WHEN:**
+
 - You want minimal abstraction and direct control over SQL
 - Your team is comfortable with SQL-first workflows
 
@@ -4806,23 +4924,25 @@ Why it's right: Flyway tracks the version, validates checksums, and prevents re-
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | You can edit a migration file after it has been applied | Both tools checksum applied files; editing breaks the checksum and blocks future migrations |
-| 2 | Liquibase auto-generates perfect rollback for any change | Auto-rollback works for addColumn and createTable but not for data migrations or complex DDL |
-| 3 | Flyway and Liquibase handle concurrent migrations safely by default | Concurrent migration attempts can conflict; use advisory locks or deploy from a single CI pipeline |
+| #   | Misconception                                                       | Reality                                                                                            |
+| --- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| 1   | You can edit a migration file after it has been applied             | Both tools checksum applied files; editing breaks the checksum and blocks future migrations        |
+| 2   | Liquibase auto-generates perfect rollback for any change            | Auto-rollback works for addColumn and createTable but not for data migrations or complex DDL       |
+| 3   | Flyway and Liquibase handle concurrent migrations safely by default | Concurrent migration attempts can conflict; use advisory locks or deploy from a single CI pipeline |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-075 Schema Migration Fundamentals - understand migration concepts before choosing a tool
 - SQL-010 CREATE TABLE and DROP TABLE - DDL is the content of migration files
 
 **THIS:** SQL-076 Flyway and Liquibase - Migration Tooling
 
 **Next steps:**
+
 - SQL-104 Zero-Downtime Schema Migrations - advanced patterns for migrating without downtime
 - SQL-117 Database Version Migration Strategy at Scale - scaling migration workflows across teams
 
@@ -4852,7 +4972,7 @@ Flyway's free tier does not support undo (rollback) migrations - that feature re
 
 ### 🔥 The Problem in One Paragraph
 
-A login form takes a username and password, and the application builds a query: SELECT * FROM users WHERE name = '{username}' AND pass = '{password}'. An attacker enters the username: admin' --. The resulting query becomes SELECT * FROM users WHERE name = 'admin' --' AND pass = ''. The double dash comments out the password check, and the attacker logs in as admin without knowing the password. The application trusted user input as data, but the attacker turned it into executable SQL code. This is exactly why SQL injection prevention was created.
+A login form takes a username and password, and the application builds a query: SELECT _ FROM users WHERE name = '{username}' AND pass = '{password}'. An attacker enters the username: admin' --. The resulting query becomes SELECT _ FROM users WHERE name = 'admin' --' AND pass = ''. The double dash comments out the password check, and the attacker logs in as admin without knowing the password. The application trusted user input as data, but the attacker turned it into executable SQL code. This is exactly why SQL injection prevention was created.
 
 ---
 
@@ -4864,7 +4984,7 @@ A login form takes a username and password, and the application builds a query: 
 
 ### 🧠 Mental Model
 
-> Imagine filling out a form letter. The blank says "Dear ___." You expect a name, but someone writes "Dear ___ and please also give me your bank details." String concatenation treats the entire input as part of the letter. Parameterized queries treat the blank as a sealed envelope - the content cannot escape and become instructions.
+> Imagine filling out a form letter. The blank says "Dear **_." You expect a name, but someone writes "Dear _** and please also give me your bank details." String concatenation treats the entire input as part of the letter. Parameterized queries treat the blank as a sealed envelope - the content cannot escape and become instructions.
 
 - "Form letter blank" -> query placeholder
 - "Sealed envelope" -> parameterized query ($1, $2)
@@ -4971,26 +5091,29 @@ user = session.query(User).filter(
 
 **Cost:** Dynamic query construction (variable column names, dynamic ORDER BY) requires allowlist validation since parameters cannot be used for identifiers.
 
-| Aspect | Parameterized | String concat |
-|--------|-------------|--------------|
-| Injection risk | None | High |
-| Plan caching | Yes (prepared stmt) | No |
-| Dynamic columns | Needs allowlist | Easy but dangerous |
-| Code complexity | Slightly more | Simple (but lethal) |
+| Aspect          | Parameterized       | String concat       |
+| --------------- | ------------------- | ------------------- |
+| Injection risk  | None                | High                |
+| Plan caching    | Yes (prepared stmt) | No                  |
+| Dynamic columns | Needs allowlist     | Easy but dangerous  |
+| Code complexity | Slightly more       | Simple (but lethal) |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Always. Every query with user-supplied values must use parameterized queries. No exceptions.
 - ORM-generated queries are parameterized by default - prefer them.
 - Dynamic SQL for table/column names must use allowlist validation.
 
 **AVOID WHEN:**
+
 - Never avoid parameterization. There is no valid reason to concatenate user input into SQL.
 
 **PREFER ORM methods WHEN:**
+
 - The query is standard CRUD that the ORM handles natively
 - You want defense-in-depth: ORM parameterization plus application-level validation
 
@@ -4998,23 +5121,25 @@ user = session.query(User).filter(
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | Escaping quotes is sufficient protection | Escaping is error-prone and database-specific; parameterized queries are the only reliable defense |
-| 2 | ORMs are immune to SQL injection | ORMs that allow raw SQL fragments (e.g., raw() or literal()) can still be injected if user input is passed unsanitized |
-| 3 | SQL injection only affects login forms | Any user input reaching a SQL query is an attack surface: search fields, API parameters, HTTP headers, cookie values |
+| #   | Misconception                            | Reality                                                                                                                |
+| --- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 1   | Escaping quotes is sufficient protection | Escaping is error-prone and database-specific; parameterized queries are the only reliable defense                     |
+| 2   | ORMs are immune to SQL injection         | ORMs that allow raw SQL fragments (e.g., raw() or literal()) can still be injected if user input is passed unsanitized |
+| 3   | SQL injection only affects login forms   | Any user input reaching a SQL query is an attack surface: search fields, API parameters, HTTP headers, cookie values   |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-013 WHERE - Filtering Rows - understanding WHERE clause structure reveals how injection manipulates it
 - SQL-073 Stored Procedures and Functions - stored procedures can also be vulnerable if they concatenate inputs
 
 **THIS:** SQL-077 SQL Injection - Anatomy and Prevention
 
 **Next steps:**
+
 - SQL-078 GRANT, REVOKE, and Role-Based Access - least-privilege access limits injection damage
 - SQL-112 PCI-DSS and Data-at-Rest Encryption - injection prevention is a PCI-DSS requirement
 
@@ -5166,27 +5291,30 @@ ALTER DEFAULT PRIVILEGES
 
 **Cost:** More roles to manage. Must remember to set default privileges for new objects. Role inheritance can be confusing.
 
-| Aspect | Role-based access | Single superuser |
-|--------|------------------|-----------------|
-| Security | Granular | None |
-| Blast radius | Limited | Unlimited |
-| Management | More roles | Simple |
-| Defense depth | Limits injection | No limit |
+| Aspect        | Role-based access | Single superuser |
+| ------------- | ----------------- | ---------------- |
+| Security      | Granular          | None             |
+| Blast radius  | Limited           | Unlimited        |
+| Management    | More roles        | Simple           |
+| Defense depth | Limits injection  | No limit         |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Multiple applications or users access the same database
 - You need to limit the damage from application bugs or compromised credentials
 - Compliance requirements mandate role separation (PCI-DSS, SOC2, HIPAA)
 
 **AVOID WHEN:**
+
 - A single-user local development database where convenience outweighs security
 - Prototype or throwaway databases with no sensitive data
 
 **PREFER schema-level isolation WHEN:**
+
 - Different applications share a database but should not see each other's tables
 - You want to separate tenants, environments, or domains within one database
 
@@ -5194,23 +5322,25 @@ ALTER DEFAULT PRIVILEGES
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | GRANT on existing tables covers future tables too | GRANT applies only to current objects; use ALTER DEFAULT PRIVILEGES for future tables |
-| 2 | Revoking a role removes all its granted privileges | REVOKE removes the role membership but does not cascade to objects the role created (ownership persists) |
-| 3 | Application-level auth makes database roles unnecessary | Database roles are a second layer; if the application is compromised, database permissions limit the attacker's access |
+| #   | Misconception                                           | Reality                                                                                                                |
+| --- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 1   | GRANT on existing tables covers future tables too       | GRANT applies only to current objects; use ALTER DEFAULT PRIVILEGES for future tables                                  |
+| 2   | Revoking a role removes all its granted privileges      | REVOKE removes the role membership but does not cascade to objects the role created (ownership persists)               |
+| 3   | Application-level auth makes database roles unnecessary | Database roles are a second layer; if the application is compromised, database permissions limit the attacker's access |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-077 SQL Injection - Anatomy and Prevention - injection damage is limited by least-privilege roles
 - SQL-010 CREATE TABLE and DROP TABLE - understanding object ownership
 
 **THIS:** SQL-078 GRANT, REVOKE, and Role-Based Access
 
 **Next steps:**
+
 - SQL-120 GDPR and Right-to-Erasure in SQL Systems - access control is a compliance building block
 - SQL-079 Testing SQL - Unit, Integration, Fixtures - test with realistic role configurations
 
@@ -5363,27 +5493,30 @@ ROLLBACK;
 
 **Cost:** Requires maintaining fixture data, test infrastructure, and realistic data generators. Performance tests need production-scale databases.
 
-| Aspect | Transaction rollback | Separate test DB |
-|--------|---------------------|-----------------|
-| Isolation | Per-test | Per-suite |
-| Speed | Fast (in-memory) | Slower (create/drop) |
-| Cleanup | Automatic | Manual or scripted |
-| Parallelism | Limited (single TX) | Full |
+| Aspect      | Transaction rollback | Separate test DB     |
+| ----------- | -------------------- | -------------------- |
+| Isolation   | Per-test             | Per-suite            |
+| Speed       | Fast (in-memory)     | Slower (create/drop) |
+| Cleanup     | Automatic            | Manual or scripted   |
+| Parallelism | Limited (single TX)  | Full                 |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Schema migrations must be validated before production deployment
 - Stored functions or complex queries have edge cases that manual testing misses
 - A CI pipeline needs automated database validation
 
 **AVOID WHEN:**
+
 - The database has no stored logic and queries are trivially simple
 - A throwaway prototype database where testing overhead exceeds value
 
 **PREFER integration tests with fixtures WHEN:**
+
 - Query correctness depends on data distribution (NULLs, duplicates, edge values)
 - Multiple queries compose into a workflow that must be tested end-to-end
 
@@ -5391,23 +5524,25 @@ ROLLBACK;
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | Application-level unit tests cover SQL correctness | Mocking the database in application tests hides real constraint violations and plan choices |
-| 2 | Testing against an empty database is sufficient | Empty tables produce different execution plans than populated tables; always use realistic fixture data |
-| 3 | ROLLBACK-based tests are always isolated | DDL in PostgreSQL is transactional, but some statements (CREATE INDEX CONCURRENTLY) cannot run inside a transaction |
+| #   | Misconception                                      | Reality                                                                                                             |
+| --- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| 1   | Application-level unit tests cover SQL correctness | Mocking the database in application tests hides real constraint violations and plan choices                         |
+| 2   | Testing against an empty database is sufficient    | Empty tables produce different execution plans than populated tables; always use realistic fixture data             |
+| 3   | ROLLBACK-based tests are always isolated           | DDL in PostgreSQL is transactional, but some statements (CREATE INDEX CONCURRENTLY) cannot run inside a transaction |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-038 Transactions - BEGIN, COMMIT, ROLLBACK - rollback-based test isolation uses transactions
 - SQL-075 Schema Migration Fundamentals - migration testing is a critical category
 
 **THIS:** SQL-079 Testing SQL - Unit, Integration, Fixtures
 
 **Next steps:**
+
 - SQL-081 Online Store DB - Phase 3 (Optimization) - apply testing to a realistic project
 - SQL-104 Zero-Downtime Schema Migrations - advanced migration testing patterns
 
@@ -5564,26 +5699,29 @@ Why it's right: each explanation matches the audience's mental model and answers
 
 **Cost:** Translating plans for non-technical audiences takes practice. Oversimplification can lead to wrong priorities (e.g., "just add indexes everywhere").
 
-| Audience | Focus | Detail level | Actionable output |
-|----------|-------|-------------|------------------|
-| Business | Impact + effort | Low | Prioritization decision |
-| Junior dev | What + why | Medium | Learning + first fix |
-| Senior eng | Node + evidence | High | Targeted optimization |
+| Audience   | Focus           | Detail level | Actionable output       |
+| ---------- | --------------- | ------------ | ----------------------- |
+| Business   | Impact + effort | Low          | Prioritization decision |
+| Junior dev | What + why      | Medium       | Learning + first fix    |
+| Senior eng | Node + evidence | High         | Targeted optimization   |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - You need to justify performance work to non-technical stakeholders
 - A junior developer needs to understand why a query is slow
 - You are documenting a performance fix for future reference
 
 **AVOID WHEN:**
+
 - The audience is a senior DBA who reads raw EXPLAIN output faster than prose
 - The fix is obvious and no communication is needed
 
 **PREFER written plan documentation WHEN:**
+
 - The fix will be reviewed in a pull request by engineers who were not in the debugging session
 - The optimization is significant and future developers need context on why the index exists
 
@@ -5591,23 +5729,25 @@ Why it's right: each explanation matches the audience's mental model and answers
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | Sharing raw EXPLAIN output is sufficient communication | Most people cannot read execution plans; the plan must be translated for the audience |
-| 2 | The slowest node is always the one to fix | Sometimes fixing the node that feeds wrong estimates (stale stats) fixes the downstream slow node automatically |
-| 3 | Business stakeholders only care about the result, not the cause | Stakeholders make better prioritization decisions when they understand the cause and the cost of the fix |
+| #   | Misconception                                                   | Reality                                                                                                         |
+| --- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| 1   | Sharing raw EXPLAIN output is sufficient communication          | Most people cannot read execution plans; the plan must be translated for the audience                           |
+| 2   | The slowest node is always the one to fix                       | Sometimes fixing the node that feeds wrong estimates (stale stats) fixes the downstream slow node automatically |
+| 3   | Business stakeholders only care about the result, not the cause | Stakeholders make better prioritization decisions when they understand the cause and the cost of the fix        |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-060 Execution Plans Deep Dive - EXPLAIN ANALYZE - you must read plans before explaining them
 - SQL-042 EXPLAIN - Reading Your First Query Plan - basic plan vocabulary
 
 **THIS:** SQL-080 Explain a Query Plan to Any Audience
 
 **Next steps:**
+
 - SQL-084 SQL System Design Interview Patterns - explaining plans is a core interview skill
 - SQL-097 Plan Regression and pg_stat_statements - communicating plan changes over time
 
@@ -5762,27 +5902,30 @@ REFRESH MATERIALIZED VIEW
 
 **Cost:** Indexes add write overhead and disk usage. Materialized views introduce data staleness. Each optimization must be measured to confirm benefit.
 
-| Aspect | Before Phase 3 | After Phase 3 |
-|--------|---------------|--------------|
-| Product search | 3s (Seq Scan) | 50ms (Index) |
-| Sales dashboard | 12s (full agg) | 200ms (mat view) |
-| Write overhead | Minimal | Index maintenance |
-| Complexity | Simple | More objects to manage |
+| Aspect          | Before Phase 3 | After Phase 3          |
+| --------------- | -------------- | ---------------------- |
+| Product search  | 3s (Seq Scan)  | 50ms (Index)           |
+| Sales dashboard | 12s (full agg) | 200ms (mat view)       |
+| Write overhead  | Minimal        | Index maintenance      |
+| Complexity      | Simple         | More objects to manage |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Your project has grown past trivial data volumes and queries are noticeably slow
 - You want hands-on practice with the measure-diagnose-fix tuning loop
 - You need to demonstrate optimization skills for interviews or team reviews
 
 **AVOID WHEN:**
+
 - Data volumes are tiny and all queries are fast
 - The schema is still in active design and indexes would need constant rebuilding
 
 **PREFER this exercise WHEN:**
+
 - You have completed Phase 1 (schema) and Phase 2 (queries) and need the next challenge
 - You want to build a portfolio piece showing before/after performance data
 
@@ -5790,23 +5933,25 @@ REFRESH MATERIALIZED VIEW
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | Add indexes on every column to be safe | Each index slows writes and consumes disk; only index columns that appear in WHERE, JOIN, or ORDER BY of frequent queries |
-| 2 | Optimization is done once and forgotten | Data grows, query patterns change, and indexes that helped today may be unused tomorrow |
-| 3 | Fast in dev means fast in production | Execution plans change with data volume; always test with production-scale data |
+| #   | Misconception                           | Reality                                                                                                                   |
+| --- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Add indexes on every column to be safe  | Each index slows writes and consumes disk; only index columns that appear in WHERE, JOIN, or ORDER BY of frequent queries |
+| 2   | Optimization is done once and forgotten | Data grows, query patterns change, and indexes that helped today may be unused tomorrow                                   |
+| 3   | Fast in dev means fast in production    | Execution plans change with data volume; always test with production-scale data                                           |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-048 Online Store DB - Phase 2 (Joins and Reports) - Phase 3 builds on the working schema and queries
 - SQL-060 Execution Plans Deep Dive - EXPLAIN ANALYZE - the primary diagnostic tool for optimization
 
 **THIS:** SQL-081 Online Store DB - Phase 3 (Optimization)
 
 **Next steps:**
+
 - SQL-109 Online Store DB - Phase 4 (Internals and Tuning) - deep internals and production-grade tuning
 - SQL-064 Query Performance Tuning Patterns - generalize the patterns learned in this exercise
 
@@ -5980,27 +6125,30 @@ SELECT * FROM ranked WHERE rank <= 3;
 
 **Cost:** Requires discipline to complete all exercises. Kata datasets are simplified compared to production data.
 
-| Aspect | Kata practice | Ad-hoc learning |
-|--------|-------------|-----------------|
-| Coverage | Systematic | Gaps likely |
-| Retention | High (repetition) | Low (one-time) |
-| Time investment | 2-4 hours | Varies |
-| Confidence | Measurable | Uncertain |
+| Aspect          | Kata practice     | Ad-hoc learning |
+| --------------- | ----------------- | --------------- |
+| Coverage        | Systematic        | Gaps likely     |
+| Retention       | High (repetition) | Low (one-time)  |
+| Time investment | 2-4 hours         | Varies          |
+| Confidence      | Measurable        | Uncertain       |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - You understand window function concepts but lack fluency in writing them
 - You are preparing for a SQL-heavy technical interview
 - You want to build muscle memory for common window patterns
 
 **AVOID WHEN:**
+
 - You are already fluent and write window functions daily
 - You have not yet learned basic SELECT, JOIN, and GROUP BY
 
 **PREFER kata-style practice WHEN:**
+
 - You learn better by doing than by reading
 - You want to track progress through a checklist of solved problems
 
@@ -6008,23 +6156,25 @@ SELECT * FROM ranked WHERE rank <= 3;
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | Memorizing syntax is enough | Fluency requires understanding which function and frame to apply for each problem type |
-| 2 | You can skip PARTITION BY and ORDER BY to save typing | Omitting them produces non-deterministic or global results instead of per-group calculations |
-| 3 | One practice session builds permanent fluency | Window function syntax fades without periodic practice; revisit katas monthly |
+| #   | Misconception                                         | Reality                                                                                      |
+| --- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| 1   | Memorizing syntax is enough                           | Fluency requires understanding which function and frame to apply for each problem type       |
+| 2   | You can skip PARTITION BY and ORDER BY to save typing | Omitting them produces non-deterministic or global results instead of per-group calculations |
+| 3   | One practice session builds permanent fluency         | Window function syntax fades without periodic practice; revisit katas monthly                |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-055 Window Functions - ROW_NUMBER, RANK, DENSE_RANK - ranking functions are Kata 1-3
 - SQL-056 Window Functions - LAG, LEAD, NTILE - comparison functions are Kata 4-7
 
 **THIS:** SQL-082 Window Functions Practice Kata
 
 **Next steps:**
+
 - SQL-057 Window Frames - ROWS vs RANGE vs GROUPS - deepen frame understanding through practice
 - SQL-083 SQL Design-Level Knowledge Self-Assessment - verify overall design-level mastery
 
@@ -6188,26 +6338,29 @@ Interview readiness check:
 
 **Cost:** Honest self-assessment requires admitting gaps. The assessment is only as useful as the honesty applied to it.
 
-| Aspect | Structured assessment | "I know it" |
-|--------|---------------------|-------------|
-| Gap detection | Specific items | Blind spots |
-| Study efficiency | Targeted | Unfocused |
-| Confidence | Calibrated | Overconfident |
+| Aspect           | Structured assessment | "I know it"   |
+| ---------------- | --------------------- | ------------- |
+| Gap detection    | Specific items        | Blind spots   |
+| Study efficiency | Targeted              | Unfocused     |
+| Confidence       | Calibrated            | Overconfident |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - You have completed the design-level SQL content and want to verify mastery
 - You are preparing for a technical interview and need to identify weak areas
 - You are transitioning from "learning SQL" to "using SQL professionally"
 
 **AVOID WHEN:**
+
 - You are still in the foundations phase and have not covered these topics yet
 - You prefer hands-on practice over self-reflection (do the katas first)
 
 **PREFER this assessment WHEN:**
+
 - You want to create a targeted study plan rather than re-reading everything
 - You need to communicate your SQL skill level to a team lead or interviewer
 
@@ -6215,23 +6368,25 @@ Interview readiness check:
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | Recognizing a term means understanding it | Recognition ("I've heard of BRIN indexes") is different from comprehension ("I can explain when BRIN beats B-Tree") |
-| 2 | Getting green on all items means you are done learning | Design-level mastery is the midpoint; production-level and architecture-level skills remain |
-| 3 | Self-assessment replaces practice | Assessment identifies gaps; practice and application fill them |
+| #   | Misconception                                          | Reality                                                                                                             |
+| --- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| 1   | Recognizing a term means understanding it              | Recognition ("I've heard of BRIN indexes") is different from comprehension ("I can explain when BRIN beats B-Tree") |
+| 2   | Getting green on all items means you are done learning | Design-level mastery is the midpoint; production-level and architecture-level skills remain                         |
+| 3   | Self-assessment replaces practice                      | Assessment identifies gaps; practice and application fill them                                                      |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-050 SQL Working-Level Quick Recall Card - working-level mastery before design-level assessment
 - SQL-060 Execution Plans Deep Dive - EXPLAIN ANALYZE - plan reading is core to design-level skills
 
 **THIS:** SQL-083 SQL Design-Level Knowledge Self-Assessment
 
 **Next steps:**
+
 - SQL-084 SQL System Design Interview Patterns - apply design knowledge in interview contexts
 - SQL-110 SQL Expert-Level Mastery Verification - the next assessment tier
 
@@ -6406,27 +6561,30 @@ Candidate:
 
 **Cost:** Frameworks can feel mechanical. The best interviews balance structure with genuine reasoning about the specific problem.
 
-| Aspect | Framework approach | Ad-hoc approach |
-|--------|-------------------|-----------------|
-| Coverage | Systematic | Gaps likely |
-| Impression | Structured thinker | Disorganized |
-| Adaptability | Must flex to question | Natural |
-| Preparation | Learnable | Depends on experience |
+| Aspect       | Framework approach    | Ad-hoc approach       |
+| ------------ | --------------------- | --------------------- |
+| Coverage     | Systematic            | Gaps likely           |
+| Impression   | Structured thinker    | Disorganized          |
+| Adaptability | Must flex to question | Natural               |
+| Preparation  | Learnable             | Depends on experience |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - You are preparing for a technical interview with database design components
 - You want a repeatable framework for approaching schema design problems
 - You need to practice articulating trade-offs verbally
 
 **AVOID WHEN:**
+
 - The interview is purely coding (LeetCode-style) with no design component
 - You have extensive production database design experience and can reason naturally
 
 **PREFER this framework WHEN:**
+
 - You have design knowledge but struggle to organize it under interview pressure
 - You want to ensure you cover all dimensions (entities, indexes, scale, trade-offs)
 
@@ -6434,23 +6592,25 @@ Candidate:
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | Listing tables is the main deliverable | Interviewers care more about index strategy, access patterns, and scaling reasoning than table definitions |
-| 2 | There is one correct answer | Design interviews are about reasoning and trade-offs; multiple valid designs exist |
-| 3 | You should design for maximum scale immediately | Start simple, then explain how you would evolve the design as scale grows |
+| #   | Misconception                                   | Reality                                                                                                    |
+| --- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| 1   | Listing tables is the main deliverable          | Interviewers care more about index strategy, access patterns, and scaling reasoning than table definitions |
+| 2   | There is one correct answer                     | Design interviews are about reasoning and trade-offs; multiple valid designs exist                         |
+| 3   | You should design for maximum scale immediately | Start simple, then explain how you would evolve the design as scale grows                                  |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-051 SQL Interview Essentials - Working Level - working-level interview skills as foundation
 - SQL-067 Transaction Isolation Levels - isolation reasoning is tested in design interviews
 
 **THIS:** SQL-084 SQL System Design Interview Patterns
 
 **Next steps:**
+
 - SQL-111 SQL Deep-Dive Interview Questions - expert-level interview preparation
 - SQL-113 Sharding Strategies - Application vs Proxy - scaling strategies for interview discussions
 

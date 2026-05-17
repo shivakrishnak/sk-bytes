@@ -214,27 +214,30 @@ WHERE p.active = true;
 
 **Cost:** Result set can explode on many-to-many relationships without filtering. Large joins consume memory for hash tables or sort buffers.
 
-| Aspect | INNER JOIN | App-side loop |
-|--------|-----------|---------------|
-| Round trips | 1 | N+1 |
-| Optimization | Planner-chosen algorithm | None |
-| Unmatched rows | Excluded automatically | Must filter in code |
-| Memory | DB-managed buffers | Application heap |
+| Aspect         | INNER JOIN               | App-side loop       |
+| -------------- | ------------------------ | ------------------- |
+| Round trips    | 1                        | N+1                 |
+| Optimization   | Planner-chosen algorithm | None                |
+| Unmatched rows | Excluded automatically   | Must filter in code |
+| Memory         | DB-managed buffers       | Application heap    |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - You need combined data from two tables with guaranteed matches on both sides
 - Foreign key relationships connect the tables
 - You want unmatched rows excluded from results
 
 **AVOID WHEN:**
+
 - You need rows from one side even when no match exists (use LEFT JOIN)
 - Tables share no logical relationship
 
 **PREFER LEFT JOIN WHEN:**
+
 - You need all rows from one table regardless of matches
 - Missing matches are meaningful (e.g., customers with zero orders)
 
@@ -242,23 +245,25 @@ WHERE p.active = true;
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | INNER JOIN preserves all rows from both tables | It drops every row that has no match on the other side |
-| 2 | Join order in FROM controls execution order | The query planner reorders joins for optimal performance |
-| 3 | Comma-separated FROM is identical to INNER JOIN | Functionally equivalent but comma syntax makes it easy to accidentally create a cross join by forgetting the WHERE clause |
+| #   | Misconception                                   | Reality                                                                                                                   |
+| --- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| 1   | INNER JOIN preserves all rows from both tables  | It drops every row that has no match on the other side                                                                    |
+| 2   | Join order in FROM controls execution order     | The query planner reorders joins for optimal performance                                                                  |
+| 3   | Comma-separated FROM is identical to INNER JOIN | Functionally equivalent but comma syntax makes it easy to accidentally create a cross join by forgetting the WHERE clause |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-012 SELECT and FROM - Reading Data - single-table queries are the foundation
 - SQL-017 Foreign Keys and Relationships - joins follow FK paths
 
 **THIS:** SQL-026 INNER JOIN - Matching Rows Across Tables
 
 **Next steps:**
+
 - SQL-027 LEFT JOIN and RIGHT JOIN - preserving unmatched rows
 - SQL-029 Self-Joins - When a Table References Itself - joining a table to itself
 
@@ -405,27 +410,30 @@ WHERE o.id IS NULL;
 
 **Cost:** NULL-padded columns require careful handling. Aggregations over NULL columns need COALESCE. Result sets can be larger than INNER JOIN.
 
-| Aspect | LEFT JOIN | INNER JOIN |
-|--------|----------|------------|
-| Unmatched rows | Preserved with NULLs | Dropped |
-| Result size | >= left table rows | <= left table rows |
-| NULL handling | Required everywhere | Not needed for join |
-| "Find missing" | WHERE right.id IS NULL | Not possible |
+| Aspect         | LEFT JOIN              | INNER JOIN          |
+| -------------- | ---------------------- | ------------------- |
+| Unmatched rows | Preserved with NULLs   | Dropped             |
+| Result size    | >= left table rows     | <= left table rows  |
+| NULL handling  | Required everywhere    | Not needed for join |
+| "Find missing" | WHERE right.id IS NULL | Not possible        |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - You need all rows from one side regardless of matches
 - You want to find rows that have no related data (IS NULL pattern)
 - Report requires every entity even if some have no activity
 
 **AVOID WHEN:**
+
 - Both sides must have matching data to be meaningful
 - You do not plan to handle NULLs in downstream logic
 
 **PREFER INNER JOIN WHEN:**
+
 - Foreign key is NOT NULL, guaranteeing every row has a match
 - Unmatched rows are data errors, not valid states
 
@@ -433,23 +441,25 @@ WHERE o.id IS NULL;
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | LEFT JOIN and LEFT OUTER JOIN are different | They are identical; OUTER is optional syntax |
-| 2 | WHERE on a right-side column is safe after LEFT JOIN | It converts the LEFT JOIN to INNER JOIN by filtering out NULLs |
-| 3 | RIGHT JOIN is commonly needed | Almost never - reorder tables and use LEFT JOIN for clarity; RIGHT JOIN is rarely used in practice |
+| #   | Misconception                                        | Reality                                                                                            |
+| --- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| 1   | LEFT JOIN and LEFT OUTER JOIN are different          | They are identical; OUTER is optional syntax                                                       |
+| 2   | WHERE on a right-side column is safe after LEFT JOIN | It converts the LEFT JOIN to INNER JOIN by filtering out NULLs                                     |
+| 3   | RIGHT JOIN is commonly needed                        | Almost never - reorder tables and use LEFT JOIN for clarity; RIGHT JOIN is rarely used in practice |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-026 INNER JOIN - Matching Rows Across Tables - understand matching before preserving
 - SQL-018 NULL - The Three-Valued Logic Trap - LEFT JOIN produces NULLs you must handle
 
 **THIS:** SQL-027 LEFT JOIN and RIGHT JOIN
 
 **Next steps:**
+
 - SQL-028 FULL OUTER JOIN and CROSS JOIN - preserving both sides
 - SQL-052 N+1 Query Anti-Pattern - LEFT JOIN is the typical fix
 
@@ -504,12 +514,14 @@ A **FULL OUTER JOIN** returns all rows from both tables. Matching rows are combi
 ### ⚙️ How It Works
 
 **FULL OUTER JOIN:**
+
 1. Perform INNER JOIN to find matched pairs.
 2. Add unmatched left rows with right columns as NULL.
 3. Add unmatched right rows with left columns as NULL.
 4. Result = matched + left-only + right-only.
 
 **CROSS JOIN:**
+
 1. Take every row from table A.
 2. Pair it with every row from table B.
 3. No ON condition - all combinations emitted.
@@ -602,27 +614,30 @@ ORDER BY s.sort_order, c.label;
 
 **Cost:** FULL OUTER JOIN results can be large and require careful NULL handling on both sides. CROSS JOIN result size is multiplicative and can explode with large tables.
 
-| Aspect | FULL OUTER | LEFT JOIN | CROSS JOIN |
-|--------|-----------|-----------|------------|
-| Unmatched left | Preserved | Preserved | N/A |
-| Unmatched right | Preserved | Dropped | N/A |
-| Condition | ON required | ON required | None |
-| Result size | A + B - matched | >= A | A x B |
+| Aspect          | FULL OUTER      | LEFT JOIN   | CROSS JOIN |
+| --------------- | --------------- | ----------- | ---------- |
+| Unmatched left  | Preserved       | Preserved   | N/A        |
+| Unmatched right | Preserved       | Dropped     | N/A        |
+| Condition       | ON required     | ON required | None       |
+| Result size     | A + B - matched | >= A        | A x B      |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - FULL OUTER: reconciling two independent data sources for mismatches
 - CROSS JOIN: generating all combinations from two small dimension tables
 - You need unmatched rows from both sides in one query
 
 **AVOID WHEN:**
+
 - One table is the "primary" and the other is supplementary (use LEFT JOIN)
 - CROSS JOIN on large tables (result size explodes)
 
 **PREFER LEFT JOIN WHEN:**
+
 - Only one side has unmatched rows you care about
 - The relationship is parent-child, not peer-to-peer
 
@@ -630,23 +645,25 @@ ORDER BY s.sort_order, c.label;
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | FULL OUTER JOIN is just LEFT JOIN + RIGHT JOIN | Conceptually yes, but a naive UNION of both can produce duplicate matched rows unless you handle overlap |
-| 2 | CROSS JOIN is never useful in production | It is essential for generating dimension combinations, calendar grids, and test matrices from small lookup tables |
-| 3 | Every database supports FULL OUTER JOIN equally | MySQL did not support FULL OUTER JOIN until version 8.0.31 (2022); older versions require a UNION workaround |
+| #   | Misconception                                   | Reality                                                                                                           |
+| --- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| 1   | FULL OUTER JOIN is just LEFT JOIN + RIGHT JOIN  | Conceptually yes, but a naive UNION of both can produce duplicate matched rows unless you handle overlap          |
+| 2   | CROSS JOIN is never useful in production        | It is essential for generating dimension combinations, calendar grids, and test matrices from small lookup tables |
+| 3   | Every database supports FULL OUTER JOIN equally | MySQL did not support FULL OUTER JOIN until version 8.0.31 (2022); older versions require a UNION workaround      |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-026 INNER JOIN - Matching Rows Across Tables - understand the matched-rows foundation
 - SQL-027 LEFT JOIN and RIGHT JOIN - understand one-sided preservation
 
 **THIS:** SQL-028 FULL OUTER JOIN and CROSS JOIN
 
 **Next steps:**
+
 - SQL-030 UNION, INTERSECT, EXCEPT - alternative set operations
 - SQL-058 Correlated Subqueries and Lateral Joins - advanced row combination techniques
 
@@ -798,27 +815,30 @@ INNER JOIN customers b
 
 **Cost:** Readability drops quickly with more than two self-join levels. Deep hierarchies need recursive CTEs instead.
 
-| Aspect | Self-join | Recursive CTE |
-|--------|----------|---------------|
-| Depth | Fixed levels only | Arbitrary depth |
-| Readability | Clear for 1-2 levels | Better for N levels |
-| Performance | Single join operation | Iterative expansion |
-| Availability | All SQL dialects | SQL:1999 and later |
+| Aspect       | Self-join             | Recursive CTE       |
+| ------------ | --------------------- | ------------------- |
+| Depth        | Fixed levels only     | Arbitrary depth     |
+| Readability  | Clear for 1-2 levels  | Better for N levels |
+| Performance  | Single join operation | Iterative expansion |
+| Availability | All SQL dialects      | SQL:1999 and later  |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - You need to compare rows within the same table (duplicates, pairs)
 - Hierarchical depth is fixed and shallow (1-2 levels)
 - The relationship is a foreign key pointing back to the same table
 
 **AVOID WHEN:**
+
 - Hierarchy depth is variable or unknown (use recursive CTE)
 - The query needs more than three self-join levels (unreadable)
 
 **PREFER Recursive CTE WHEN:**
+
 - You need to traverse an entire tree to arbitrary depth
 - The hierarchy changes shape over time
 
@@ -826,23 +846,25 @@ INNER JOIN customers b
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | Self-joins duplicate the table in memory | The planner uses the same physical data and indexes; aliases are logical only |
-| 2 | Self-join is the best way to query hierarchies | For fixed depth (1-2 levels) yes, but recursive CTEs handle arbitrary depth |
-| 3 | You need a.id != b.id to avoid self-pairing | Use a.id < b.id instead - != still produces both (A,B) and (B,A) as duplicates |
+| #   | Misconception                                  | Reality                                                                        |
+| --- | ---------------------------------------------- | ------------------------------------------------------------------------------ |
+| 1   | Self-joins duplicate the table in memory       | The planner uses the same physical data and indexes; aliases are logical only  |
+| 2   | Self-join is the best way to query hierarchies | For fixed depth (1-2 levels) yes, but recursive CTEs handle arbitrary depth    |
+| 3   | You need a.id != b.id to avoid self-pairing    | Use a.id < b.id instead - != still produces both (A,B) and (B,A) as duplicates |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-026 INNER JOIN - Matching Rows Across Tables - self-join is just INNER JOIN with the same table
 - SQL-025 SQL Aliases and Expressions - aliases are mandatory for self-joins
 
 **THIS:** SQL-029 Self-Joins - When a Table References Itself
 
 **Next steps:**
+
 - SQL-054 Recursive CTEs - Hierarchical Data - the scalable approach for deep hierarchies
 - SQL-033 Subqueries - Scalar, Row, Table - alternative for row comparisons
 
@@ -980,26 +1002,29 @@ SELECT order_id FROM shipments;
 
 **Cost:** UNION (not ALL) requires sorting or hashing for deduplication, which adds CPU and memory. UNION ALL is much cheaper but may include duplicates you did not want.
 
-| Aspect | UNION | UNION ALL |
-|--------|-------|-----------|
-| Duplicates | Removed | Kept |
-| Performance | Sort/hash cost | No extra cost |
-| Use case | Need distinct rows | Know no dups exist |
+| Aspect      | UNION              | UNION ALL          |
+| ----------- | ------------------ | ------------------ |
+| Duplicates  | Removed            | Kept               |
+| Performance | Sort/hash cost     | No extra cost      |
+| Use case    | Need distinct rows | Know no dups exist |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Combining data from structurally similar tables or queries
 - Finding overlap (INTERSECT) or difference (EXCEPT) between sets
 - Building a unified view from partitioned data
 
 **AVOID WHEN:**
+
 - Queries produce different column counts or incompatible types
 - You should be using a JOIN (combining columns, not stacking rows)
 
 **PREFER UNION ALL WHEN:**
+
 - You know there are no duplicates across the sets
 - Performance matters and deduplication is unnecessary
 
@@ -1007,23 +1032,25 @@ SELECT order_id FROM shipments;
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | UNION and JOIN do the same thing | JOIN combines columns horizontally; UNION stacks rows vertically - fundamentally different |
-| 2 | UNION ALL is always faster than UNION | Yes, because it skips dedup - but if you need unique rows, UNION ALL gives wrong results |
-| 3 | Column names must match across both queries | Only column count and type compatibility matter; names come from the first query |
+| #   | Misconception                               | Reality                                                                                    |
+| --- | ------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| 1   | UNION and JOIN do the same thing            | JOIN combines columns horizontally; UNION stacks rows vertically - fundamentally different |
+| 2   | UNION ALL is always faster than UNION       | Yes, because it skips dedup - but if you need unique rows, UNION ALL gives wrong results   |
+| 3   | Column names must match across both queries | Only column count and type compatibility matter; names come from the first query           |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-012 SELECT and FROM - Reading Data - each side of UNION is a SELECT
 - SQL-015 ORDER BY and LIMIT - ORDER BY applies to the final combined result
 
 **THIS:** SQL-030 UNION, INTERSECT, EXCEPT
 
 **Next steps:**
+
 - SQL-053 Common Table Expressions (CTEs) - CTEs compose cleanly with set operations
 - SQL-032 GROUP BY and HAVING - aggregate after combining sets
 
@@ -1082,7 +1109,7 @@ Your orders table has 500,000 rows. The CFO asks: "What is total revenue? How ma
 2. For each aggregate function, it maintains a running
    accumulator (counter, sum, min, max).
 3. NULL values are skipped by all aggregates except
-   COUNT(*), which counts rows regardless of NULLs.
+   COUNT(\*), which counts rows regardless of NULLs.
 4. When GROUP BY is present, separate accumulators are
    maintained per group.
 5. The final values are returned - one row if no
@@ -1172,27 +1199,30 @@ FROM orders;
 
 **Cost:** You lose individual row detail. Once aggregated, you cannot inspect the rows that produced the number without a separate query.
 
-| Aspect | DB aggregation | App-side loop |
-|--------|---------------|---------------|
-| Network | 1 summary row | All raw rows |
-| CPU | DB-optimized | App language |
-| NULL handling | Automatic skip | Manual checks |
-| Flexibility | SQL functions only | Any code logic |
+| Aspect        | DB aggregation     | App-side loop  |
+| ------------- | ------------------ | -------------- |
+| Network       | 1 summary row      | All raw rows   |
+| CPU           | DB-optimized       | App language   |
+| NULL handling | Automatic skip     | Manual checks  |
+| Flexibility   | SQL functions only | Any code logic |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - You need summary statistics (totals, counts, averages)
 - The raw row data is not needed in the application
 - Performance matters and you want to avoid transferring large datasets
 
 **AVOID WHEN:**
+
 - You need the individual rows alongside the aggregate (use window functions instead)
 - The aggregation logic is too complex for SQL (rare)
 
 **PREFER Window Functions WHEN:**
+
 - You need both the detail row and a running total or ranking alongside it
 - You want per-row context with group-level stats
 
@@ -1200,23 +1230,25 @@ FROM orders;
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | AVG counts NULLs as zero | AVG skips NULLs entirely - it divides by the count of non-NULL values, not total rows |
-| 2 | COUNT(*) and COUNT(column) are identical | COUNT(*) counts all rows; COUNT(column) counts only rows where column is not NULL |
-| 3 | You can SELECT non-aggregated columns with aggregates | Standard SQL requires every non-aggregated column to be in GROUP BY; MySQL historically allowed it with unpredictable results |
+| #   | Misconception                                         | Reality                                                                                                                       |
+| --- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| 1   | AVG counts NULLs as zero                              | AVG skips NULLs entirely - it divides by the count of non-NULL values, not total rows                                         |
+| 2   | COUNT(\*) and COUNT(column) are identical             | COUNT(\*) counts all rows; COUNT(column) counts only rows where column is not NULL                                            |
+| 3   | You can SELECT non-aggregated columns with aggregates | Standard SQL requires every non-aggregated column to be in GROUP BY; MySQL historically allowed it with unpredictable results |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-012 SELECT and FROM - Reading Data - aggregates go in the SELECT clause
 - SQL-018 NULL - The Three-Valued Logic Trap - NULL handling in aggregates is critical
 
 **THIS:** SQL-031 Aggregate Functions - COUNT, SUM, AVG, MIN, MAX
 
 **Next steps:**
+
 - SQL-032 GROUP BY and HAVING - partition rows into groups before aggregating
 - SQL-055 Window Functions - ROW_NUMBER, RANK, DENSE_RANK - aggregate without collapsing rows
 
@@ -1230,7 +1262,7 @@ MIN and MAX on an indexed column do not scan the table at all. The B-tree index 
 
 ### 📇 Revision Card
 
-1. All aggregates skip NULLs except COUNT(*) - this one difference explains most aggregate surprises.
+1. All aggregates skip NULLs except COUNT(\*) - this one difference explains most aggregate surprises.
 2. AVG = SUM / COUNT(non-null), not SUM / total rows - NULLs shrink the denominator.
 3. MIN/MAX on indexed columns are O(1) via B-tree edge reads, not full scans.
 
@@ -1374,27 +1406,30 @@ ORDER BY month, revenue DESC;
 
 **Cost:** Grouping requires sorting or hashing all rows. Large cardinality grouping columns (e.g., grouping by a UUID) can be expensive and produce as many output rows as input rows.
 
-| Aspect | GROUP BY | Window Functions |
-|--------|---------|-----------------|
-| Output rows | One per group | One per input row |
-| Detail access | Lost after grouping | Preserved |
-| Filtering | HAVING | WHERE on window result |
-| Use case | Summary reports | Rankings, running totals |
+| Aspect        | GROUP BY            | Window Functions         |
+| ------------- | ------------------- | ------------------------ |
+| Output rows   | One per group       | One per input row        |
+| Detail access | Lost after grouping | Preserved                |
+| Filtering     | HAVING              | WHERE on window result   |
+| Use case      | Summary reports     | Rankings, running totals |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - You need one summary row per group (totals, counts, averages per category)
 - You must filter on aggregated values (HAVING)
 - Reports require dimensional breakdowns (by region, by month)
 
 **AVOID WHEN:**
+
 - You need individual rows alongside aggregated values (use window functions)
 - Grouping cardinality equals row count (grouping adds no value)
 
 **PREFER Window Functions WHEN:**
+
 - Each row needs its own value plus a group-level aggregate alongside it
 - You want rankings or running totals without collapsing rows
 
@@ -1402,23 +1437,25 @@ ORDER BY month, revenue DESC;
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | HAVING and WHERE are interchangeable | WHERE filters rows before grouping; HAVING filters groups after aggregation - different execution phases |
-| 2 | Every column in SELECT must be in GROUP BY | Only non-aggregated columns must be in GROUP BY; aggregated columns (SUM, COUNT) must not be |
-| 3 | GROUP BY always sorts the output | GROUP BY does not guarantee order; add ORDER BY explicitly if you need sorted results |
+| #   | Misconception                              | Reality                                                                                                  |
+| --- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| 1   | HAVING and WHERE are interchangeable       | WHERE filters rows before grouping; HAVING filters groups after aggregation - different execution phases |
+| 2   | Every column in SELECT must be in GROUP BY | Only non-aggregated columns must be in GROUP BY; aggregated columns (SUM, COUNT) must not be             |
+| 3   | GROUP BY always sorts the output           | GROUP BY does not guarantee order; add ORDER BY explicitly if you need sorted results                    |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-031 Aggregate Functions - COUNT, SUM, AVG, MIN, MAX - aggregates are the point of grouping
 - SQL-013 WHERE - Filtering Rows - understand row-level filtering before group-level
 
 **THIS:** SQL-032 GROUP BY and HAVING
 
 **Next steps:**
+
 - SQL-033 Subqueries - Scalar, Row, Table - use grouped results as subquery inputs
 - SQL-059 GROUPING SETS, CUBE, ROLLUP - advanced multi-level grouping
 
@@ -1585,27 +1622,30 @@ WHERE ranked.rn <= 3;
 
 **Cost:** Correlated subqueries can be slow (re-execute per outer row). Deeply nested subqueries are hard to read and debug. The planner may not optimize all subquery forms equally.
 
-| Aspect | Subquery | JOIN | CTE |
-|--------|---------|------|-----|
-| Readability | Nested, harder | Flat, easier | Named, clearest |
-| Reuse | Single-use | N/A | Referenceable |
-| Optimization | Planner may flatten | Direct | Typically inlined |
-| Correlated | Supported | N/A | Not applicable |
+| Aspect       | Subquery            | JOIN         | CTE               |
+| ------------ | ------------------- | ------------ | ----------------- |
+| Readability  | Nested, harder      | Flat, easier | Named, clearest   |
+| Reuse        | Single-use          | N/A          | Referenceable     |
+| Optimization | Planner may flatten | Direct       | Typically inlined |
+| Correlated   | Supported           | N/A          | Not applicable    |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - You need a computed value for comparison (scalar subquery in WHERE)
 - EXISTS/NOT EXISTS checks for existence efficiently
 - A derived table simplifies a complex transformation step
 
 **AVOID WHEN:**
+
 - A simple JOIN achieves the same result more readably
 - The subquery is correlated and the outer query has many rows (performance risk)
 
 **PREFER CTE WHEN:**
+
 - The subquery result is referenced multiple times
 - Readability matters and the logic has multiple steps
 
@@ -1613,23 +1653,25 @@ WHERE ranked.rn <= 3;
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | Subqueries are always slower than joins | The planner often rewrites subqueries as joins internally; performance depends on the specific query and indexes |
-| 2 | NOT IN with a subquery is safe | If the subquery returns any NULL, NOT IN returns no rows at all - use NOT EXISTS instead |
-| 3 | Correlated subqueries always perform badly | With proper indexes on the inner query's filter columns, correlated subqueries can be efficient for existence checks |
+| #   | Misconception                              | Reality                                                                                                              |
+| --- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| 1   | Subqueries are always slower than joins    | The planner often rewrites subqueries as joins internally; performance depends on the specific query and indexes     |
+| 2   | NOT IN with a subquery is safe             | If the subquery returns any NULL, NOT IN returns no rows at all - use NOT EXISTS instead                             |
+| 3   | Correlated subqueries always perform badly | With proper indexes on the inner query's filter columns, correlated subqueries can be efficient for existence checks |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-031 Aggregate Functions - COUNT, SUM, AVG, MIN, MAX - scalar subqueries often contain aggregates
 - SQL-026 INNER JOIN - Matching Rows Across Tables - joins are the alternative to many subquery patterns
 
 **THIS:** SQL-033 Subqueries - Scalar, Row, Table
 
 **Next steps:**
+
 - SQL-053 Common Table Expressions (CTEs) - named, reusable subquery blocks
 - SQL-058 Correlated Subqueries and Lateral Joins - advanced correlated patterns
 
@@ -1789,27 +1831,30 @@ HAVING COUNT(DISTINCT city) > 1;
 
 **Cost:** More tables mean more JOINs. Read-heavy workloads may be slower if many tables must be joined for a single query.
 
-| Aspect | Normalized (3NF) | Denormalized |
-|--------|------------------|-------------|
-| Write safety | No anomalies | Update anomaly risk |
-| Read performance | JOIN cost | Single-table scan |
-| Storage | Minimal redundancy | Redundant data |
-| Schema clarity | High | Lower |
+| Aspect           | Normalized (3NF)   | Denormalized        |
+| ---------------- | ------------------ | ------------------- |
+| Write safety     | No anomalies       | Update anomaly risk |
+| Read performance | JOIN cost          | Single-table scan   |
+| Storage          | Minimal redundancy | Redundant data      |
+| Schema clarity   | High               | Lower               |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Write correctness is critical (financial, medical, legal data)
 - Data is updated frequently and inconsistency is unacceptable
 - The schema is evolving and must remain maintainable
 
 **AVOID WHEN:**
+
 - Read performance is the dominant concern and writes are rare
 - You are building a read-only reporting warehouse
 
 **PREFER Denormalization WHEN:**
+
 - Specific queries are too slow due to excessive JOINs and correctness can be managed at the application layer
 - Data is append-only (event logs, analytics)
 
@@ -1817,23 +1862,25 @@ HAVING COUNT(DISTINCT city) > 1;
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | More normalized is always better | Over-normalization creates excessive JOINs and hurts read performance; 3NF is the practical sweet spot for most OLTP systems |
-| 2 | 1NF just means "no duplicate rows" | 1NF also requires atomic column values - no arrays, no comma-separated lists, no JSON blobs storing multiple values in one column |
-| 3 | Normalization is only about saving storage | Storage is cheap; normalization is primarily about preventing contradictory data (update anomalies) |
+| #   | Misconception                              | Reality                                                                                                                           |
+| --- | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | More normalized is always better           | Over-normalization creates excessive JOINs and hurts read performance; 3NF is the practical sweet spot for most OLTP systems      |
+| 2   | 1NF just means "no duplicate rows"         | 1NF also requires atomic column values - no arrays, no comma-separated lists, no JSON blobs storing multiple values in one column |
+| 3   | Normalization is only about saving storage | Storage is cheap; normalization is primarily about preventing contradictory data (update anomalies)                               |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-016 Primary Keys and Uniqueness - keys are the foundation of functional dependencies
 - SQL-017 Foreign Keys and Relationships - normalization splits tables connected by FKs
 
 **THIS:** SQL-034 Normalization - 1NF, 2NF, 3NF
 
 **Next steps:**
+
 - SQL-035 Denormalization - When and Why - the deliberate reversal
 - SQL-047 Normalize-or-Denormalize Decision Guide - the decision framework
 
@@ -1988,27 +2035,30 @@ $$ LANGUAGE plpgsql;
 
 **Cost:** Write complexity increases. Every update must maintain redundant copies. Risk of data inconsistency if maintenance fails. Schema is harder to evolve.
 
-| Aspect | Normalized | Denormalized |
-|--------|-----------|-------------|
-| Read speed | JOINs required | Pre-joined, fast |
-| Write speed | Single update | Multiple updates |
-| Consistency | Guaranteed | Must be maintained |
-| Schema evolution | Easier | Harder |
+| Aspect           | Normalized     | Denormalized       |
+| ---------------- | -------------- | ------------------ |
+| Read speed       | JOINs required | Pre-joined, fast   |
+| Write speed      | Single update  | Multiple updates   |
+| Consistency      | Guaranteed     | Must be maintained |
+| Schema evolution | Easier         | Harder             |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - A specific query is too slow and JOINs are the bottleneck
 - The data is read far more often than written
 - You have a maintenance strategy (triggers, materialized views, or application logic)
 
 **AVOID WHEN:**
+
 - Write frequency is high and consistency is critical
 - You have not yet tried indexing, query optimization, or caching
 
 **PREFER Materialized Views WHEN:**
+
 - You want denormalized reads but do not want to maintain redundant columns manually
 - Slight staleness is acceptable (refresh interval)
 
@@ -2016,23 +2066,25 @@ $$ LANGUAGE plpgsql;
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | Denormalization means the schema is badly designed | It is a deliberate trade-off, not a mistake - but only after normalization has been done first |
-| 2 | You should denormalize preemptively for performance | Always start normalized, measure, then denormalize specific pain points with data |
-| 3 | Denormalization eliminates the need for indexes | Denormalized tables still need indexes on filter and sort columns |
+| #   | Misconception                                       | Reality                                                                                        |
+| --- | --------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| 1   | Denormalization means the schema is badly designed  | It is a deliberate trade-off, not a mistake - but only after normalization has been done first |
+| 2   | You should denormalize preemptively for performance | Always start normalized, measure, then denormalize specific pain points with data              |
+| 3   | Denormalization eliminates the need for indexes     | Denormalized tables still need indexes on filter and sort columns                              |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-034 Normalization - 1NF, 2NF, 3NF - you must normalize before you can knowingly denormalize
 - SQL-040 Indexes - What They Are and Why They Matter - try indexes before denormalization
 
 **THIS:** SQL-035 Denormalization - When and Why
 
 **Next steps:**
+
 - SQL-047 Normalize-or-Denormalize Decision Guide - the decision framework
 - SQL-072 Materialized Views - the safest denormalization technique
 
@@ -2195,27 +2247,30 @@ ADD CONSTRAINT orders_total_positive
 
 **Cost:** Schema changes needed to modify rules. CHECK cannot reference other tables (use foreign keys or triggers for that). Complex business rules may not fit in a single Boolean expression.
 
-| Aspect | Schema constraints | App-layer validation |
-|--------|-------------------|---------------------|
-| Enforcement | Always, any client | Only through the app |
-| Bypass risk | None (unless disabled) | Scripts, direct SQL |
-| Flexibility | Boolean expressions | Any code logic |
-| Error messages | Constraint name | Custom messages |
+| Aspect         | Schema constraints     | App-layer validation |
+| -------------- | ---------------------- | -------------------- |
+| Enforcement    | Always, any client     | Only through the app |
+| Bypass risk    | None (unless disabled) | Scripts, direct SQL  |
+| Flexibility    | Boolean expressions    | Any code logic       |
+| Error messages | Constraint name        | Custom messages      |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - The rule is simple and universal (non-negative prices, required fields, enum values)
 - Multiple applications or scripts access the same table
 - You want defense-in-depth alongside application validation
 
 **AVOID WHEN:**
+
 - The rule requires cross-table or cross-row checks (use triggers or app logic)
 - The constraint would need to change frequently (schema migrations have cost)
 
 **PREFER Triggers WHEN:**
+
 - The validation logic requires querying other tables
 - You need to enforce complex invariants that CHECK cannot express
 
@@ -2223,23 +2278,25 @@ ADD CONSTRAINT orders_total_positive
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | DEFAULT replaces NULL on explicit INSERT | DEFAULT only applies when the column is omitted; `INSERT (col) VALUES (NULL)` inserts NULL even if DEFAULT is set (unless NOT NULL prevents it) |
-| 2 | CHECK constraints validate NULLs | CHECK treats NULL as UNKNOWN, which passes - add NOT NULL if NULL should be rejected |
-| 3 | Application validation makes schema constraints unnecessary | Constraints are defense-in-depth; direct SQL, migrations, and future apps all bypass app validation |
+| #   | Misconception                                               | Reality                                                                                                                                         |
+| --- | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | DEFAULT replaces NULL on explicit INSERT                    | DEFAULT only applies when the column is omitted; `INSERT (col) VALUES (NULL)` inserts NULL even if DEFAULT is set (unless NOT NULL prevents it) |
+| 2   | CHECK constraints validate NULLs                            | CHECK treats NULL as UNKNOWN, which passes - add NOT NULL if NULL should be rejected                                                            |
+| 3   | Application validation makes schema constraints unnecessary | Constraints are defense-in-depth; direct SQL, migrations, and future apps all bypass app validation                                             |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-010 CREATE TABLE and DROP TABLE - constraints are defined in CREATE TABLE
 - SQL-018 NULL - The Three-Valued Logic Trap - understanding NULL is critical for CHECK behavior
 
 **THIS:** SQL-036 CHECK, DEFAULT, and NOT NULL Constraints
 
 **Next steps:**
+
 - SQL-034 Normalization - 1NF, 2NF, 3NF - constraints enforce the rules normalization assumes
 - SQL-037 Entity-Relationship Modeling Basics - constraints implement ER model rules
 
@@ -2418,27 +2475,30 @@ CREATE TABLE enrollments (
 
 **Cost:** Requires upfront time. ER diagrams can become complex for large domains. The model is logical - physical optimizations (indexes, partitions) are a separate concern.
 
-| Aspect | ER Modeling | Ad-hoc table creation |
-|--------|-----------|----------------------|
-| Design errors | Caught early | Found in production |
-| Communication | Visual, shareable | Tribal knowledge |
-| Upfront cost | Hours | Minutes |
-| Refactoring cost | Low (change diagram) | High (migrate data) |
+| Aspect           | ER Modeling          | Ad-hoc table creation |
+| ---------------- | -------------------- | --------------------- |
+| Design errors    | Caught early         | Found in production   |
+| Communication    | Visual, shareable    | Tribal knowledge      |
+| Upfront cost     | Hours                | Minutes               |
+| Refactoring cost | Low (change diagram) | High (migrate data)   |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Designing a new database or major schema extension
 - Multiple developers or teams need to agree on data structure
 - The domain has non-trivial relationships (M:N, hierarchies)
 
 **AVOID WHEN:**
+
 - Adding a single column to an existing well-understood table
 - Prototyping a throwaway proof-of-concept
 
 **PREFER Domain-Driven Design WHEN:**
+
 - The business logic is complex and entities need behavioral modeling, not just data modeling
 - Bounded contexts span multiple databases
 
@@ -2446,23 +2506,25 @@ CREATE TABLE enrollments (
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | ER diagrams are just documentation | They are a design tool - the diagram drives the schema, not the other way around |
-| 2 | Every relationship is either 1:1 or 1:N | M:N relationships are common and require a junction (bridge) table with its own attributes |
-| 3 | ER models must capture every column upfront | Start with entities and relationships; attributes can be refined iteratively as requirements clarify |
+| #   | Misconception                               | Reality                                                                                              |
+| --- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| 1   | ER diagrams are just documentation          | They are a design tool - the diagram drives the schema, not the other way around                     |
+| 2   | Every relationship is either 1:1 or 1:N     | M:N relationships are common and require a junction (bridge) table with its own attributes           |
+| 3   | ER models must capture every column upfront | Start with entities and relationships; attributes can be refined iteratively as requirements clarify |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-008 Tables, Rows, and Columns - understand what entities become
 - SQL-017 Foreign Keys and Relationships - FKs implement ER relationships
 
 **THIS:** SQL-037 Entity-Relationship Modeling Basics
 
 **Next steps:**
+
 - SQL-034 Normalization - 1NF, 2NF, 3NF - normalize the ER model into clean tables
 - SQL-075 Schema Migration Fundamentals - evolving the model over time
 
@@ -2609,27 +2671,30 @@ COMMIT;
 
 **Cost:** Transactions hold locks and resources while open. Long transactions block other writers and increase contention. Connection pool starvation risk if transactions are not closed promptly.
 
-| Aspect | Explicit transactions | Auto-commit |
-|--------|---------------------|-------------|
-| Atomicity | Multi-statement | Single statement |
-| Crash safety | Full rollback | Per-statement |
-| Lock duration | BEGIN to COMMIT | Statement only |
-| Complexity | Must manage lifecycle | Simpler |
+| Aspect        | Explicit transactions | Auto-commit      |
+| ------------- | --------------------- | ---------------- |
+| Atomicity     | Multi-statement       | Single statement |
+| Crash safety  | Full rollback         | Per-statement    |
+| Lock duration | BEGIN to COMMIT       | Statement only   |
+| Complexity    | Must manage lifecycle | Simpler          |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Multiple statements must succeed or fail as one unit
 - Financial or critical data operations (transfers, inventory adjustments)
 - You need to validate intermediate results before committing
 
 **AVOID WHEN:**
+
 - A single INSERT or UPDATE suffices (auto-commit handles it)
 - Read-only queries (SELECT does not modify data)
 
 **PREFER Savepoints WHEN:**
+
 - You want to retry part of a transaction without losing earlier work
 - Batch processing where individual item failures should not abort the batch
 
@@ -2637,23 +2702,25 @@ COMMIT;
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | Transactions prevent all concurrency issues | Transactions provide atomicity, but concurrency issues depend on the isolation level (Read Committed, Serializable, etc.) |
-| 2 | If I do not write BEGIN, there is no transaction | Most databases use auto-commit: each statement runs in its own implicit transaction |
-| 3 | ROLLBACK recovers from any error | DDL statements (CREATE, DROP) in some databases auto-commit and cannot be rolled back (PostgreSQL allows transactional DDL, MySQL does not) |
+| #   | Misconception                                    | Reality                                                                                                                                     |
+| --- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Transactions prevent all concurrency issues      | Transactions provide atomicity, but concurrency issues depend on the isolation level (Read Committed, Serializable, etc.)                   |
+| 2   | If I do not write BEGIN, there is no transaction | Most databases use auto-commit: each statement runs in its own implicit transaction                                                         |
+| 3   | ROLLBACK recovers from any error                 | DDL statements (CREATE, DROP) in some databases auto-commit and cannot be rolled back (PostgreSQL allows transactional DDL, MySQL does not) |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-011 INSERT - Adding Rows - understand write operations
 - SQL-014 UPDATE and DELETE - Modifying Data - transactions protect multi-step modifications
 
 **THIS:** SQL-038 Transactions - BEGIN, COMMIT, ROLLBACK
 
 **Next steps:**
+
 - SQL-039 ACID Properties - What They Actually Mean - the theory behind transactions
 - SQL-067 Transaction Isolation Levels - controlling what concurrent transactions see
 
@@ -2813,27 +2880,30 @@ SET synchronous_commit = 'on';  -- default, safe
 
 **Cost:** ACID enforcement adds overhead - WAL writes for durability, lock management for isolation, constraint evaluation for consistency. Relaxing any property (e.g., weaker isolation) trades safety for performance.
 
-| Aspect | Full ACID | Relaxed (e.g., eventual consistency) |
-|--------|----------|-------------------------------------|
-| Correctness | Guaranteed | Application must handle |
-| Performance | WAL + lock overhead | Higher throughput |
-| Complexity | Database handles it | App must compensate |
-| Use case | Financial, OLTP | Analytics, event logs |
+| Aspect      | Full ACID           | Relaxed (e.g., eventual consistency) |
+| ----------- | ------------------- | ------------------------------------ |
+| Correctness | Guaranteed          | Application must handle              |
+| Performance | WAL + lock overhead | Higher throughput                    |
+| Complexity  | Database handles it | App must compensate                  |
+| Use case    | Financial, OLTP     | Analytics, event logs                |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Data correctness is non-negotiable (financial, medical, legal)
 - Multiple concurrent writers modify the same data
 - You need crash recovery guarantees
 
 **AVOID WHEN:**
+
 - Performance matters more than strict consistency (analytics pipelines, event logs)
 - Data is append-only and eventual consistency is acceptable
 
 **PREFER Weaker Isolation WHEN:**
+
 - Read Committed is sufficient and Serializable is too expensive
 - You understand the read phenomena you are accepting (see SQL-068)
 
@@ -2841,23 +2911,25 @@ SET synchronous_commit = 'on';  -- default, safe
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | ACID means zero data loss in all scenarios | Durability means committed data survives crashes; uncommitted data is lost by design (that is atomicity working correctly) |
-| 2 | All databases provide the same ACID guarantees | Isolation levels vary widely. MySQL's default (REPEATABLE READ) differs from PostgreSQL's default (READ COMMITTED) |
-| 3 | NoSQL databases cannot provide ACID | Many NoSQL databases now offer ACID transactions (MongoDB 4.0+, FaunaDB, CockroachDB) |
+| #   | Misconception                                  | Reality                                                                                                                    |
+| --- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| 1   | ACID means zero data loss in all scenarios     | Durability means committed data survives crashes; uncommitted data is lost by design (that is atomicity working correctly) |
+| 2   | All databases provide the same ACID guarantees | Isolation levels vary widely. MySQL's default (REPEATABLE READ) differs from PostgreSQL's default (READ COMMITTED)         |
+| 3   | NoSQL databases cannot provide ACID            | Many NoSQL databases now offer ACID transactions (MongoDB 4.0+, FaunaDB, CockroachDB)                                      |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-038 Transactions - BEGIN, COMMIT, ROLLBACK - ACID describes what transactions guarantee
 - SQL-036 CHECK, DEFAULT, and NOT NULL Constraints - constraints enforce the "C" in ACID
 
 **THIS:** SQL-039 ACID Properties - What They Actually Mean
 
 **Next steps:**
+
 - SQL-067 Transaction Isolation Levels - controlling the "I" in ACID
 - SQL-068 Read Phenomena - Dirty, Non-Repeatable, Phantom - what weakened isolation allows
 
@@ -3003,27 +3075,30 @@ CREATE INDEX idx_orders_active
 
 **Cost:** Every write (INSERT, UPDATE, DELETE) must maintain every index on the table. Indexes consume disk space. Too many indexes slow writes significantly.
 
-| Aspect | With index | Without index |
-|--------|-----------|---------------|
-| Read (selective) | O(log N) | O(N) |
-| Write overhead | Index maintenance | None |
-| Disk space | Extra structure | Table only |
-| Planner choice | May ignore if low selectivity | Always scans |
+| Aspect           | With index                    | Without index |
+| ---------------- | ----------------------------- | ------------- |
+| Read (selective) | O(log N)                      | O(N)          |
+| Write overhead   | Index maintenance             | None          |
+| Disk space       | Extra structure               | Table only    |
+| Planner choice   | May ignore if low selectivity | Always scans  |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Columns appear frequently in WHERE, JOIN ON, or ORDER BY clauses
 - The table has many rows and queries are selective (return small fraction)
 - You need to enforce UNIQUE constraints
 
 **AVOID WHEN:**
+
 - The table is small (hundreds of rows) - scan is fast enough
 - The column has very low cardinality (e.g., boolean with 50/50 distribution)
 
 **PREFER Partial Index WHEN:**
+
 - Only a subset of rows matches the common query pattern
 - You want a smaller index with less write overhead
 
@@ -3031,23 +3106,25 @@ CREATE INDEX idx_orders_active
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | More indexes always mean faster queries | Each index slows every INSERT, UPDATE, DELETE; the optimal number is the minimum that covers your query patterns |
-| 2 | The database always uses an index if one exists | The planner estimates cost and may choose a Seq Scan if the query returns a large fraction of the table |
-| 3 | Indexes only help equality lookups | B-tree indexes also help range queries (BETWEEN, <, >), ORDER BY, and MIN/MAX |
+| #   | Misconception                                   | Reality                                                                                                          |
+| --- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| 1   | More indexes always mean faster queries         | Each index slows every INSERT, UPDATE, DELETE; the optimal number is the minimum that covers your query patterns |
+| 2   | The database always uses an index if one exists | The planner estimates cost and may choose a Seq Scan if the query returns a large fraction of the table          |
+| 3   | Indexes only help equality lookups              | B-tree indexes also help range queries (BETWEEN, <, >), ORDER BY, and MIN/MAX                                    |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-013 WHERE - Filtering Rows - indexes accelerate WHERE conditions
 - SQL-012 SELECT and FROM - Reading Data - understand what a full table scan means
 
 **THIS:** SQL-040 Indexes - What They Are and Why They Matter
 
 **Next steps:**
+
 - SQL-041 B-Tree Index Basics - how the default index structure works
 - SQL-042 EXPLAIN - Reading Your First Query Plan - verify the index is being used
 
@@ -3204,28 +3281,31 @@ WHERE relname = 'products';
 
 **Cost:** Write amplification - every row change updates the index. Space overhead (typically 1-3x the column data size). Not optimal for very low cardinality or specialized patterns (full-text, geospatial).
 
-| Aspect | B-tree | Hash | GIN |
-|--------|--------|------|-----|
-| Equality | Yes | Yes | Yes |
-| Range | Yes | No | No |
-| Multi-value | No | No | Yes (arrays, text) |
-| Write cost | Moderate | Low | High |
-| Default | Yes | No | No |
+| Aspect      | B-tree   | Hash | GIN                |
+| ----------- | -------- | ---- | ------------------ |
+| Equality    | Yes      | Yes  | Yes                |
+| Range       | Yes      | No   | No                 |
+| Multi-value | No       | No   | Yes (arrays, text) |
+| Write cost  | Moderate | Low  | High               |
+| Default     | Yes      | No   | No                 |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - The column appears in WHERE with equality or range conditions
 - You need ORDER BY without a runtime sort
 - This is your first index on a column (B-tree is the safe default)
 
 **AVOID WHEN:**
+
 - The column is a JSONB field needing key-path lookups (use GIN)
 - Full-text search is required (use GIN with tsvector)
 
 **PREFER Hash Index WHEN:**
+
 - Only equality lookups are needed and the column is very large (hash is smaller but limited to `=` only)
 - PostgreSQL 10+ where hash indexes are crash-safe
 
@@ -3233,23 +3313,25 @@ WHERE relname = 'products';
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | B-tree indexes work on any operator | B-tree supports =, <, >, <=, >=, BETWEEN, IS NULL, and ORDER BY - but not LIKE '%prefix' (leading wildcard) or array containment |
-| 2 | B-tree depth grows linearly with data | Depth grows logarithmically; a B-tree with millions of rows is typically only 3-4 levels deep |
-| 3 | Index lookups are always faster than scans | If the query returns a large fraction of the table, the planner skips the index because random I/O from index lookups is slower than sequential scan |
+| #   | Misconception                              | Reality                                                                                                                                              |
+| --- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | B-tree indexes work on any operator        | B-tree supports =, <, >, <=, >=, BETWEEN, IS NULL, and ORDER BY - but not LIKE '%prefix' (leading wildcard) or array containment                     |
+| 2   | B-tree depth grows linearly with data      | Depth grows logarithmically; a B-tree with millions of rows is typically only 3-4 levels deep                                                        |
+| 3   | Index lookups are always faster than scans | If the query returns a large fraction of the table, the planner skips the index because random I/O from index lookups is slower than sequential scan |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-040 Indexes - What They Are and Why They Matter - understand what indexes do before how they work
 - SQL-009 Data Types - Integers, Text, Dates, Booleans - B-tree relies on ordered data types
 
 **THIS:** SQL-041 B-Tree Index Basics
 
 **Next steps:**
+
 - SQL-042 EXPLAIN - Reading Your First Query Plan - verify B-tree usage in query plans
 - SQL-061 Index Types - B-Tree, Hash, GIN, GiST, BRIN - alternative index structures
 
@@ -3403,27 +3485,30 @@ AND placed_at > '2024-01-01';
 
 **Cost:** EXPLAIN ANALYZE actually executes the query (including side effects for INSERT/UPDATE/DELETE - wrap in a transaction and ROLLBACK). Estimated costs in plain EXPLAIN can differ from reality.
 
-| Aspect | EXPLAIN | EXPLAIN ANALYZE |
-|--------|---------|----------------|
-| Executes query | No | Yes |
-| Shows estimates | Yes | Yes + actuals |
-| Side effects | None | Real changes |
-| Use for writes | Safe | Wrap in ROLLBACK |
+| Aspect          | EXPLAIN | EXPLAIN ANALYZE  |
+| --------------- | ------- | ---------------- |
+| Executes query  | No      | Yes              |
+| Shows estimates | Yes     | Yes + actuals    |
+| Side effects    | None    | Real changes     |
+| Use for writes  | Safe    | Wrap in ROLLBACK |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - A query is slow and you need to find out why
 - You created an index and want to verify it is being used
 - Before and after optimization to measure improvement
 
 **AVOID WHEN:**
+
 - The query modifies data and you do not wrap EXPLAIN ANALYZE in a transaction
 - You are checking trivial queries on tiny tables (overhead not worth it)
 
 **PREFER EXPLAIN (ANALYZE, BUFFERS) WHEN:**
+
 - You want to see I/O details (shared blocks hit vs read)
 - You need to distinguish between CPU-bound and I/O-bound bottlenecks
 
@@ -3431,23 +3516,25 @@ AND placed_at > '2024-01-01';
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | EXPLAIN shows which query is faster | EXPLAIN shows the plan for one query; to compare, run EXPLAIN ANALYZE on both and compare actual times |
-| 2 | If EXPLAIN says "Index Scan" the query is fast | An Index Scan on a low-selectivity column may read most of the table via random I/O, slower than a Seq Scan |
-| 3 | EXPLAIN ANALYZE is safe for all queries | It executes the query - an EXPLAIN ANALYZE on a DELETE will delete rows unless wrapped in BEGIN/ROLLBACK |
+| #   | Misconception                                  | Reality                                                                                                     |
+| --- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| 1   | EXPLAIN shows which query is faster            | EXPLAIN shows the plan for one query; to compare, run EXPLAIN ANALYZE on both and compare actual times      |
+| 2   | If EXPLAIN says "Index Scan" the query is fast | An Index Scan on a low-selectivity column may read most of the table via random I/O, slower than a Seq Scan |
+| 3   | EXPLAIN ANALYZE is safe for all queries        | It executes the query - an EXPLAIN ANALYZE on a DELETE will delete rows unless wrapped in BEGIN/ROLLBACK    |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-040 Indexes - What They Are and Why They Matter - you must understand indexes to interpret plan nodes
 - SQL-026 INNER JOIN - Matching Rows Across Tables - join nodes appear in multi-table plans
 
 **THIS:** SQL-042 EXPLAIN - Reading Your First Query Plan
 
 **Next steps:**
+
 - SQL-060 Execution Plans Deep Dive - EXPLAIN ANALYZE - advanced plan reading
 - SQL-064 Query Performance Tuning Patterns - applying what EXPLAIN reveals
 
@@ -3603,28 +3690,31 @@ ORDER BY pg_relation_size(indexrelid) DESC;
 
 **Cost (of fewer indexes):** Some queries without a matching index will use Seq Scan. The trade-off is worth it when those queries are rare or the table is small.
 
-| Aspect | Minimal indexes | Index-every-column |
-|--------|---------------|-------------------|
-| Write speed | Fast | Slow (N+1 writes) |
-| Disk usage | Low | High (often > table) |
-| Read coverage | Targeted queries | All queries |
-| Maintenance | Low | High (VACUUM cost) |
+| Aspect        | Minimal indexes  | Index-every-column   |
+| ------------- | ---------------- | -------------------- |
+| Write speed   | Fast             | Slow (N+1 writes)    |
+| Disk usage    | Low              | High (often > table) |
+| Read coverage | Targeted queries | All queries          |
+| Maintenance   | Low              | High (VACUUM cost)   |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN (creating an index):**
+
 - A specific query is slow and EXPLAIN shows Seq Scan on a large table
 - The column is frequently used in WHERE, JOIN ON, or ORDER BY
 - The column has reasonable selectivity (not a boolean split 50/50)
 
 **AVOID WHEN:**
+
 - The column is rarely filtered or joined
 - The table has heavy write traffic and the read benefit is marginal
 - An existing composite index already covers the column
 
 **PREFER Composite Index WHEN:**
+
 - Queries filter on multiple columns together (e.g., status + date)
 - One composite index replaces two or more single-column indexes
 
@@ -3632,23 +3722,25 @@ ORDER BY pg_relation_size(indexrelid) DESC;
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | More indexes cannot hurt | Every index slows writes, uses disk, and adds VACUUM overhead; unused indexes are pure cost |
-| 2 | The planner always picks the best index | With many indexes, cost estimates can lead the planner to suboptimal choices - fewer, better indexes reduce this risk |
-| 3 | Dropping an unused index is risky | Use pg_stat_user_indexes to verify idx_scan = 0 over a representative period before dropping; the risk is low for truly unused indexes |
+| #   | Misconception                           | Reality                                                                                                                                |
+| --- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | More indexes cannot hurt                | Every index slows writes, uses disk, and adds VACUUM overhead; unused indexes are pure cost                                            |
+| 2   | The planner always picks the best index | With many indexes, cost estimates can lead the planner to suboptimal choices - fewer, better indexes reduce this risk                  |
+| 3   | Dropping an unused index is risky       | Use pg_stat_user_indexes to verify idx_scan = 0 over a representative period before dropping; the risk is low for truly unused indexes |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-040 Indexes - What They Are and Why They Matter - understand what indexes cost
 - SQL-042 EXPLAIN - Reading Your First Query Plan - verify which indexes are actually used
 
 **THIS:** SQL-043 Index on Every Column Anti-Pattern
 
 **Next steps:**
+
 - SQL-062 Composite Indexes and Column Order - strategic multi-column indexes
 - SQL-063 Covering Indexes (Index-Only Scans) - indexes that eliminate table access entirely
 
@@ -3814,27 +3906,30 @@ ORDER BY
 
 **Cost:** Complex CASE expressions reduce query readability. CASE in WHERE can prevent index usage (the planner cannot index a computed expression without a functional index).
 
-| Aspect | CASE in SQL | App-side if/else |
-|--------|-----------|-----------------|
-| Round trips | 1 query | Multiple or post-fetch |
-| Index usage | May block indexes | N/A |
-| Readability | Can get complex | Familiar syntax |
-| Performance | Single scan | Extra transfer |
+| Aspect      | CASE in SQL       | App-side if/else       |
+| ----------- | ----------------- | ---------------------- |
+| Round trips | 1 query           | Multiple or post-fetch |
+| Index usage | May block indexes | N/A                    |
+| Readability | Can get complex   | Familiar syntax        |
+| Performance | Single scan       | Extra transfer         |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - You need to transform values (status codes to labels) in the result set
 - Conditional aggregation avoids multiple queries (SUM with CASE)
 - Custom sort order requires conditional logic
 
 **AVOID WHEN:**
+
 - The conditional logic is complex enough to warrant a separate lookup table (normalize instead)
 - CASE in WHERE is preventing index usage (refactor the predicate)
 
 **PREFER Lookup Table WHEN:**
+
 - The mappings change frequently and should not be hardcoded in SQL
 - Multiple queries need the same status-to-label translations
 
@@ -3842,23 +3937,25 @@ ORDER BY
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | CASE evaluates all WHEN branches | It short-circuits: the first matching WHEN wins and remaining branches are skipped |
-| 2 | Omitting ELSE is harmless | Without ELSE, non-matching rows get NULL, which can silently break downstream logic |
-| 3 | CASE can replace IF statements for control flow | CASE is an expression returning a value, not a control flow statement - it cannot execute different SQL statements |
+| #   | Misconception                                   | Reality                                                                                                            |
+| --- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| 1   | CASE evaluates all WHEN branches                | It short-circuits: the first matching WHEN wins and remaining branches are skipped                                 |
+| 2   | Omitting ELSE is harmless                       | Without ELSE, non-matching rows get NULL, which can silently break downstream logic                                |
+| 3   | CASE can replace IF statements for control flow | CASE is an expression returning a value, not a control flow statement - it cannot execute different SQL statements |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-012 SELECT and FROM - Reading Data - CASE goes in the SELECT clause
 - SQL-013 WHERE - Filtering Rows - CASE can appear in WHERE conditions
 
 **THIS:** SQL-044 CASE Expressions and Conditional Logic
 
 **Next steps:**
+
 - SQL-031 Aggregate Functions - COUNT, SUM, AVG, MIN, MAX - CASE inside SUM for conditional aggregation
 - SQL-055 Window Functions - ROW_NUMBER, RANK, DENSE_RANK - CASE in PARTITION BY for conditional windowing
 
@@ -3882,7 +3979,7 @@ CASE inside an aggregate function (SUM, COUNT) is the poor man's PIVOT. `SUM(CAS
 
 # SQL-045 String Functions and Pattern Matching (LIKE)
 
-**TL;DR** - String functions transform text in queries; LIKE and ILIKE match patterns using wildcards % and _.
+**TL;DR** - String functions transform text in queries; LIKE and ILIKE match patterns using wildcards % and \_.
 
 ---
 
@@ -4009,26 +4106,29 @@ ORDER BY domain;
 
 **Cost:** Functions in WHERE (e.g., LOWER(name)) prevent index usage unless you create a functional index. Leading-wildcard LIKE ('%term') always forces full scans. Complex text processing is better suited to application code.
 
-| Aspect | LIKE | Regex (~) | Full-text search |
-|--------|------|-----------|-----------------|
-| Complexity | Simple wildcards | Full patterns | Natural language |
-| Index support | Prefix only | pg_trgm extension | GIN/tsvector |
-| Performance | Fast for prefix | Slow without extension | Fast with GIN |
+| Aspect        | LIKE             | Regex (~)              | Full-text search |
+| ------------- | ---------------- | ---------------------- | ---------------- |
+| Complexity    | Simple wildcards | Full patterns          | Natural language |
+| Index support | Prefix only      | pg_trgm extension      | GIN/tsvector     |
+| Performance   | Fast for prefix  | Slow without extension | Fast with GIN    |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Pattern matching needs are simple (starts with, ends with, contains)
 - Data cleaning can be done per-row with UPPER, TRIM, REPLACE
 - Prefix LIKE can leverage B-tree indexes
 
 **AVOID WHEN:**
+
 - You need fuzzy matching or relevance ranking (use full-text search)
 - The pattern requires complex regex and performance matters (use pg_trgm)
 
 **PREFER Full-Text Search WHEN:**
+
 - Users expect Google-style search with ranking
 - The text column is large (articles, descriptions) and you need stemming
 
@@ -4036,23 +4136,25 @@ ORDER BY domain;
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | LIKE '%term%' uses an index | Leading wildcard prevents B-tree usage; only 'prefix%' can use a B-tree index |
-| 2 | UPPER(name) = 'ALICE' uses the index on name | Functions on columns bypass regular indexes; you need a functional index on UPPER(name) |
-| 3 | LIKE and = handle NULLs the same way | Both return NULL (not false) when the column is NULL, but developers often forget that NULL LIKE '%anything%' is NULL, not false |
+| #   | Misconception                                | Reality                                                                                                                          |
+| --- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | LIKE '%term%' uses an index                  | Leading wildcard prevents B-tree usage; only 'prefix%' can use a B-tree index                                                    |
+| 2   | UPPER(name) = 'ALICE' uses the index on name | Functions on columns bypass regular indexes; you need a functional index on UPPER(name)                                          |
+| 3   | LIKE and = handle NULLs the same way         | Both return NULL (not false) when the column is NULL, but developers often forget that NULL LIKE '%anything%' is NULL, not false |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-013 WHERE - Filtering Rows - LIKE goes in WHERE clauses
 - SQL-009 Data Types - Integers, Text, Dates, Booleans - string functions operate on TEXT/VARCHAR types
 
 **THIS:** SQL-045 String Functions and Pattern Matching (LIKE)
 
 **Next steps:**
+
 - SQL-046 Date and Time Functions - similar function family for temporal data
 - SQL-065 Implicit Conversions Kill Your Indexes - type mismatches affect string index usage
 
@@ -4205,27 +4307,30 @@ WHERE placed_at >= NOW() - INTERVAL '24 hours';
 
 **Cost:** Timezone handling adds complexity. Functions on timestamp columns (DATE_TRUNC in WHERE) prevent index usage unless you use range predicates. Daylight saving transitions create ambiguous or skipped hours.
 
-| Aspect | TIMESTAMP | TIMESTAMPTZ |
-|--------|-----------|-------------|
-| Stores timezone | No | Yes (as UTC) |
-| AT TIME ZONE | Adds timezone | Converts timezone |
-| Use case | Events in known TZ | Multi-timezone systems |
-| Recommendation | Rarely preferred | Default choice |
+| Aspect          | TIMESTAMP          | TIMESTAMPTZ            |
+| --------------- | ------------------ | ---------------------- |
+| Stores timezone | No                 | Yes (as UTC)           |
+| AT TIME ZONE    | Adds timezone      | Converts timezone      |
+| Use case        | Events in known TZ | Multi-timezone systems |
+| Recommendation  | Rarely preferred   | Default choice         |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Reports need time-series grouping (daily, monthly, quarterly)
 - You need to filter by date ranges efficiently
 - Timezone conversion is required for multi-region users
 
 **AVOID WHEN:**
+
 - You only need the date component (use DATE type, not TIMESTAMP)
 - Complex calendar logic (business days, holidays) is needed (handle in application code)
 
 **PREFER TIMESTAMPTZ WHEN:**
+
 - Your application serves users in multiple timezones
 - You need unambiguous absolute points in time (almost always)
 
@@ -4233,23 +4338,25 @@ WHERE placed_at >= NOW() - INTERVAL '24 hours';
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | TIMESTAMP and TIMESTAMPTZ store data differently | PostgreSQL stores both as UTC microseconds internally; TIMESTAMPTZ just converts on input/output, TIMESTAMP does not |
-| 2 | NOW() returns the current clock time | NOW() returns the transaction start time; it is the same value for the entire transaction, not the statement time |
-| 3 | Adding months is straightforward | Adding 1 month to Jan 31 gives Feb 28 (or 29) - month arithmetic is not uniform and can surprise you |
+| #   | Misconception                                    | Reality                                                                                                              |
+| --- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| 1   | TIMESTAMP and TIMESTAMPTZ store data differently | PostgreSQL stores both as UTC microseconds internally; TIMESTAMPTZ just converts on input/output, TIMESTAMP does not |
+| 2   | NOW() returns the current clock time             | NOW() returns the transaction start time; it is the same value for the entire transaction, not the statement time    |
+| 3   | Adding months is straightforward                 | Adding 1 month to Jan 31 gives Feb 28 (or 29) - month arithmetic is not uniform and can surprise you                 |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-009 Data Types - Integers, Text, Dates, Booleans - understand temporal types
 - SQL-032 GROUP BY and HAVING - DATE_TRUNC is used in GROUP BY for time-series
 
 **THIS:** SQL-046 Date and Time Functions
 
 **Next steps:**
+
 - SQL-045 String Functions and Pattern Matching (LIKE) - complementary function family for text
 - SQL-055 Window Functions - ROW_NUMBER, RANK, DENSE_RANK - time-series analysis with window frames
 
@@ -4408,27 +4515,30 @@ the proven bottleneck, use managed strategy.
 
 **Cost:** The framework requires discipline - measuring before deciding, monitoring after denormalizing. Teams that skip measurement make the wrong choice in both directions.
 
-| Aspect | Always normalize | Always denormalize | Decision guide |
-|--------|-----------------|-------------------|---------------|
-| Write safety | Guaranteed | At risk | Context-dependent |
-| Read speed | JOIN cost | Fast | Optimized per query |
-| Maintenance | Low | High | Targeted |
+| Aspect       | Always normalize | Always denormalize | Decision guide      |
+| ------------ | ---------------- | ------------------ | ------------------- |
+| Write safety | Guaranteed       | At risk            | Context-dependent   |
+| Read speed   | JOIN cost        | Fast               | Optimized per query |
+| Maintenance  | Low              | High               | Targeted            |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE Normalization WHEN:**
+
 - Data changes frequently and consistency is critical
 - The schema is evolving and must remain flexible
 - Query performance is acceptable with proper indexes
 
 **USE Denormalization WHEN:**
+
 - A specific query is proven slow via EXPLAIN ANALYZE
 - The read:write ratio strongly favors reads
 - A maintenance strategy (materialized view, trigger) is in place
 
 **PREFER Materialized View WHEN:**
+
 - You want denormalized reads with normalized writes
 - Slight staleness (seconds to minutes) is acceptable
 
@@ -4436,23 +4546,25 @@ the proven bottleneck, use managed strategy.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | "JOINs are slow" is a valid reason to denormalize | JOINs on indexed columns are typically fast; measure before assuming the JOIN is the bottleneck |
-| 2 | Denormalization is a one-time task | It requires ongoing maintenance: triggers, refresh schedules, drift monitoring - the cost is continuous |
-| 3 | You must choose one approach for the entire database | Normalize the core schema, denormalize specific hot-path queries - both coexist in production systems |
+| #   | Misconception                                        | Reality                                                                                                 |
+| --- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| 1   | "JOINs are slow" is a valid reason to denormalize    | JOINs on indexed columns are typically fast; measure before assuming the JOIN is the bottleneck         |
+| 2   | Denormalization is a one-time task                   | It requires ongoing maintenance: triggers, refresh schedules, drift monitoring - the cost is continuous |
+| 3   | You must choose one approach for the entire database | Normalize the core schema, denormalize specific hot-path queries - both coexist in production systems   |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-034 Normalization - 1NF, 2NF, 3NF - understand what you are preserving
 - SQL-035 Denormalization - When and Why - understand what you are trading
 
 **THIS:** SQL-047 Normalize-or-Denormalize Decision Guide
 
 **Next steps:**
+
 - SQL-042 EXPLAIN - Reading Your First Query Plan - the measurement step
 - SQL-072 Materialized Views - the safest denormalization technique
 
@@ -4619,27 +4731,30 @@ ORDER BY month;
 
 **Cost:** Complex JOIN chains can be hard to debug. Incorrect JOIN conditions produce wrong aggregates silently (doubled counts from one-to-many). Always verify with small test data first.
 
-| Aspect | SQL reports | App-side reports |
-|--------|-----------|-----------------|
-| Performance | Database-optimized | Network + loop overhead |
+| Aspect      | SQL reports            | App-side reports        |
+| ----------- | ---------------------- | ----------------------- |
+| Performance | Database-optimized     | Network + loop overhead |
 | Correctness | Set-based, declarative | Procedural, error-prone |
-| Reusability | Views, saved queries | Code-dependent |
-| Debugging | EXPLAIN ANALYZE | Debugger + print |
+| Reusability | Views, saved queries   | Code-dependent          |
+| Debugging   | EXPLAIN ANALYZE        | Debugger + print        |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Business questions require data from multiple tables
 - Dashboards need aggregated metrics (revenue, counts, averages)
 - You need top-N, trend, or comparison reports
 
 **AVOID WHEN:**
+
 - The report requires complex business logic better expressed in application code
 - Real-time streaming aggregation is needed (use a stream processor)
 
 **PREFER Views WHEN:**
+
 - The same multi-table query is used by multiple consumers
 - You want to encapsulate complexity and present a simple interface
 
@@ -4647,23 +4762,25 @@ ORDER BY month;
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | COUNT(*) after a JOIN counts customers | A one-to-many JOIN duplicates the parent row; use COUNT(DISTINCT o.id) to count orders, not duplicated customer rows |
-| 2 | SUM is safe after any JOIN | One-to-many JOINs multiply the parent's values; SUM of customer revenue is wrong if you JOIN through a one-to-many without grouping correctly |
-| 3 | LEFT JOIN always shows all left rows | Adding WHERE on a right-side column filters out NULL rows, converting the LEFT JOIN to INNER JOIN |
+| #   | Misconception                           | Reality                                                                                                                                       |
+| --- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | COUNT(\*) after a JOIN counts customers | A one-to-many JOIN duplicates the parent row; use COUNT(DISTINCT o.id) to count orders, not duplicated customer rows                          |
+| 2   | SUM is safe after any JOIN              | One-to-many JOINs multiply the parent's values; SUM of customer revenue is wrong if you JOIN through a one-to-many without grouping correctly |
+| 3   | LEFT JOIN always shows all left rows    | Adding WHERE on a right-side column filters out NULL rows, converting the LEFT JOIN to INNER JOIN                                             |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-022 Online Store DB - Phase 1 (Schema and CRUD) - the schema this phase queries
 - SQL-026 INNER JOIN - Matching Rows Across Tables - the primary join type used
 
 **THIS:** SQL-048 Online Store DB - Phase 2 (Joins and Reports)
 
 **Next steps:**
+
 - SQL-081 Online Store DB - Phase 3 (Optimization) - indexes and performance tuning
 - SQL-042 EXPLAIN - Reading Your First Query Plan - verify your Phase 2 queries are efficient
 
@@ -4827,27 +4944,30 @@ ORDER BY c.name, month;
 
 **Cost:** Time investment. Exercises on toy schemas may not capture the complexity of production queries with 10+ tables and subqueries.
 
-| Aspect | Kata practice | Reading documentation |
-|--------|-------------|---------------------|
-| Retention | High (active recall) | Low (passive) |
-| Pattern recognition | Develops | Does not develop |
-| Time investment | 30-60 min per session | Varies |
-| Transfer to production | Direct | Indirect |
+| Aspect                 | Kata practice         | Reading documentation |
+| ---------------------- | --------------------- | --------------------- |
+| Retention              | High (active recall)  | Low (passive)         |
+| Pattern recognition    | Develops              | Does not develop      |
+| Time investment        | 30-60 min per session | Varies                |
+| Transfer to production | Direct                | Indirect              |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - You are learning SQL and want to build fluency, not just understanding
 - Preparing for SQL-heavy interviews
 - Onboarding team members who know SQL syntax but lack pattern recognition
 
 **AVOID WHEN:**
+
 - You already write multi-table queries fluently in production
 - The learning gap is in optimization, not in query construction
 
 **PREFER Production Query Review WHEN:**
+
 - You already have real queries to learn from
 - The value is in understanding existing business logic, not synthetic exercises
 
@@ -4855,23 +4975,25 @@ ORDER BY c.name, month;
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | Practicing on one schema is sufficient | Vary the domain (e-commerce, HR, medical) to build transferable patterns, not schema-specific memory |
-| 2 | Getting the right answer means you are done | Time yourself - interview pressure requires producing correct queries in minutes, not hours |
-| 3 | You should memorize JOIN syntax | Memorize the patterns (when to use which type), not the syntax - syntax can be looked up, decision-making cannot |
+| #   | Misconception                               | Reality                                                                                                          |
+| --- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| 1   | Practicing on one schema is sufficient      | Vary the domain (e-commerce, HR, medical) to build transferable patterns, not schema-specific memory             |
+| 2   | Getting the right answer means you are done | Time yourself - interview pressure requires producing correct queries in minutes, not hours                      |
+| 3   | You should memorize JOIN syntax             | Memorize the patterns (when to use which type), not the syntax - syntax can be looked up, decision-making cannot |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-026 INNER JOIN - Matching Rows Across Tables - the first JOIN type to drill
 - SQL-027 LEFT JOIN and RIGHT JOIN - the second most common pattern
 
 **THIS:** SQL-049 JOIN Practice Kata
 
 **Next steps:**
+
 - SQL-048 Online Store DB - Phase 2 (Joins and Reports) - apply kata patterns to a project
 - SQL-051 SQL Interview Essentials - Working Level - validate your fluency
 
@@ -4926,6 +5048,7 @@ A **quick recall card** is a compressed learning artifact that captures the sing
 ### ⚙️ How It Works
 
 **JOINs:**
+
 - INNER JOIN: only matching rows survive both sides
 - LEFT JOIN: all left rows; right NULLed if no match
 - FULL OUTER: all rows from both; NULLs fill gaps
@@ -4933,20 +5056,24 @@ A **quick recall card** is a compressed learning artifact that captures the sing
 - Self-join: same table, two aliases, use id < id
 
 **Set Operations:**
+
 - UNION deduplicates; UNION ALL does not
 - EXCEPT = set difference; INTERSECT = set overlap
 
 **Aggregation:**
-- COUNT(*) counts rows; COUNT(col) skips NULLs
+
+- COUNT(\*) counts rows; COUNT(col) skips NULLs
 - AVG divides by non-NULL count, not total rows
 - GROUP BY partitions; HAVING filters groups
 - WHERE runs before GROUP BY; HAVING runs after
 
 **Subqueries:**
+
 - Scalar = one value; table = derived table in FROM
 - NOT IN breaks on NULLs; use NOT EXISTS instead
 
 **Design:**
+
 - 1NF = atomic; 2NF = no partial deps; 3NF = no
   transitive deps
 - Denormalize only measured bottlenecks with strategy
@@ -4954,22 +5081,26 @@ A **quick recall card** is a compressed learning artifact that captures the sing
   denormalize specific hot paths
 
 **Constraints:**
+
 - CHECK passes on NULL; pair with NOT NULL
 - DEFAULT only applies when column is omitted
 - ER diagram before CREATE TABLE
 
 **Transactions:**
+
 - BEGIN/COMMIT/ROLLBACK = atomic unit of work
 - ACID: Atomicity, Consistency (constraints),
   Isolation, Durability (WAL)
 
 **Indexes:**
+
 - B-tree: O(log N), equality + range + order
 - PK auto-indexed; FK is NOT auto-indexed
 - Index on every column = anti-pattern
 - EXPLAIN ANALYZE to verify index usage
 
 **Functions:**
+
 - CASE: first WHEN wins; always include ELSE
 - LIKE 'prefix%' uses index; '%suffix' does not
 - TIMESTAMPTZ stores UTC; converts on display
@@ -5069,27 +5200,30 @@ Slow query debugging checklist:
 
 **Cost:** Compression loses nuance. Each line is a trigger, not a complete explanation. Must be used alongside full articles, not as a replacement.
 
-| Aspect | Recall card | Full article |
-|--------|-----------|-------------|
-| Review time | 3-5 minutes | 10-15 min per keyword |
-| Depth | Trigger only | Full explanation |
-| Gap detection | Excellent | Poor (passive reading) |
-| Use case | Review, interview prep | Initial learning |
+| Aspect        | Recall card            | Full article           |
+| ------------- | ---------------------- | ---------------------- |
+| Review time   | 3-5 minutes            | 10-15 min per keyword  |
+| Depth         | Trigger only           | Full explanation       |
+| Gap detection | Excellent              | Poor (passive reading) |
+| Use case      | Review, interview prep | Initial learning       |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Reviewing before interviews, presentations, or debugging sessions
 - Building a spaced repetition habit
 - Identifying which concepts need re-study
 
 **AVOID WHEN:**
+
 - Learning a concept for the first time (use the full article)
 - You need production-level detail (use the specific keyword)
 
 **PREFER Full Article WHEN:**
+
 - You hesitate on a recall card line - that signals a knowledge gap
 - You need code examples, trade-off tables, or diagrams
 
@@ -5097,23 +5231,25 @@ Slow query debugging checklist:
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | Reading the card equals understanding | The card tests recall; if you cannot explain a line without looking, you need to re-study the full keyword |
-| 2 | One review session is sufficient | Spaced repetition (day 1, day 3, day 7, day 14) is required for long-term retention |
-| 3 | Recall cards replace detailed study | Cards are for maintenance, not initial learning - use them after you have studied the full content |
+| #   | Misconception                         | Reality                                                                                                    |
+| --- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| 1   | Reading the card equals understanding | The card tests recall; if you cannot explain a line without looking, you need to re-study the full keyword |
+| 2   | One review session is sufficient      | Spaced repetition (day 1, day 3, day 7, day 14) is required for long-term retention                        |
+| 3   | Recall cards replace detailed study   | Cards are for maintenance, not initial learning - use them after you have studied the full content         |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-026 INNER JOIN - Matching Rows Across Tables - first of the working-level keywords
 - SQL-032 GROUP BY and HAVING - core aggregation you must recall instantly
 
 **THIS:** SQL-050 SQL Working-Level Quick Recall Card
 
 **Next steps:**
+
 - SQL-051 SQL Interview Essentials - Working Level - interview-specific preparation
 - SQL-083 SQL Design-Level Knowledge Self-Assessment - next level of recall
 
@@ -5279,27 +5415,30 @@ GROUP BY c.name;
 
 **Cost:** Interview SQL is often unrealistic (whiteboard without IDE). Real production SQL involves ORMs, migrations, and tooling that interviews ignore.
 
-| Aspect | Interview SQL | Production SQL |
-|--------|-------------|---------------|
-| Environment | Whiteboard, no IDE | IDE with autocomplete |
-| Focus | Pattern fluency | Business logic, perf |
-| Error handling | Syntax from memory | Linter + compiler |
-| Optimization | Explain verbally | EXPLAIN ANALYZE |
+| Aspect         | Interview SQL      | Production SQL        |
+| -------------- | ------------------ | --------------------- |
+| Environment    | Whiteboard, no IDE | IDE with autocomplete |
+| Focus          | Pattern fluency    | Business logic, perf  |
+| Error handling | Syntax from memory | Linter + compiler     |
+| Optimization   | Explain verbally   | EXPLAIN ANALYZE       |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE WHEN:**
+
 - Preparing for technical interviews with SQL components
 - You want to identify gaps in your working-level knowledge
 - Reviewing before a live coding assessment
 
 **AVOID WHEN:**
+
 - You are preparing for a staff/principal-level interview (focus on architecture and trade-offs instead)
 - The interview is purely about system design, not SQL queries
 
 **PREFER Practice Kata WHEN:**
+
 - You need hands-on practice, not just pattern review
 - You want timed drills to build speed under pressure
 
@@ -5307,23 +5446,25 @@ GROUP BY c.name;
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | Memorizing query solutions is sufficient | Interviewers ask follow-ups: "What if there are ties?" "What if the table has 100M rows?" Understanding beats memorization |
-| 2 | SQL interviews only test query writing | Many interviews test reasoning: "When would you use a subquery vs a JOIN?" "Why not index every column?" |
-| 3 | Getting the right answer is enough | Interviewers evaluate how you think: do you clarify requirements, handle edge cases, and explain trade-offs? |
+| #   | Misconception                            | Reality                                                                                                                    |
+| --- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Memorizing query solutions is sufficient | Interviewers ask follow-ups: "What if there are ties?" "What if the table has 100M rows?" Understanding beats memorization |
+| 2   | SQL interviews only test query writing   | Many interviews test reasoning: "When would you use a subquery vs a JOIN?" "Why not index every column?"                   |
+| 3   | Getting the right answer is enough       | Interviewers evaluate how you think: do you clarify requirements, handle edge cases, and explain trade-offs?               |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-049 JOIN Practice Kata - fluency through drilled practice
 - SQL-050 SQL Working-Level Quick Recall Card - rapid concept review
 
 **THIS:** SQL-051 SQL Interview Essentials - Working Level
 
 **Next steps:**
+
 - SQL-111 SQL Deep-Dive Interview Questions - advanced interview patterns
 - SQL-080 Explain a Query Plan to Any Audience - the communication skill interviews test
 
@@ -5378,7 +5519,7 @@ The **N+1 query anti-pattern** occurs when application code executes one query t
 ### ⚙️ How It Works
 
 1. Application queries parent table: `SELECT * FROM
-   customers` -> returns N rows.
+customers` -> returns N rows.
 2. For each of the N rows, application queries child
    table: `SELECT * FROM orders WHERE customer_id = ?`.
 3. Total queries: 1 + N.
@@ -5503,26 +5644,29 @@ orders = db.query(
 
 **Cost:** JOIN result sets can be larger (duplicated parent columns). Complex JOINs may be harder to map back to object models in ORMs. LATERAL subqueries require PostgreSQL 9.3+.
 
-| Aspect | N+1 pattern | Single JOIN | Batch IN |
-|--------|-----------|-------------|----------|
-| Queries | N+1 | 1 | 2 |
-| Latency | N x RTT | 1 x RTT | 2 x RTT |
-| Code complexity | Simple loop | JOIN syntax | Moderate |
-| ORM support | Default behavior | Eager loading | Manual |
+| Aspect          | N+1 pattern      | Single JOIN   | Batch IN |
+| --------------- | ---------------- | ------------- | -------- |
+| Queries         | N+1              | 1             | 2        |
+| Latency         | N x RTT          | 1 x RTT       | 2 x RTT  |
+| Code complexity | Simple loop      | JOIN syntax   | Moderate |
+| ORM support     | Default behavior | Eager loading | Manual   |
 
 ---
 
 ### ⚡ Decision Snap
 
 **USE JOIN WHEN:**
+
 - Parent and child data live in the same database
 - The query is on a hot path (page load, API response)
 - You need the combined data in a single result set
 
 **AVOID N+1 WHEN:**
+
 - Always. There is no valid use case for N+1 in production
 
 **PREFER Batch IN WHEN:**
+
 - A JOIN is not possible (cross-service, cross-database)
 - The ORM does not support eager loading for this relationship
 
@@ -5530,23 +5674,25 @@ orders = db.query(
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-|---|--------------|---------|
-| 1 | ORMs prevent N+1 automatically | Most ORMs default to lazy loading, which IS the N+1 pattern; you must explicitly configure eager loading |
-| 2 | N+1 is only a problem at scale | Even at 50 rows, N+1 adds 100ms+ of latency that users notice; it is always a problem |
-| 3 | N+1 only affects read performance | N+1 write patterns exist too: updating rows in a loop instead of a batch UPDATE saturates the connection pool identically |
+| #   | Misconception                     | Reality                                                                                                                   |
+| --- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| 1   | ORMs prevent N+1 automatically    | Most ORMs default to lazy loading, which IS the N+1 pattern; you must explicitly configure eager loading                  |
+| 2   | N+1 is only a problem at scale    | Even at 50 rows, N+1 adds 100ms+ of latency that users notice; it is always a problem                                     |
+| 3   | N+1 only affects read performance | N+1 write patterns exist too: updating rows in a loop instead of a batch UPDATE saturates the connection pool identically |
 
 ---
 
 ### 🪜 Learning Ladder
 
 **Prerequisites:**
+
 - SQL-026 INNER JOIN - Matching Rows Across Tables - the JOIN that replaces N+1
 - SQL-027 LEFT JOIN and RIGHT JOIN - for preserving parents with no children
 
 **THIS:** SQL-052 N+1 Query Anti-Pattern
 
 **Next steps:**
+
 - SQL-102 Connection Pooling - PgBouncer and HikariCP - N+1 is the top cause of pool exhaustion
 - SQL-064 Query Performance Tuning Patterns - broader performance optimization
 
