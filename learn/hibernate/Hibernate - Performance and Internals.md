@@ -738,12 +738,12 @@ patterns.
 graph vs load graph confusion; Cartesian product risk with
 multiple collections (same as JOIN FETCH).
 
-| Approach     | Syntax       | Spring Data | Reusable |
-| ------------ | ------------ | ----------- | -------- |
-| JOIN FETCH   | JPQL string  | @Query only | No       |
-| @EntityGraph | Annotation   | Yes         | Yes      |
-| @BatchSize   | Entity-level | Automatic   | Global   |
-| Programmatic | EntityGraph API | Yes      | Dynamic  |
+| Approach     | Syntax          | Spring Data | Reusable |
+| ------------ | --------------- | ----------- | -------- |
+| JOIN FETCH   | JPQL string     | @Query only | No       |
+| @EntityGraph | Annotation      | Yes         | Yes      |
+| @BatchSize   | Entity-level    | Automatic   | Global   |
+| Programmatic | EntityGraph API | Yes         | Dynamic  |
 
 Programmatic entity graphs via `em.createEntityGraph()`
 allow runtime decisions about which associations to fetch.
@@ -2018,6 +2018,21 @@ It lives in the persistence context's internal data structures.
 6. If all fields match: skip (no SQL generated).
 7. L1 cache guarantees: same ID in same Session = same
    Java object (identity).
+8. The comparison is property-level, not object-level.
+   Hibernate iterates the `Object[]` snapshot index by
+   index using `Type.isEqual()` for each property.
+   Reference types compare by value (not identity), so
+   replacing a String with an equal String is not dirty.
+9. `DefaultFlushEntityEventListener` drives the flush
+   cycle. For each managed entity it calls
+   `findDirty()`, which delegates to the entity
+   persister's property-level comparator. If
+   `@SelectBeforeUpdate` is set, Hibernate also issues a
+   SELECT to refresh the snapshot before comparing.
+10. `@DynamicUpdate` changes the SQL output (only changed
+    columns in the SET clause) but does NOT reduce the
+    comparison cost. All properties are still compared to
+    identify which columns changed.
 
 ```text
   Load:
@@ -2115,6 +2130,12 @@ hinted.
 | 1,000 entities   | Medium  | Medium    | Noticeable  |
 | 10,000+ entities | High    | High      | Significant |
 | Read-only hinted | Normal  | NONE      | Zero        |
+| @DynamicUpdate   | Normal  | Normal    | Same check  |
+
+`@DynamicUpdate` reduces network payload (fewer SET columns)
+but the dirty checking comparison still iterates all
+properties. The gain is measurable only for wide entities
+(30+ columns) where the UPDATE SQL string itself is large.
 
 ---
 
@@ -2182,6 +2203,16 @@ transaction that loads 5,000 entities still creates 5,000
 snapshots and compares all of them at flush. The
 `@Transactional(readOnly=true)` annotation eliminates this
 entirely.
+
+Hibernate does not use bytecode-enhanced change tracking by
+default. It always does a full snapshot comparison at flush.
+The `hibernate-enhance-maven-plugin` can enable bytecode
+enhancement so that setter calls mark the entity dirty,
+skipping the snapshot comparison entirely. This is rarely
+used because the snapshot approach is fast enough for typical
+entity counts (under 1,000 per Session), and bytecode
+enhancement adds build complexity and subtle proxy behavior
+changes.
 
 ---
 
@@ -2262,6 +2293,21 @@ entity spaces to decide.
    `em.flush()` explicitly.
 5. Flush = dirty checking + SQL generation + JDBC execution.
    The transaction is NOT committed by flush.
+6. AUTO's "query space" overlap detection works by comparing
+   the tables referenced in the pending query against the
+   entity types with dirty or pending state. If you persist
+   an Order and then query Products, Hibernate recognizes
+   that the Order table is not in the Product query's space
+   and skips the flush. This optimization avoids unnecessary
+   SQL round-trips. Native SQL queries bypass this detection
+   because Hibernate cannot parse the native SQL to determine
+   which tables are involved - it flushes defensively.
+7. MANUAL mode is the recommended choice for read-only
+   transactions that unwrap the Hibernate Session. Combined
+   with `@Transactional(readOnly=true)`, MANUAL eliminates
+   both snapshot creation and flush-time comparison. Spring
+   Boot sets the JDBC connection to read-only, and MANUAL
+   ensures Hibernate never attempts to synchronize state.
 
 ```text
   persist(Order) -> in-memory only
@@ -2358,6 +2404,12 @@ flush overhead.
 | ALWAYS | Before every Q    | Highest     | Worst           |
 | MANUAL | Explicit only     | Developer   | Best (if right) |
 
+Native SQL queries always trigger a flush in AUTO mode because
+Hibernate cannot determine which tables the native query
+touches. If you mix native queries with pending entity changes
+in AUTO mode, expect flush before every native query regardless
+of whether the tables overlap.
+
 ---
 
 ### ⚡ Decision Snap
@@ -2377,6 +2429,8 @@ flush overhead.
 - Read-only operations where you want to eliminate all
   flush overhead.
 - Advanced batch processing with explicit flush control.
+- Read-only microservice endpoints that never modify data
+  and want maximum throughput.
 
 ---
 
@@ -2418,6 +2472,15 @@ not. `flush()` sends SQL to the database within the current
 transaction. If the transaction rolls back, all flushed changes
 are undone. Flush is about visibility to queries, not
 durability.
+
+Spring's `@Transactional(readOnly=true)` sets the Hibernate
+flush mode to MANUAL automatically in Spring Boot 2.x+. This
+means read-only transactions skip dirty checking entirely -
+not because dirty checking finds nothing to do, but because
+the flush is never triggered. This is why
+`@Transactional(readOnly=true)` is measurably faster than
+`@Transactional` for read-only endpoints, even when no
+entities are modified.
 
 ---
 
@@ -2493,8 +2556,15 @@ if the ID already exists in the Session.
 1. Check if persistence context has a managed entity with
    the same ID. If yes: copy state into it.
 2. If no: load from database (or L2 cache). Copy state.
+   This triggers a SELECT before the UPDATE - one extra
+   round-trip compared to the find-then-set pattern.
 3. Return the managed copy.
 4. Original instance remains detached.
+5. Accessing a lazy association on a detached entity throws
+   `LazyInitializationException` because no Session is
+   available to load the proxy. This is the most common
+   exception after closing a Session with uninitialized
+   associations.
 
 **update() [deprecated]:**
 
@@ -2502,6 +2572,10 @@ if the ID already exists in the Session.
 2. The instance itself becomes managed.
 3. If Session already has an entity with the same ID:
    throw `NonUniqueObjectException`.
+4. Hibernate 6 removed `update()`. The replacement is
+   `merge()` or `LockModeType.NONE` via
+   `em.lock(entity, LockModeType.NONE)`, which reattaches
+   without a SELECT but does not copy state.
 
 ```text
   merge():
@@ -2587,12 +2661,20 @@ same ID loaded.
 a SELECT if the entity is not in the persistence context;
 creates a snapshot for dirty checking.
 
-| Aspect        | merge()          | update() [deprecated] |
-| ------------- | ---------------- | --------------------- |
-| Standard      | JPA              | Hibernate-only        |
-| Return value  | New managed copy | void (same instance)  |
-| Same ID in PC | Works (copies)   | Throws exception      |
-| Status in H6  | Active           | Deprecated/removed    |
+| Aspect          | merge()              | update() [deprecated] |
+| --------------- | -------------------- | --------------------- |
+| Standard        | JPA                  | Hibernate-only        |
+| Return value    | New managed copy     | void (same instance)  |
+| Same ID in PC   | Works (copies)       | Throws exception      |
+| Status in H6    | Active               | Deprecated/removed    |
+| SELECT on merge | Yes (if not in PC)   | No                    |
+| LazyInit risk   | On original (detach) | None (reattached)     |
+
+The merge SELECT is avoidable: if you call `em.find(id)`
+before `merge()`, the entity is already in the persistence
+context and merge copies state without a second SELECT.
+This is why the find-then-set pattern is generally preferred
+over merge for update operations.
 
 ---
 
@@ -2655,6 +2737,17 @@ by ID, set the new values on the managed instance, and let
 dirty checking generate the UPDATE. This avoids the merge
 SELECT, avoids the "wrong instance" trap, and is idiomatic
 JPA.
+
+`LazyInitializationException` on detached entities is the most
+common Hibernate exception in Spring MVC applications. It
+happens when a controller accesses a lazy association after
+the `@Transactional` service method has returned and the
+Session is closed. The fix is not OSIV (Open Session in View)
+
+- which extends the Session to the view layer and hides the
+  real problem. The fix is to ensure all needed associations
+  are initialized within the transactional boundary using JOIN
+  FETCH, EntityGraph, or `Hibernate.initialize()`.
 
 ---
 
@@ -2749,6 +2842,22 @@ only through EntityManager methods.
 - At commit: transaction committed. At rollback: changes
   discarded.
 
+**Spring @Transactional scope:**
+
+- By default, each `@Transactional` method gets its own PC.
+  When the method returns, the PC is flushed and closed.
+- OSIV (Open Session in View) extends the PC to the HTTP
+  request lifecycle. The Session stays open through
+  controller rendering. This prevents
+  `LazyInitializationException` but allows lazy loads
+  from the view layer, causing N+1 queries outside
+  transactional control.
+- Extended persistence context (`PersistenceContextType
+.EXTENDED`) keeps the PC open across multiple requests.
+  This is an anti-pattern in web applications because it
+  ties Session state to HTTP session scope, causing memory
+  leaks and stale data.
+
 ```text
   Session opens:  PC = empty
   find(User,1):   PC = {User#1} + SELECT
@@ -2839,6 +2948,8 @@ detachment rules require understanding.
 | Identity map | One instance per ID   | Must understand scope |
 | L1 cache     | No redundant SELECTs  | Memory per entity     |
 | Unit of work | Automatic change det. | Flush cost at scale   |
+| OSIV enabled | No LazyInitEx         | N+1 from view layer   |
+| Extended PC  | Cross-request state   | Memory leak risk      |
 
 ---
 
@@ -2902,6 +3013,17 @@ the same `@Transactional` method), dirty checking automatically
 generates the UPDATE at commit. The `save()` call internally
 calls `merge()`, which is unnecessary for already-managed
 entities and wastes a SELECT.
+
+Spring Boot enables OSIV by default
+(`spring.jpa.open-in-view=true`). This keeps the Session open
+through the entire HTTP request, allowing lazy loading in
+controllers and view templates. While this prevents
+`LazyInitializationException`, it masks fetch planning
+problems and moves SQL execution outside the transactional
+boundary. Spring Boot logs a warning at startup when OSIV is
+enabled. Production applications should set
+`spring.jpa.open-in-view=false` and initialize all needed
+associations within `@Transactional` service methods.
 
 ---
 
@@ -2980,6 +3102,18 @@ update. The application must handle retry logic.
    version. Hibernate throws `OptimisticLockException`.
 6. The application catches the exception and retries or
    reports the conflict.
+7. Supported `@Version` column types: `int`/`Integer`,
+   `long`/`Long`, `short`/`Short`, and
+   `java.sql.Timestamp`. Integer types are preferred
+   because they increment deterministically. Timestamp
+   versions risk collision when two updates occur within
+   the same clock resolution (millisecond or microsecond
+   depending on the database).
+8. Retry strategy pattern: catch
+   `OptimisticLockException`, reload the entity with
+   `em.find()`, re-apply the business changes, and
+   flush again. Limit retries (typically 2-3 attempts)
+   to avoid infinite loops under sustained contention.
 
 ```text
   User A: load Order(1, v=1)
@@ -3083,6 +3217,8 @@ lost updates).
 | Conflict detect | At write time         | At lock time       |
 | Throughput      | High (no blocking)    | Lower (blocking)   |
 | Contention cost | Exception + retry     | Wait time          |
+| Version types   | int, long, Timestamp  | N/A                |
+| Retry burden    | App-level code needed | None (blocks)      |
 
 ---
 
@@ -3146,6 +3282,16 @@ adds one integer column and one extra WHERE condition on UPDATE.
 The cost of NOT having it (silent lost updates, data corruption,
 customer complaints) is orders of magnitude higher. Every
 entity that is concurrently modified should have `@Version`.
+
+When Hibernate throws `OptimisticLockException`, the current
+persistence context is poisoned - the entity's in-memory
+version no longer matches the database. You cannot simply
+catch the exception and retry in the same Session. The correct
+pattern is to start a new transaction, reload the entity with
+`em.find()`, re-apply the changes, and flush. Spring's
+`@Retryable` annotation can automate this at the service
+boundary, but each retry must use a fresh transactional
+context.
 
 ---
 
@@ -3223,6 +3369,22 @@ terminate your transaction.
    reads allowed, writes blocked).
 5. Lock scope is the transaction. Lock released at commit
    or rollback.
+6. `PESSIMISTIC_FORCE_INCREMENT` acquires an exclusive lock
+   AND increments the `@Version` column. Use this when
+   you need pessimistic locking but also want to trigger
+   `OptimisticLockException` on other transactions that
+   loaded the entity optimistically before the lock.
+7. Lock timeout is configurable via the JPA hint
+   `jakarta.persistence.lock.timeout` (milliseconds).
+   Value 0 means "fail immediately if lock unavailable"
+   (no wait). PostgreSQL supports `NOWAIT` and
+   `SKIP LOCKED` via hints. MySQL supports
+   `innodb_lock_wait_timeout`.
+8. Deadlock occurs when TX1 locks row A then requests row
+   B, while TX2 locks row B then requests row A. Both
+   block forever. The database detects this and aborts one
+   transaction. Prevention: always lock rows in a
+   consistent order (e.g., by ascending primary key).
 
 ```text
   TX1: SELECT * FROM product WHERE id=1 FOR UPDATE
@@ -3311,13 +3473,15 @@ access to contested rows; no retry logic needed.
 risk if multiple rows are locked in different orders; database
 connection held longer.
 
-| Aspect        | Pessimistic        | Optimistic          |
-| ------------- | ------------------ | ------------------- |
-| Lock timing   | At read            | At write            |
-| Blocking      | Yes (waits)        | No (exception)      |
-| Deadlock risk | Yes                | No                  |
-| Throughput    | Lower (serialized) | Higher (concurrent) |
-| Retry needed  | No (waits)         | Yes (on conflict)   |
+| Aspect        | Pessimistic         | Optimistic          |
+| ------------- | ------------------- | ------------------- |
+| Lock timing   | At read             | At write            |
+| Blocking      | Yes (waits)         | No (exception)      |
+| Deadlock risk | Yes                 | No                  |
+| Throughput    | Lower (serialized)  | Higher (concurrent) |
+| Retry needed  | No (waits)          | Yes (on conflict)   |
+| FORCE_INCR    | Lock + version bump | N/A                 |
+| Deadlock risk | Yes (multi-row)     | No                  |
 
 ---
 
@@ -3381,6 +3545,15 @@ all concurrent order operations. Locking the specific Product
 row blocks only inventory updates for that product. Scope
 your locks to the smallest unit of contention.
 
+`PESSIMISTIC_READ` (shared lock) is almost never useful in
+practice. Most databases promote shared locks to exclusive
+locks on UPDATE, so `PESSIMISTIC_READ` provides the same
+blocking behavior as `PESSIMISTIC_WRITE` once you modify the
+entity. The only scenario where `PESSIMISTIC_READ` matters is
+repeatable-read guarantees without modification - which is
+rare in application code. Default to `PESSIMISTIC_WRITE`
+unless you have a specific reason to allow concurrent reads.
+
 ---
 
 ### 📇 Revision Card
@@ -3423,6 +3596,12 @@ failure cost (is a retry acceptable or must operations be
 serialized), and atomicity requirements (does the read-check-
 write sequence need to be atomic).
 
+The decision is not global per application - it is per
+operation. A single entity may use optimistic locking for
+low-contention attribute updates and pessimistic locking for
+high-contention counter decrements. The decision framework
+evaluates each write path independently.
+
 ---
 
 ### 🧠 Mental Model
@@ -3460,6 +3639,19 @@ Decision tree:
    confirmation then fail.
 4. **Otherwise** -> Optimistic. Higher throughput, simpler
    code.
+5. **Conflict probability analysis:** Estimate the
+   probability of two transactions modifying the same row
+   within a transaction window. With 100 writes/sec on a
+   table of 1M rows and 50ms transaction duration, the
+   probability of collision on any single row is near
+   zero - optimistic is correct. With 100 writes/sec on
+   10 "hot" rows and 200ms transactions, collision
+   probability exceeds 10% - pessimistic wins.
+6. **Hybrid strategy:** Use `@Version` on the entity for
+   general updates. Use `PESSIMISTIC_WRITE` only for
+   specific operations that require read-check-write
+   atomicity. The two strategies coexist because they
+   protect different access patterns on the same entity.
 
 ```text
   Decision flow:
@@ -3522,6 +3714,20 @@ public void purchase(Long productId, int qty) {
 Why it's right: locking strategy matches the contention
 profile. CMS gets throughput. Inventory gets correctness.
 
+**Production: monitoring conflict rate:**
+
+```java
+// Count OptimisticLockException per minute
+// in your metrics framework to validate
+// your locking strategy choice:
+meterRegistry.counter(
+    "hibernate.optimistic.conflicts",
+    "entity", "Product").increment();
+// If conflicts > 5/min per entity type,
+// consider switching to pessimistic for
+// that operation.
+```
+
 **Production: combined strategy:**
 
 ```java
@@ -3547,13 +3753,15 @@ profile optimizes throughput AND correctness.
 **Cost:** Requires analysis of contention patterns; some
 entities need both strategies for different operations.
 
-| Scenario            | Strategy    | Reason            |
-| ------------------- | ----------- | ----------------- |
-| CMS article edit    | Optimistic  | Low contention    |
-| Inventory decrement | Pessimistic | Read-check-write  |
-| User profile update | Optimistic  | Low contention    |
-| Bank transfer       | Pessimistic | High correctness  |
-| Config setting      | Optimistic  | Rarely concurrent |
+| Scenario            | Strategy    | Reason                |
+| ------------------- | ----------- | --------------------- |
+| CMS article edit    | Optimistic  | Low contention        |
+| Inventory decrement | Pessimistic | Read-check-write      |
+| User profile update | Optimistic  | Low contention        |
+| Bank transfer       | Pessimistic | High correctness      |
+| Config setting      | Optimistic  | Rarely concurrent     |
+| Hybrid (both)       | Both        | Diff ops, diff risk   |
+| Hot row (>10%)      | Pessimistic | Retry storm avoidance |
 
 ---
 
@@ -3615,6 +3823,17 @@ The correct answer is often "both." A Product entity can use
 price) and `PESSIMISTIC_WRITE` specifically for inventory
 decrements. The two strategies are not mutually exclusive -
 they address different operations on the same entity.
+
+The throughput crossover point depends on contention rate.
+Below roughly 5-10% collision rate, optimistic locking
+delivers higher throughput because no transactions block.
+Above that threshold, the cost of catching exceptions,
+starting new transactions, reloading entities, and retrying
+exceeds the cost of simply waiting for a lock. Measuring
+collision rate in production (count
+`OptimisticLockException` per entity type per minute) tells
+you whether your locking strategy is correctly matched to
+your actual contention profile.
 
 ---
 
