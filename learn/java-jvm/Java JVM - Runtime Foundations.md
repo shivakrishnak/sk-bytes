@@ -83,8 +83,8 @@ keywords:
 ### 🟢 What it is
 
 The **Java Virtual Machine (JVM)** is a software-based
-execution engine that runs compiled bytecode on any operating
-system without recompilation.
+execution engine that runs compiled bytecode on any
+operating system without recompilation.
 
 ---
 
@@ -92,12 +92,9 @@ system without recompilation.
 
 In the early 1990s, shipping software meant compiling
 separately for Solaris, Windows, HP-UX, and AIX. A bug fix
-required rebuilding four binaries, testing on four machines,
-and coordinating four release cycles. Set-top boxes,
-telecom switches, and banking terminals each ran different
-processors. Sun Microsystems needed a way to write code once
-and deploy it everywhere without touching the source.
-This is exactly why the JVM exists.
+required rebuilding four binaries and coordinating four
+release cycles. Sun Microsystems needed one binary format
+that deployed everywhere without recompilation.
 
 ---
 
@@ -119,11 +116,9 @@ adapter layer.
 2. The JVM loads these class files at runtime.
 3. It verifies the bytecode is safe (no illegal memory
    access, no stack corruption).
-4. The interpreter executes bytecode instruction by
-   instruction, while the JIT compiler converts hot paths
-   to native machine code.
-5. The same `.class` file runs on Linux, Windows, or macOS
-   without modification.
+4. The JIT compiler converts hot paths to native machine
+   code while cold paths stay interpreted.
+5. The same `.class` file runs on Linux, Windows, or macOS.
 
 ---
 
@@ -132,13 +127,13 @@ adapter layer.
 **BAD:**
 
 ```c
-// C requires separate compilation per platform
+// C: separate compilation per platform
 // On Linux:  gcc -o app app.c
 // On Windows: cl app.c /Fe:app.exe
-// Two different binaries, two build pipelines
+// Two binaries, two build pipelines
 ```
 
-Why it's wrong: each OS needs its own binary artifact.
+Why it's wrong: each OS needs its own binary.
 
 **GOOD:**
 
@@ -153,8 +148,7 @@ public class App {
 }
 ```
 
-Why it's right: the `.class` file is the deployable - the
-JVM handles the OS differences.
+Why it's right: the `.class` file is the deployable.
 
 ---
 
@@ -162,16 +156,16 @@ JVM handles the OS differences.
 
 **Use when:**
 
-- Building server applications that deploy across Linux,
-  containers, and cloud environments.
-- You need a stable, garbage-collected runtime with
-  decades of production hardening.
+- Building server applications that deploy across Linux
+  and cloud environments.
+- You need a garbage-collected runtime with decades
+  of production hardening.
 
 **Avoid when:**
 
 - Writing bare-metal firmware or OS kernel code.
-- Startup time under 10ms is a hard requirement (consider
-  native compilation with GraalVM).
+- Startup time under 10ms is a hard requirement
+  (consider GraalVM native image).
 
 ---
 
@@ -180,8 +174,8 @@ JVM handles the OS differences.
 **Misconception:** "Write once, run anywhere" means zero
 platform testing.
 **Reality:** Filesystem paths, line separators, and native
-library bindings still differ across OSes. The JVM
-abstracts the CPU and memory - not every OS API.
+library bindings differ across OSes. The JVM abstracts
+CPU and memory - not every OS API.
 
 ---
 
@@ -191,8 +185,6 @@ abstracts the CPU and memory - not every OS API.
    instructions for any supported OS and CPU.
 2. Portability covers computation and memory - not
    filesystem layout or native libraries.
-3. The real win is not developers' laptops - it is
-   deploying the same artifact to heterogeneous servers.
 
 ---
 
@@ -2314,6 +2306,12 @@ This is exactly why `javap` exists.
 4. Run `javap -p Example` to include private members.
 5. Read the output: each method shows its bytecode
    instructions with offsets and operand stack effects.
+6. Combine flags: `javap -c -p -v Example` for the
+   most complete disassembly including private methods
+   and all metadata.
+
+Key flags summary: `-c` = bytecode, `-v` = verbose,
+`-p` = private, `-s` = internal signatures.
 
 ---
 
@@ -2360,6 +2358,8 @@ no guessing required.
 **Avoid when:**
 
 - Normal debugging - use a debugger, not bytecode.
+- Analyzing JIT-optimized code - use `-XX:+PrintCompilation`
+  or `-XX:+PrintAssembly` instead.
 
 ---
 

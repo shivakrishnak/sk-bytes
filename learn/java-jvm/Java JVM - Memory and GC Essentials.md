@@ -2146,7 +2146,6 @@ docker exec <cid> jcmd 1 VM.info | grep "active"
 **Next steps:**
 
 - JVM-065 JVM in Kubernetes - Resource Limits Done Right - production patterns for k8s pod sizing
-- JVM-111 Container Image Strategy for JVM Services - choosing base images and layer strategies
 
 ---
 

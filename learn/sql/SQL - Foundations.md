@@ -2316,7 +2316,7 @@ filters - they are invisible to most WHERE predicates.
 
 # SQL-019 SELECT * in Production Anti-Pattern
 
-**TL;DR** - SELECT * couples queries to schema layout; column additions, removals, or reorders silently break downstream code without any error.
+**TL;DR** - SELECT \* couples queries to schema layout; column additions, removals, or reorders silently break downstream code without any error.
 
 ---
 
@@ -2333,18 +2333,18 @@ procedures.
 ### 🎯 Why it exists
 
 When you do not know a schema, asking for everything is the
-natural starting point. The database invented SELECT * for
+natural starting point. The database invented SELECT _ for
 that exact case: a human exploring an unfamiliar table in a
 terminal session. Production code has a different contract -
 it must be stable as the schema evolves, must not fetch
 unnecessary data, and must be unambiguous about expectations.
-SELECT * breaks all three.
+SELECT _ breaks all three.
 
 ---
 
 ### 🧠 Mental Model
 
-> SELECT * is ordering "everything on the menu" at a
+> SELECT \* is ordering "everything on the menu" at a
 > restaurant. Fine when you are exploring. A disaster when the
 > kitchen adds a dish you are allergic to, or removes the one
 > dish your code was counting on.
@@ -2357,17 +2357,17 @@ runtime.
 ### ⚙️ How it works
 
 1. At execution, `*` expands to the full column list at that
-   moment. Add a column and SELECT * silently returns it.
+   moment. Add a column and SELECT \* silently returns it.
 2. When your application unpacks result rows by position,
    inserting a column before position 3 shifts all values -
    wrong data with no error.
-3. SELECT * fetches all columns through storage, network, and
+3. SELECT \* fetches all columns through storage, network, and
    memory. A 50-column table where you use 3 wastes I/O on
    47 unnecessary columns.
 4. Covering index optimization (index-only scan) is impossible
    when the query requests all columns; the engine must
    heap-fetch every matching row regardless.
-5. In JOINs, SELECT * returns duplicate column names when both
+5. In JOINs, SELECT \* returns duplicate column names when both
    tables share a name (e.g., `id`), making ORM unpacking
    ambiguous.
 
@@ -2423,25 +2423,25 @@ schema-change-proof.
 
 ### ⚠️ One Gotcha
 
-**Misconception:** SELECT * inside a VIEW is fine because
+**Misconception:** SELECT \* inside a VIEW is fine because
 views are recompiled on every use.
 
 **Reality:** PostgreSQL materializes a view's column list at
 creation time, not at query time. A column added to the
 underlying table after view creation is NOT included in
-SELECT * within the view until the view is dropped and
+SELECT \* within the view until the view is dropped and
 recreated.
 
 ---
 
 ### 📇 Revision Card
 
-1. SELECT * binds to schema at execution time; column
+1. SELECT \* binds to schema at execution time; column
    additions, removals, and reorders silently break
    position-dependent code.
 2. Explicit column lists enable covering indexes and cut I/O
    to only what the query actually needs.
-3. Inside PostgreSQL views, SELECT * is frozen at view
+3. Inside PostgreSQL views, SELECT \* is frozen at view
    creation - new columns are invisible until view recreation.
 
 ---

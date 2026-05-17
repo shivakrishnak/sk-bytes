@@ -15,11 +15,6 @@ keywords:
   - Project Loom Design Rationale
   - Designing a Scheduler from First Principles
   - The ABA Problem and Solutions
-  - Concurrency Specification Writing
-  - What Erlang Actors Teach Java Concurrency
-  - Hardware Memory Models Teach Software Ordering
-  - Transferable Pattern - Back-Pressure Across Systems
-  - Database MVCC and Java STM - Shared Isolation Idea
 difficulty_range: hard
 status: draft
 version: 1
@@ -44,11 +39,6 @@ permalink: /learn/java-concurrency/architecture-and-meta/
 10. [Project Loom Design Rationale](#project-loom-design-rationale)
 11. [Designing a Scheduler from First Principles](#designing-a-scheduler-from-first-principles)
 12. [The ABA Problem and Solutions](#the-aba-problem-and-solutions)
-13. [Concurrency Specification Writing](#concurrency-specification-writing)
-14. [What Erlang Actors Teach Java Concurrency](#what-erlang-actors-teach-java-concurrency)
-15. [Hardware Memory Models Teach Software Ordering](#hardware-memory-models-teach-software-ordering)
-16. [Transferable Pattern - Back-Pressure Across Systems](#transferable-pattern---back-pressure-across-systems)
-17. [Database MVCC and Java STM - Shared Isolation Idea](#database-mvcc-and-java-stm---shared-isolation-idea)
 
 ---
 
@@ -1239,9 +1229,11 @@ sequenceDiagram
 
 ```
 # Prometheus TSDB stats: check series count
-curl localhost:9090/api/v1/status/tsdb | jq '.data.numSeries'
+curl localhost:9090/api/v1/status/tsdb \
+  | jq '.data.numSeries'
 # Find high-cardinality labels:
-topk(10, count by (__name__)({__name__=~"executor.*"}))
+topk(10,
+  count by (__name__)({__name__=~"executor.*"}))
 ```
 
 **Fix:**
@@ -1376,7 +1368,7 @@ The single most valuable concurrency metric is not lock contention time or threa
 
 # Java 19 to 25 Virtual Threads Migration Strategy
 
-**TL;DR** - Migrating to virtual threads requires identifying pinning risks (synchronized + blocking I/O), replacing ThreadLocal with ScopedValue, validating library compatibility, and incrementally converting thread pools from platform to virtual threads across JDK versions.
+**TL;DR** - Virtual thread migration requires auditing synchronized-pinning, replacing ThreadLocal with ScopedValue, validating library compatibility, and phased pool conversion across JDK versions.
 
 ### 🔥 Problem Statement
 
@@ -1733,6 +1725,43 @@ Use real incidents as workshop inputs ("last quarter's OOM was caused by unbound
 **Phase 4 - Failure Catalog:** Collectively enumerate failure modes for each design. Rank by severity x probability.
 
 **Phase 5 - Decision Record:** Write ADR: chosen approach, rejected alternatives with reasons, identified risks with mitigations.
+
+**BAD:**
+
+```java
+// Workshop output: API-level answer only
+// "Use ConcurrentHashMap for the rate limiter"
+// No justification, no failure modes, no alternatives
+class RateLimiter {
+    ConcurrentHashMap<String, AtomicInteger> counts;
+    boolean allow(String key) {
+        return counts.computeIfAbsent(key,
+            k -> new AtomicInteger(0))
+            .incrementAndGet() < limit;
+    }
+}
+```
+
+Why it's wrong: no thread model reasoning, no failure analysis, no scale consideration. This is code, not architecture.
+
+**GOOD:**
+
+```java
+// Workshop output: architecture decision
+// Thread model: Virtual threads (I/O-bound checks)
+// Sync: Local sliding window + async Redis sync
+// Failure: Redis partition -> local-only (over-admit
+//   bounded by sync interval * local rate)
+// Scale: shard by key prefix at >500K req/s
+class RateLimiter {
+    // Local check: O(1), no network
+    SlidingWindow local;
+    // Async sync: bounded staleness
+    ScheduledExecutorService syncer;
+}
+```
+
+Why it's right: documents WHY (thread model), WHAT FAILS (partition), and WHEN TO CHANGE (scale threshold).
 
 ```text
 Example Designs Compared:
@@ -2132,7 +2161,7 @@ The strongest staff-level signal in concurrency interviews is not the proposed s
 
 # JMM Formal Semantics (Manson, Pugh, Adve 2005)
 
-**TL;DR** - The Java Memory Model (JSR 133, Manson/Pugh/Adve 2005) defines the formal rules for when writes by one thread become visible to reads by another, establishing the happens-before partial order that makes concurrent Java programs portable across hardware architectures.
+**TL;DR** - JSR 133 formalizes happens-before rules governing cross-thread write visibility, making concurrent Java portable across hardware memory models.
 
 ### 🔥 Problem Statement
 
@@ -2185,14 +2214,14 @@ Happens-Before Edges (key rules):
   x = 42;
   lock(m);
   unlock(m);
-                        lock(m);      <- HB edge
-                        read x;       <- sees 42 (guaranteed)
-                        unlock(m);
+                     lock(m);    <- HB edge
+                     read x;     <- sees 42
+                     unlock(m);
 
   volatile_write(v);
-                        volatile_read(v); <- HB edge
-                        read x;           <- sees all writes
-                                             before vol_write
+                     volatile_read(v); <- HB edge
+                     read x;       <- sees all writes
+                                      before vol_write
 ```
 
 ```mermaid
@@ -2200,7 +2229,7 @@ flowchart TD
     A[Thread A: x = 42] --> B[Thread A: unlock m]
     B -->|happens-before| C[Thread B: lock m]
     C --> D[Thread B: read x = 42]
-    E[Thread A: volatile write v] -->|happens-before| F[Thread B: volatile read v]
+    E[Thread A: vol write v] -->|HB| F[Thread B: vol read v]
     F --> G[Thread B: sees all prior writes]
 ```
 
@@ -2397,7 +2426,7 @@ The JMM's most controversial feature - causality requirements (preventing out-of
 
 # Project Loom Design Rationale
 
-**TL;DR** - Project Loom chose user-mode continuations multiplexed onto ForkJoinPool carriers, preserving Thread API compatibility, to give Java million-thread concurrency with blocking-style code - rejecting colored functions, new APIs, and bytecode-level CPS transforms.
+**TL;DR** - Loom chose JVM-level continuations on ForkJoinPool carriers, preserving Thread API compatibility for million-thread concurrency without colored functions.
 
 ### 🔥 Problem Statement
 
@@ -2926,7 +2955,7 @@ The ForkJoinPool work-stealing algorithm uses a counterintuitive dual-ended dequ
 
 # The ABA Problem and Solutions
 
-**TL;DR** - The ABA problem occurs when a CAS (compare-and-swap) operation succeeds because the expected value appears unchanged (A), but the location was actually modified to B and back to A between the read and the CAS - masking an intervening state change that invalidates assumptions.
+**TL;DR** - ABA: CAS succeeds because the value looks unchanged (A), but was modified to B and restored to A, masking state changes that corrupt lock-free structures.
 
 ### 🔥 Problem Statement
 

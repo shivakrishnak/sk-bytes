@@ -541,10 +541,10 @@ scenarios, but that is a rare edge case, not a general pattern.
 5. Subsequent operations fail silently or corrupt data.
 
 ```text
-Good:  catch (IOException e)     -> specific, recoverable
-OK:    catch (Exception e)       -> broad but excludes Errors
-BAD:   catch (Throwable t)       -> includes OOM, SOE, etc.
-WORST: catch (Throwable t) { }   -> swallows everything
+Good:  catch (IOException e)   -> specific, recoverable
+OK:    catch (Exception e)     -> broad, excludes Errors
+BAD:   catch (Throwable t)     -> includes OOM, SOE, etc.
+WORST: catch (Throwable t) { } -> swallows everything
 ```
 
 ```mermaid
@@ -1171,8 +1171,8 @@ move operations. NIO.2 `Files.move()` with
 ```text
 Legacy:                    NIO.2:
   new File("a.txt")          Path.of("a.txt")
-  file.delete() -> boolean   Files.delete(path) -> void/throws
-  file.list() -> String[]    Files.list(dir) -> Stream<Path>
+  file.delete() -> boolean  Files.delete(path) -> throws
+  file.list()   -> String[] Files.list(dir) -> Stream<>
   No symlink support         Files.isSymbolicLink(path)
 ```
 
