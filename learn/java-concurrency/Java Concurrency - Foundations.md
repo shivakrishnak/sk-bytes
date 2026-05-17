@@ -25,7 +25,7 @@ keywords:
   - Thread Safety Exercise - Broken Counter
   - Concurrent Chat - Phase 1 (Raw Threads)
 difficulty_range: easy
-status: draft
+status: complete
 version: 1
 layout: default
 parent: "Java Concurrency"
