@@ -46,7 +46,10 @@ per `LEARN_PROMPT.md` v1.0 (tri-template auto-routing).
 | [Java JVM - Production Diagnostics Part 1](Java%20JVM%20-%20Production%20Diagnostics%20Part%201.md) | 9        | L4             | stub   |
 | [Java JVM - Production Diagnostics Part 2](Java%20JVM%20-%20Production%20Diagnostics%20Part%202.md) | 9        | L4             | stub   |
 | [Java JVM - Production Diagnostics Part 3](Java%20JVM%20-%20Production%20Diagnostics%20Part%203.md) | 8        | L4             | stub   |
-| [Java JVM - Architecture and Strategy](Java%20JVM%20-%20Architecture%20and%20Strategy.md)           | 31       | L5 + L6 + META | stub   |
+| [Java JVM - Architecture and Strategy Part 1](Java%20JVM%20-%20Architecture%20and%20Strategy%20Part%201.md) | 8  | L5             | complete |
+| [Java JVM - Architecture and Strategy Part 2](Java%20JVM%20-%20Architecture%20and%20Strategy%20Part%202.md) | 8  | L5 + L6        | complete |
+| [Java JVM - Architecture and Strategy Part 3](Java%20JVM%20-%20Architecture%20and%20Strategy%20Part%203.md) | 8  | L6             | complete |
+| [Java JVM - Architecture and Strategy Part 4](Java%20JVM%20-%20Architecture%20and%20Strategy%20Part%204.md) | 7  | L6 + META      | complete |
 
 ## Keyword table
 
