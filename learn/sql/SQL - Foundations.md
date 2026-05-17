@@ -10,7 +10,7 @@ category: SQL
 code: SQL
 folder: learn/sql/
 difficulty_range: easy
-status: draft
+status: complete
 version: 1
 generated_from: LEARN_KEYWORD_GENERATOR.md v1.0
 archetype: LANGUAGE
@@ -64,7 +64,7 @@ keywords:
 16. [SQL-016 Primary Keys and Uniqueness](#sql-016-primary-keys-and-uniqueness)
 17. [SQL-017 Foreign Keys and Relationships](#sql-017-foreign-keys-and-relationships)
 18. [SQL-018 NULL - The Three-Valued Logic Trap](#sql-018-null---the-three-valued-logic-trap)
-19. [SQL-019 SELECT \* in Production Anti-Pattern](#sql-019-select--in-production-anti-pattern)
+19. [SQL-019 SELECT * in Production Anti-Pattern](#sql-019-select--in-production-anti-pattern)
 20. [SQL-020 psql and pgAdmin - First Tools](#sql-020-psql-and-pgadmin---first-tools)
 21. [SQL-021 DBeaver - Universal Database Client](#sql-021-dbeaver---universal-database-client)
 22. [SQL-022 Online Store DB - Phase 1 (Schema and CRUD)](#sql-022-online-store-db---phase-1-schema-and-crud)
@@ -90,15 +90,12 @@ concurrent access that files and spreadsheets cannot provide.
 
 ### 🎯 Why it exists
 
-Picture a growing company tracking orders in CSV files on a
-shared drive. Two people edit the same file simultaneously and
-one overwrites the other's changes. A third person deletes a
-row by accident - no undo. Someone asks "what were total sales
-last quarter?" and the answer requires manually opening twelve
-files and hoping the columns match. The data has no enforced
-structure, no protection against contradictions, and no way to
-answer questions without manual labor. This is exactly why
-databases exist.
+Two people edit the same CSV simultaneously and one overwrites
+the other. A third deletes a row - no undo. Someone asks
+"what were total sales last quarter?" and the answer requires
+opening twelve files and hoping columns match. No enforced
+structure, no concurrency protection, no efficient queries.
+This is exactly why databases exist.
 
 ---
 
@@ -115,16 +112,16 @@ with inventory control.
 
 ### ⚙️ How it works
 
-1. You define a schema - the shape of your data (tables,
-   columns, types, constraints) - before storing anything.
-2. The database engine enforces those rules on every write,
-   rejecting invalid data at the door.
-3. Concurrent users read and write simultaneously through
-   transactions that isolate their changes from each other.
-4. Queries let you ask complex questions across millions of
-   rows in seconds, without writing loops or opening files.
-5. The engine persists data to disk with crash recovery, so
-   a power failure does not corrupt your records.
+1. You define a schema (tables, columns, types, constraints)
+   before storing anything.
+2. The engine enforces those rules on every write, rejecting
+   invalid data immediately.
+3. Concurrent users read and write via transactions that
+   isolate their changes from each other.
+4. Queries answer complex questions across millions of rows
+   without writing loops or opening files.
+5. Crash recovery persists data to disk so a power failure
+   does not corrupt records.
 
 ---
 
@@ -141,7 +138,7 @@ with open("orders.csv", "a") as f:
 ```
 
 Why it's wrong: nothing stops invalid data, duplicate IDs,
-or two processes writing at the same instant.
+or two processes writing simultaneously.
 
 **GOOD:**
 
@@ -151,14 +148,12 @@ CREATE TABLE orders (
     total NUMERIC(10,2) NOT NULL CHECK (total > 0),
     placed DATE NOT NULL
 );
-
--- Database rejects bad data automatically
 INSERT INTO orders (id, total, placed)
 VALUES (101, 59.99, '2024-03-15');
 ```
 
 Why it's right: the schema enforces types, rejects nulls,
-and the primary key prevents duplicate IDs.
+and prevents duplicate IDs automatically.
 
 ---
 
@@ -166,29 +161,26 @@ and the primary key prevents duplicate IDs.
 
 **Use when:**
 
-- Multiple users or services need to read and write the
-  same data concurrently without losing changes.
-- You need to query, filter, or aggregate data rather than
-  just store and retrieve whole files.
+- Multiple users or services need to read/write the same
+  data concurrently without losing changes
+- You need to query, filter, or aggregate across many records
 
 **Avoid when:**
 
-- You are storing opaque binary blobs (images, video) with
-  no need to query their contents.
-- A single config file or static JSON is sufficient and
-  will never be edited concurrently.
+- Storing opaque blobs with no structured query need
+- A single config file or static JSON works and is never
+  edited concurrently
 
 ---
 
 ### ⚠️ One Gotcha
 
-**Misconception:** "My app is small, so I can just use files
-and switch to a database later."
-**Reality:** Migrating from files to a database after
-launch means rewriting every read/write path, inventing a
-migration for existing data, and fixing every bug where
-file-based code assumed no concurrency. Starting with a
-database (even SQLite) costs almost nothing upfront.
+**Misconception:** "My app is small - use files now, add a
+database later."
+
+**Reality:** Migrating from files after launch means
+rewriting every I/O path, migrating data, and retrofitting
+concurrency safety. Starting with SQLite costs nothing upfront.
 
 ---
 
@@ -196,10 +188,10 @@ database (even SQLite) costs almost nothing upfront.
 
 1. Databases enforce structure, reject bad data, and handle
    concurrent access - files do none of these.
-2. The cost is learning SQL and managing a server (or using
-   embedded SQLite for zero setup).
+2. The cost: learning SQL and managing a server (or SQLite
+   for near-zero setup overhead).
 3. "I'll add a database later" is the migration nobody wants
-   to do under production pressure.
+   to run under production pressure.
 
 ---
 
@@ -1927,7 +1919,128 @@ BY. If order matters, specify it explicitly.
 
 # SQL-016 Primary Keys and Uniqueness
 
-> Entry stub. Generate full content using LEARN_PROMPT.md v1.0. Template: SIMPLE.
+**TL;DR** - A primary key uniquely identifies every row; the database enforces uniqueness and non-null at write time.
+
+---
+
+### 🟢 What it is
+
+A **primary key** is a column (or minimal set of columns) that
+uniquely identifies each row in a table, with the database
+automatically enforcing both uniqueness and NOT NULL on every
+write.
+
+---
+
+### 🎯 Why it exists
+
+Without a row identifier, you cannot reliably update, delete,
+or reference a single record. If two orders share the same ID,
+every `UPDATE WHERE id = 5` hits both; every JOIN is ambiguous;
+every DELETE risks collateral damage. The relational model
+requires each row to be uniquely addressable. This is exactly
+why primary keys exist.
+
+---
+
+### 🧠 Mental Model
+
+> A primary key is a passport number. Every person in the
+> system gets exactly one, no two people share one, and the
+> issuing authority (the database) rejects any attempt to
+> register without one.
+
+**Memory hook:** Passport number for every row - unique,
+non-null, forever.
+
+---
+
+### ⚙️ How it works
+
+1. Declaring `id BIGSERIAL PRIMARY KEY` auto-increments and
+   automatically creates a unique B-tree index on `id`.
+2. Every INSERT is validated: if the value already exists the
+   engine raises a constraint violation before any commit.
+3. NOT NULL is implicit - an unknown identifier cannot uniquely
+   identify anything, so NULL is permanently disallowed.
+4. Other tables reference primary keys through FOREIGN KEY
+   constraints, forming the relational join graph.
+5. Surrogate keys (BIGSERIAL, UUID) are system-generated;
+   natural keys (email, ISBN) come from real-world data. Both
+   work; choose based on stability requirements.
+
+---
+
+### ✏️ Minimal Example
+
+**BAD:**
+
+```sql
+CREATE TABLE orders (
+    order_date  DATE,
+    customer_id INTEGER
+    -- No primary key: two rows with same customer
+    -- and date are indistinguishable.
+    -- DELETE WHERE customer_id = 7 deletes all
+    -- of that customer's orders.
+);
+```
+
+Why it's wrong: no unique row address makes any targeted
+mutation unsafe.
+
+**GOOD:**
+
+```sql
+CREATE TABLE orders (
+    id          BIGSERIAL PRIMARY KEY,
+    order_date  DATE      NOT NULL,
+    customer_id INTEGER   NOT NULL
+);
+-- id auto-increments, unique, never null.
+-- DELETE FROM orders WHERE id = 1042 is safe.
+```
+
+Why it's right: every row has a stable, unique address the
+engine enforces on every write.
+
+---
+
+### ⚡ When to use / Not to use
+
+**Use when:**
+
+- Creating any table that stores entities - there is no valid
+  skip case
+- Other tables need to reference rows via FOREIGN KEY
+
+**Avoid when:**
+
+- No valid avoid case exists: every table must have a primary
+  key; junction tables use composite PKs but still need one
+
+---
+
+### ⚠️ One Gotcha
+
+**Misconception:** UNIQUE and PRIMARY KEY are interchangeable
+because both prevent duplicate values.
+
+**Reality:** UNIQUE allows multiple NULLs (NULL != NULL in SQL
+three-valued logic). PRIMARY KEY implies UNIQUE AND NOT NULL.
+A table can have many UNIQUE constraints but exactly one
+primary key.
+
+---
+
+### 📇 Revision Card
+
+1. PRIMARY KEY = UNIQUE + NOT NULL; auto-creates a B-tree
+   index and is the JOINable address of every row.
+2. The engine validates every INSERT and UPDATE against the PK
+   constraint before commit - violations are immediate errors.
+3. UNIQUE allows multiple NULLs; PRIMARY KEY never permits
+   NULL - they are not interchangeable.
 
 ---
 
@@ -1935,7 +2048,137 @@ BY. If order matters, specify it explicitly.
 
 # SQL-017 Foreign Keys and Relationships
 
-> Entry stub. Generate full content using LEARN_PROMPT.md v1.0. Template: SIMPLE.
+**TL;DR** - A foreign key constrains a column to only contain values that exist as a primary key in another table.
+
+---
+
+### 🟢 What it is
+
+A **foreign key** is a referential integrity constraint: every
+value written to the FK column must already exist as a primary
+key (or unique key) in the referenced table, enforced by the
+engine on every write.
+
+---
+
+### 🎯 Why it exists
+
+Without enforcement you can delete a customer who still has
+200 orders. Those orders now reference a ghost - the customer
+no longer exists. JOINs return no customer data; billing logic
+silently skips valid charges; reports show orphaned rows. The
+error is invisible until a downstream process fails. This is
+exactly why foreign keys exist.
+
+---
+
+### 🧠 Mental Model
+
+> A foreign key is a hotel key card. It only works if the room
+> it claims to open actually exists in the hotel's system. The
+> front desk (the database) refuses to issue a card for a room
+> that does not exist.
+
+**Memory hook:** Only reference what exists. The DB is the
+directory.
+
+---
+
+### ⚙️ How it works
+
+1. `order_id INTEGER REFERENCES orders(id)` tells the engine
+   every value written to `order_id` must exist in `orders.id`.
+2. On INSERT to the child: the engine verifies the referenced
+   row exists; if not, the INSERT fails with a constraint
+   violation immediately.
+3. On DELETE from the parent: behavior is set by `ON DELETE` -
+   `RESTRICT` blocks deletion, `CASCADE` deletes all children,
+   `SET NULL` clears the FK column.
+4. FK lookups are fast because the referenced column (usually
+   the PK) is already indexed. PostgreSQL recommends indexing
+   the FK column on the child side for reverse lookups.
+5. FKs create implicit row-level lock dependencies - a parent
+   row cannot be deleted while a concurrent child INSERT is
+   in-flight.
+
+---
+
+### ✏️ Minimal Example
+
+**BAD:**
+
+```sql
+CREATE TABLE order_items (
+    order_id   INTEGER,
+    product_id INTEGER,
+    quantity   INTEGER
+    -- No FK: nothing stops order_id 999
+    -- when order 999 was deleted last week.
+    -- Ghost rows accumulate silently.
+);
+```
+
+Why it's wrong: orphaned rows corrupt reports without any
+error signal.
+
+**GOOD:**
+
+```sql
+CREATE TABLE order_items (
+    id         BIGSERIAL PRIMARY KEY,
+    order_id   INTEGER NOT NULL
+               REFERENCES orders(id)
+               ON DELETE CASCADE,
+    product_id INTEGER NOT NULL
+               REFERENCES products(id),
+    quantity   INTEGER NOT NULL
+);
+```
+
+Why it's right: the DB guarantees order_items can only exist
+alongside a real parent order.
+
+---
+
+### ⚡ When to use / Not to use
+
+**Use when:**
+
+- Any parent-child relationship where child rows must not
+  outlive their parent
+- Data integrity matters more than maximum bulk-insert speed
+
+**Avoid when:**
+
+- Very high-volume bulk-import pipelines where FK validation
+  creates contention (disable temporarily with safeguards)
+- Pure event log tables where referenced records may
+  legitimately not exist yet
+
+---
+
+### ⚠️ One Gotcha
+
+**Misconception:** `ON DELETE CASCADE` is the safest option
+because it automatically cleans up orphans.
+
+**Reality:** CASCADE silently deletes all child rows when a
+parent is deleted - no separate log entry, no undo. Delete
+one customer and CASCADE removes their orders, items, and
+reviews. Use RESTRICT when child data has independent business
+value; the constraint error forces calling code to explicitly
+handle deletion order.
+
+---
+
+### 📇 Revision Card
+
+1. FK enforces referential integrity at write time - orphan
+   rows are rejected on INSERT, not discovered at query time.
+2. ON DELETE CASCADE is powerful but silent: it deletes all
+   child rows; RESTRICT is safer for business-critical data.
+3. Index the FK column on the child side for efficient reverse
+   lookups (parent-to-children JOIN performance).
 
 ---
 
@@ -1943,15 +2186,263 @@ BY. If order matters, specify it explicitly.
 
 # SQL-018 NULL - The Three-Valued Logic Trap
 
-> Entry stub. Generate full content using LEARN_PROMPT.md v1.0. Template: SIMPLE.
+**TL;DR** - NULL is unknown, not empty; any comparison with NULL returns UNKNOWN, not TRUE or FALSE, silently excluding rows.
+
+---
+
+### 🟢 What it is
+
+**NULL** in SQL represents an absent, unknown, or inapplicable
+value. It is not zero, not empty string, and not false. Every
+arithmetic and boolean operation involving NULL propagates
+NULL - uncertainty is contagious.
+
+---
+
+### 🎯 Why it exists
+
+Real data has gaps. A customer's phone number may be unknown.
+An order's delivery date may not yet exist. The relational
+model needed a way to represent "not yet known" without
+conflating it with zero or empty string. Edgar Codd introduced
+NULL to carry that semantic. The problem is that NULL
+introduces three-valued logic (TRUE, FALSE, UNKNOWN) that
+most engineers expect to be two-valued. This is exactly why
+NULL is a trap.
+
+---
+
+### 🧠 Mental Model
+
+> NULL is a sealed envelope. You do not know what is inside -
+> maybe it is relevant, maybe it is not. Asking "is the
+> envelope equal to X?" does not give you yes or no; it gives
+> you "I don't know." That is UNKNOWN.
+
+**Memory hook:** NULL = question mark. Comparing anything to
+a question mark gives another question mark.
+
+---
+
+### ⚙️ How it works
+
+1. `NULL = NULL` is UNKNOWN, not TRUE. The only correct test
+   for NULL is `IS NULL` or `IS NOT NULL`.
+2. `NULL <> 5` is UNKNOWN, not TRUE. Rows where a column IS
+   NULL are silently excluded from `WHERE column <> 5`.
+3. Three-valued AND/OR: `NULL AND FALSE` = FALSE (known false
+   dominates). `NULL OR TRUE` = TRUE (known true dominates).
+   All other NULL combinations = UNKNOWN.
+4. Aggregate functions (SUM, AVG, COUNT) ignore NULLs
+   silently. `COUNT(*)` counts all rows; `COUNT(column)` counts
+   only non-null rows - they differ on the same table.
+5. `NOT IN` with a NULL-containing subquery returns no rows:
+   `id NOT IN (1, 2, NULL)` is UNKNOWN because `id != NULL`
+   is UNKNOWN - not FALSE.
+
+---
+
+### ✏️ Minimal Example
+
+**BAD:**
+
+```sql
+-- Finding customers with no discount
+SELECT name FROM customers
+WHERE discount = NULL;
+-- Returns 0 rows. Always.
+-- NULL = NULL is UNKNOWN, not TRUE.
+```
+
+Why it's wrong: equality comparison with NULL always yields
+UNKNOWN - never matches any row.
+
+**GOOD:**
+
+```sql
+SELECT name FROM customers
+WHERE discount IS NULL;
+-- IS NULL correctly tests for absence.
+-- Returns all customers with no discount.
+```
+
+Why it's right: `IS NULL` is the only operator that correctly
+tests for unknown values.
+
+---
+
+### ⚡ When to use / Not to use
+
+**Use when:**
+
+- A value is genuinely unknown or inapplicable - not zero,
+  not empty string, not "N/A"
+- The absence of a value has distinct business meaning that
+  no sentinel value can cleanly represent
+
+**Avoid when:**
+
+- Using `NOT IN` with a subquery that can return NULLs;
+  use `NOT EXISTS` instead
+- Aggregations must account for missing values; fill with
+  `COALESCE(column, 0)` or a default
+
+---
+
+### ⚠️ One Gotcha
+
+**Misconception:** `WHERE column != 'value'` returns all rows
+that are not 'value', including rows where column is NULL.
+
+**Reality:** `NULL != 'value'` is UNKNOWN, not TRUE. The WHERE
+clause eliminates any row where the predicate is not TRUE.
+NULL rows silently disappear from both equality and inequality
+filters - they are invisible to most WHERE predicates.
+
+---
+
+### 📇 Revision Card
+
+1. NULL = UNKNOWN: `=`, `!=`, `<`, `>` with NULL always
+   returns UNKNOWN, never TRUE; use IS NULL / IS NOT NULL.
+2. `NOT IN (subquery)` returns zero rows if the subquery
+   contains any NULL - use `NOT EXISTS` instead.
+3. `COUNT(column)` skips NULLs; `COUNT(*)` does not - they
+   produce different counts on the same table.
 
 ---
 
 ---
 
-# SQL-019 SELECT \* in Production Anti-Pattern
+# SQL-019 SELECT * in Production Anti-Pattern
 
-> Entry stub. Generate full content using LEARN_PROMPT.md v1.0. Template: SIMPLE.
+**TL;DR** - SELECT * couples queries to schema layout; column additions, removals, or reorders silently break downstream code without any error.
+
+---
+
+### 🟢 What it is
+
+**SELECT \*** is a shorthand that retrieves every column
+currently in a table or join result at execution time. It is
+appropriate for interactive exploration but an anti-pattern in
+any query embedded in application code, views, or stored
+procedures.
+
+---
+
+### 🎯 Why it exists
+
+When you do not know a schema, asking for everything is the
+natural starting point. The database invented SELECT * for
+that exact case: a human exploring an unfamiliar table in a
+terminal session. Production code has a different contract -
+it must be stable as the schema evolves, must not fetch
+unnecessary data, and must be unambiguous about expectations.
+SELECT * breaks all three.
+
+---
+
+### 🧠 Mental Model
+
+> SELECT * is ordering "everything on the menu" at a
+> restaurant. Fine when you are exploring. A disaster when the
+> kitchen adds a dish you are allergic to, or removes the one
+> dish your code was counting on.
+
+**Memory hook:** Wildcard in production = unknown menu at
+runtime.
+
+---
+
+### ⚙️ How it works
+
+1. At execution, `*` expands to the full column list at that
+   moment. Add a column and SELECT * silently returns it.
+2. When your application unpacks result rows by position,
+   inserting a column before position 3 shifts all values -
+   wrong data with no error.
+3. SELECT * fetches all columns through storage, network, and
+   memory. A 50-column table where you use 3 wastes I/O on
+   47 unnecessary columns.
+4. Covering index optimization (index-only scan) is impossible
+   when the query requests all columns; the engine must
+   heap-fetch every matching row regardless.
+5. In JOINs, SELECT * returns duplicate column names when both
+   tables share a name (e.g., `id`), making ORM unpacking
+   ambiguous.
+
+---
+
+### ✏️ Minimal Example
+
+**BAD:**
+
+```sql
+-- ORM model fetching user rows
+SELECT * FROM users WHERE active = true;
+-- When 'profile_image_bytes' BYTEA is added,
+-- the app now silently receives a 2 MB blob
+-- per user in every query.
+```
+
+Why it's wrong: future schema changes silently alter query
+output and performance without any code change.
+
+**GOOD:**
+
+```sql
+SELECT id, email, display_name, created_at
+FROM users
+WHERE active = true;
+-- Explicit list: adding a column to users
+-- does not affect this query at all.
+```
+
+Why it's right: the query contract is explicit and
+schema-change-proof.
+
+---
+
+### ⚡ When to use / Not to use
+
+**Use when:**
+
+- Interactive ad-hoc queries in psql, DBeaver, or pgAdmin
+  during schema exploration
+- Quick one-off diagnostic queries where schema stability
+  is guaranteed
+
+**Avoid when:**
+
+- Any SQL embedded in application code, ORM models, views,
+  or stored procedures
+- JOINs across multiple tables where column name collisions
+  create ambiguous result sets
+
+---
+
+### ⚠️ One Gotcha
+
+**Misconception:** SELECT * inside a VIEW is fine because
+views are recompiled on every use.
+
+**Reality:** PostgreSQL materializes a view's column list at
+creation time, not at query time. A column added to the
+underlying table after view creation is NOT included in
+SELECT * within the view until the view is dropped and
+recreated.
+
+---
+
+### 📇 Revision Card
+
+1. SELECT * binds to schema at execution time; column
+   additions, removals, and reorders silently break
+   position-dependent code.
+2. Explicit column lists enable covering indexes and cut I/O
+   to only what the query actually needs.
+3. Inside PostgreSQL views, SELECT * is frozen at view
+   creation - new columns are invisible until view recreation.
 
 ---
 
@@ -1959,7 +2450,135 @@ BY. If order matters, specify it explicitly.
 
 # SQL-020 psql and pgAdmin - First Tools
 
-> Entry stub. Generate full content using LEARN_PROMPT.md v1.0. Template: SIMPLE.
+**TL;DR** - psql is PostgreSQL's terminal client; pgAdmin is the official GUI - both essential from first query to production diagnostics.
+
+---
+
+### 🟢 What it is
+
+**psql** is PostgreSQL's bundled interactive terminal client:
+connect, run SQL, and inspect schema using backslash
+meta-commands. **pgAdmin** is the official open-source GUI: a
+web-based interface providing a schema browser, query editor,
+and server monitoring dashboard.
+
+---
+
+### 🎯 Why it exists
+
+Installing PostgreSQL gives you an engine with no interface.
+You need tools to connect, type queries, see results, and
+inspect schema. psql ships with PostgreSQL and works on any
+system - it is the reference client that works even over SSH.
+pgAdmin was built to make PostgreSQL accessible to engineers
+who need visual feedback on schema structure, query plans, and
+server health. This is exactly why both tools exist and why
+knowing both matters.
+
+---
+
+### 🧠 Mental Model
+
+> psql is a calculator: you type the expression, it returns
+> the answer. pgAdmin is the same calculator with a
+> touchscreen and graphs. Same math, different interface for
+> different contexts.
+
+**Memory hook:** psql = precision terminal; pgAdmin = visual
+layer over the same engine.
+
+---
+
+### ⚙️ How it works
+
+1. Connect with psql: `psql -U postgres -d mydb`. You land at
+   `mydb=#`. Meta-commands start with `\`: `\dt` lists tables,
+   `\d tablename` describes a table, `\l` lists databases,
+   `\q` exits.
+2. Any line not starting with `\` is sent to the server as
+   SQL. End statements with `;` and press Enter to execute.
+3. pgAdmin launches a local web server. Connect at
+   `localhost:5050` in a browser. Navigate the left tree:
+   servers -> databases -> schemas -> tables.
+4. pgAdmin's Query Tool (right-click any database > Query
+   Tool) provides a SQL editor. The Explain button runs
+   `EXPLAIN ANALYZE` and renders the plan graphically.
+5. Both tools default to auto-commit mode. Wrap experimental
+   changes in `BEGIN; ... ROLLBACK;` to preview without
+   persisting.
+
+---
+
+### ✏️ Minimal Example
+
+**BAD:**
+
+```sql
+-- Guessing column names without inspection
+SELECT custmer_name FROM orders;
+-- ERROR: column "custmer_name" does not exist
+-- Guess again. SELECT * ? Wasted time.
+```
+
+Why it's wrong: skipping schema inspection leads to typos
+and wasted queries.
+
+**GOOD:**
+
+```bash
+# In psql: inspect before writing SQL
+\d orders
+--  id          | bigint  | not null
+--  customer_id | integer | not null
+--  total       | numeric | not null
+SELECT id, customer_id, total FROM orders;
+```
+
+Why it's right: `\d` reveals exact column names and types;
+the query is written correctly the first time.
+
+---
+
+### ⚡ When to use / Not to use
+
+**Use when:**
+
+- psql: scripting, CI/CD checks, remote server access over
+  SSH, any terminal-first workflow
+- pgAdmin: visual schema exploration, reviewing execution
+  plans graphically, monitoring server statistics
+
+**Avoid when:**
+
+- psql is awkward for ER diagram visualization (use pgAdmin
+  or DBeaver for multi-table relationships)
+- pgAdmin's browser UI is too slow for time-critical
+  diagnostics on high-latency remote servers (use psql)
+
+---
+
+### ⚠️ One Gotcha
+
+**Misconception:** pgAdmin auto-commits only when you click
+"Commit" - changes are held in a transaction until then.
+
+**Reality:** pgAdmin runs in auto-commit mode by default.
+Every INSERT, UPDATE, or DELETE executes and persists
+immediately. To work transactionally, explicitly wrap
+statements in `BEGIN; ... COMMIT;` in the Query Tool, or
+disable auto-commit in the connection settings.
+
+---
+
+### 📇 Revision Card
+
+1. psql meta-commands (\dt, \d tablename, \l) reveal schema
+   instantly - learn them before any other shortcut.
+2. pgAdmin's Explain button visualizes `EXPLAIN ANALYZE`
+   graphically - faster to read than raw text for complex
+   plans.
+3. Both tools default to auto-commit; wrap experimental edits
+   in BEGIN/COMMIT when working with real data.
 
 ---
 

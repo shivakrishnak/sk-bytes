@@ -1302,13 +1302,13 @@ A payment service fleet (40 pods) experienced P99 latency spikes every afternoon
 
 ### ⚖️ Trade-offs & Alternatives
 
-| Aspect               | Full Platform (Metrics+JFR+Traces) | Metrics Only         | JFR Only              | Manual jstack       |
-| -------------------- | ----------------------------------- | -------------------- | --------------------- | ------------------- |
-| Incident diagnosis   | Minutes                             | 10-20 min            | 5-15 min (single JVM) | 30-60 min           |
-| Fleet visibility     | Full                                | Partial (no traces)  | None (per-pod)        | None                |
-| Overhead             | 1-3%                                | <0.5%                | <1%                   | High (manual)       |
-| Correlation          | Request -> pool -> lock             | Pool-level only      | Thread-level only     | Snapshot only       |
-| Setup effort         | High (agent + collector + dashboards) | Medium             | Low (JDK built-in)   | Zero                |
+| Aspect             | Full Platform (Metrics+JFR+Traces)    | Metrics Only        | JFR Only              | Manual jstack |
+| ------------------ | ------------------------------------- | ------------------- | --------------------- | ------------- |
+| Incident diagnosis | Minutes                               | 10-20 min           | 5-15 min (single JVM) | 30-60 min     |
+| Fleet visibility   | Full                                  | Partial (no traces) | None (per-pod)        | None          |
+| Overhead           | 1-3%                                  | <0.5%               | <1%                   | High (manual) |
+| Correlation        | Request -> pool -> lock               | Pool-level only     | Thread-level only     | Snapshot only |
+| Setup effort       | High (agent + collector + dashboards) | Medium              | Low (JDK built-in)    | Zero          |
 
 ### ⚡ Decision Snap
 
@@ -1330,13 +1330,13 @@ A payment service fleet (40 pods) experienced P99 latency spikes every afternoon
 
 ### ⚠️ Top Traps
 
-| #   | Misconception                              | Reality                                                                                           |
-| --- | ------------------------------------------ | ------------------------------------------------------------------------------------------------- |
-| 1   | "CPU metrics show thread starvation"       | CPU can be 20% while all threads are blocked on I/O. Pool metrics are the signal.                 |
-| 2   | "JFR has high overhead"                    | Default JFR profile: <1% overhead. It is designed for always-on production use.                   |
-| 3   | "Trace context propagates automatically"   | Only with instrumented executors. Raw pool.submit() loses context. Use OTel agent or manual wrap. |
-| 4   | "More metrics = better observability"      | Unbounded cardinality kills Prometheus. Fewer, well-named metrics > thousands of dynamic ones.    |
-| 5   | "Dashboards prevent incidents"             | Dashboards without alerts are useless at 3am. Alert on leading indicators.                        |
+| #   | Misconception                            | Reality                                                                                           |
+| --- | ---------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| 1   | "CPU metrics show thread starvation"     | CPU can be 20% while all threads are blocked on I/O. Pool metrics are the signal.                 |
+| 2   | "JFR has high overhead"                  | Default JFR profile: <1% overhead. It is designed for always-on production use.                   |
+| 3   | "Trace context propagates automatically" | Only with instrumented executors. Raw pool.submit() loses context. Use OTel agent or manual wrap. |
+| 4   | "More metrics = better observability"    | Unbounded cardinality kills Prometheus. Fewer, well-named metrics > thousands of dynamic ones.    |
+| 5   | "Dashboards prevent incidents"           | Dashboards without alerts are useless at 3am. Alert on leading indicators.                        |
 
 ### 🪜 Learning Ladder
 
@@ -1565,13 +1565,13 @@ A team migrated an order service to virtual threads (JDK 21). In staging (10 con
 
 ### ⚖️ Trade-offs & Alternatives
 
-| Aspect             | Virtual Threads Migration | Stay on Platform Threads | Reactive (Project Reactor) |
-| ------------------ | ------------------------- | ------------------------ | -------------------------- |
-| Code complexity    | Low (blocking style)      | Low (existing)           | High (operator chains)     |
-| Scalability        | Millions of tasks         | Hundreds of threads      | Millions (non-blocking)    |
-| Migration effort   | Medium (pinning, TL, libs)| Zero                     | High (full rewrite)        |
-| Library compat     | Improving (JDK 21+)      | Full                     | Limited (reactive drivers) |
-| Debugging          | Normal stack traces       | Normal                   | Complex (async traces)     |
+| Aspect           | Virtual Threads Migration  | Stay on Platform Threads | Reactive (Project Reactor) |
+| ---------------- | -------------------------- | ------------------------ | -------------------------- |
+| Code complexity  | Low (blocking style)       | Low (existing)           | High (operator chains)     |
+| Scalability      | Millions of tasks          | Hundreds of threads      | Millions (non-blocking)    |
+| Migration effort | Medium (pinning, TL, libs) | Zero                     | High (full rewrite)        |
+| Library compat   | Improving (JDK 21+)        | Full                     | Limited (reactive drivers) |
+| Debugging        | Normal stack traces        | Normal                   | Complex (async traces)     |
 
 ### ⚡ Decision Snap
 
@@ -1593,13 +1593,13 @@ A team migrated an order service to virtual threads (JDK 21). In staging (10 con
 
 ### ⚠️ Top Traps
 
-| #   | Misconception                                   | Reality                                                                                         |
-| --- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| 1   | "Just replace pool with newVirtualThreadPerTask" | Without fixing pinning/ThreadLocal, performance may be WORSE than platform threads.             |
-| 2   | "My code has no synchronized"                   | Libraries do. JDBC drivers, connection pools, logging frameworks often use synchronized internally. |
-| 3   | "Virtual threads are always faster"             | For CPU-bound work: identical to platform threads. VTs help I/O-bound only.                     |
-| 4   | "ThreadLocal works fine with VTs"               | Works but multiplied by millions of VTs = OOM. ScopedValue is the replacement.                  |
-| 5   | "Pinning is rare in practice"                   | Common: HikariCP <5.1, older JDBC drivers, logging frameworks (log4j2 sync appenders).         |
+| #   | Misconception                                    | Reality                                                                                             |
+| --- | ------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| 1   | "Just replace pool with newVirtualThreadPerTask" | Without fixing pinning/ThreadLocal, performance may be WORSE than platform threads.                 |
+| 2   | "My code has no synchronized"                    | Libraries do. JDBC drivers, connection pools, logging frameworks often use synchronized internally. |
+| 3   | "Virtual threads are always faster"              | For CPU-bound work: identical to platform threads. VTs help I/O-bound only.                         |
+| 4   | "ThreadLocal works fine with VTs"                | Works but multiplied by millions of VTs = OOM. ScopedValue is the replacement.                      |
+| 5   | "Pinning is rare in practice"                    | Common: HikariCP <5.1, older JDBC drivers, logging frameworks (log4j2 sync appenders).              |
 
 ### 🪜 Learning Ladder
 
@@ -1803,13 +1803,13 @@ A payments team ran a concurrency workshop designing a deduplication service. Wo
 
 ### ⚖️ Trade-offs & Alternatives
 
-| Aspect             | Architecture Workshop | Code Review Only | Incident Retrospective | Design Doc Review |
-| ------------------ | --------------------- | ---------------- | ---------------------- | ----------------- |
-| Timing             | Before implementation | After code       | After incident         | Before code       |
-| Failure discovery  | Proactive             | Limited          | Reactive               | Moderate          |
-| Team learning      | High (collaborative)  | Low (individual) | High (post-mortem)     | Medium            |
-| Time investment    | 3-4 hours             | 30-60 min        | 2-3 hours              | 1-2 hours         |
-| Coverage           | Broad (alternatives)  | Narrow (one impl)| Narrow (one failure)   | Medium            |
+| Aspect            | Architecture Workshop | Code Review Only  | Incident Retrospective | Design Doc Review |
+| ----------------- | --------------------- | ----------------- | ---------------------- | ----------------- |
+| Timing            | Before implementation | After code        | After incident         | Before code       |
+| Failure discovery | Proactive             | Limited           | Reactive               | Moderate          |
+| Team learning     | High (collaborative)  | Low (individual)  | High (post-mortem)     | Medium            |
+| Time investment   | 3-4 hours             | 30-60 min         | 2-3 hours              | 1-2 hours         |
+| Coverage          | Broad (alternatives)  | Narrow (one impl) | Narrow (one failure)   | Medium            |
 
 ### ⚡ Decision Snap
 
@@ -1831,13 +1831,13 @@ A payments team ran a concurrency workshop designing a deduplication service. Wo
 
 ### ⚠️ Top Traps
 
-| #   | Misconception                                 | Reality                                                                                            |
-| --- | --------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| 1   | "Workshops are theoretical exercises"         | Use REAL problems. Outputs become ADRs that guide implementation.                                  |
-| 2   | "Senior engineers do not need workshops"      | Senior engineers benefit most: they reveal blind spots in each other's designs.                     |
-| 3   | "One workshop is enough"                      | Run quarterly with escalating complexity. Skills atrophy. New team members need onboarding.         |
-| 4   | "The best design always wins"                 | Best design FOR CONTEXT wins. Constraints change the optimal answer.                               |
-| 5   | "Workshop output is the architecture"         | Output is a STARTING POINT. Production reality will require adaptation.                            |
+| #   | Misconception                            | Reality                                                                                     |
+| --- | ---------------------------------------- | ------------------------------------------------------------------------------------------- |
+| 1   | "Workshops are theoretical exercises"    | Use REAL problems. Outputs become ADRs that guide implementation.                           |
+| 2   | "Senior engineers do not need workshops" | Senior engineers benefit most: they reveal blind spots in each other's designs.             |
+| 3   | "One workshop is enough"                 | Run quarterly with escalating complexity. Skills atrophy. New team members need onboarding. |
+| 4   | "The best design always wins"            | Best design FOR CONTEXT wins. Constraints change the optimal answer.                        |
+| 5   | "Workshop output is the architecture"    | Output is a STARTING POINT. Production reality will require adaptation.                     |
 
 ### 🪜 Learning Ladder
 
@@ -2053,17 +2053,17 @@ A: "Virtual threads for I/O-bound (JDK 21+). If
 
 **Incident pattern: interview question derived from real production failure.**
 
-Scenario given in interview: "Payments P99 latency spiked from 50ms to 2s. What is your diagnosis process?" Strong staff answer: "1. Check thread pool utilization (are threads saturated?). 2. Check downstream latency (did a dependency slow down?). 3. Cross-reference with GC logs (long pause?). 4. Check lock contention (JFR). In my experience at [previous company], similar symptom was downstream timeout + unbounded queue. Pool saturated, queue grew unbounded, latency = queue_depth * service_time. Fix: bounded queue + circuit breaker." This answer demonstrates diagnostic reasoning, production experience, and systematic approach.
+Scenario given in interview: "Payments P99 latency spiked from 50ms to 2s. What is your diagnosis process?" Strong staff answer: "1. Check thread pool utilization (are threads saturated?). 2. Check downstream latency (did a dependency slow down?). 3. Cross-reference with GC logs (long pause?). 4. Check lock contention (JFR). In my experience at [previous company], similar symptom was downstream timeout + unbounded queue. Pool saturated, queue grew unbounded, latency = queue_depth \* service_time. Fix: bounded queue + circuit breaker." This answer demonstrates diagnostic reasoning, production experience, and systematic approach.
 
 ### ⚖️ Trade-offs & Alternatives
 
-| Aspect             | Staff Scenario Interview | Coding Interview    | System Design Interview | Take-Home Project    |
-| ------------------ | ------------------------ | ------------------- | ----------------------- | -------------------- |
-| Tests              | Reasoning + trade-offs   | Implementation      | Breadth                 | Code quality         |
-| Time               | 45-60 min               | 45-60 min           | 45-60 min               | 4-8 hours            |
-| Concurrency depth  | Deep (failure modes)     | Surface (correctness)| Medium (architecture) | Variable             |
-| False negative     | Quiet engineers          | Whiteboard anxiety  | Poor communicators      | Time-constrained     |
-| Signal quality     | High for staff           | High for SDE2       | High for design skill   | High for code craft  |
+| Aspect            | Staff Scenario Interview | Coding Interview      | System Design Interview | Take-Home Project   |
+| ----------------- | ------------------------ | --------------------- | ----------------------- | ------------------- |
+| Tests             | Reasoning + trade-offs   | Implementation        | Breadth                 | Code quality        |
+| Time              | 45-60 min                | 45-60 min             | 45-60 min               | 4-8 hours           |
+| Concurrency depth | Deep (failure modes)     | Surface (correctness) | Medium (architecture)   | Variable            |
+| False negative    | Quiet engineers          | Whiteboard anxiety    | Poor communicators      | Time-constrained    |
+| Signal quality    | High for staff           | High for SDE2         | High for design skill   | High for code craft |
 
 ### ⚡ Decision Snap
 
@@ -2085,13 +2085,13 @@ Scenario given in interview: "Payments P99 latency spiked from 50ms to 2s. What 
 
 ### ⚠️ Top Traps
 
-| #   | Misconception                                     | Reality                                                                                     |
-| --- | ------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| 1   | "Deep API knowledge = staff readiness"            | Staff interviews test judgment, not knowledge. Know WHY, not just WHAT.                     |
-| 2   | "One perfect answer exists"                       | Multiple valid architectures exist. Show you EVALUATED alternatives, not that you memorized one. |
-| 3   | "Mention every technology you know"               | Depth > breadth. One well-reasoned proposal > five name-drops.                              |
-| 4   | "Failure modes are a negative signal"             | PROACTIVELY naming failures shows maturity. Interviewers WANT to hear failure analysis.     |
-| 5   | "Production stories are bragging"                 | Stories demonstrate experience. "In my experience..." is the most powerful staff phrase.     |
+| #   | Misconception                          | Reality                                                                                          |
+| --- | -------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| 1   | "Deep API knowledge = staff readiness" | Staff interviews test judgment, not knowledge. Know WHY, not just WHAT.                          |
+| 2   | "One perfect answer exists"            | Multiple valid architectures exist. Show you EVALUATED alternatives, not that you memorized one. |
+| 3   | "Mention every technology you know"    | Depth > breadth. One well-reasoned proposal > five name-drops.                                   |
+| 4   | "Failure modes are a negative signal"  | PROACTIVELY naming failures shows maturity. Interviewers WANT to hear failure analysis.          |
+| 5   | "Production stories are bragging"      | Stories demonstrate experience. "In my experience..." is the most powerful staff phrase.         |
 
 ### 🪜 Learning Ladder
 
@@ -2322,13 +2322,13 @@ A service ran correctly on x86 servers for 3 years. Migration to ARM-based insta
 
 ### ⚖️ Trade-offs & Alternatives
 
-| Aspect                    | JMM (happens-before)       | C++ Memory Model       | Go Memory Model         |
-| ------------------------- | -------------------------- | ---------------------- | ----------------------- |
-| Guarantee for race-free   | Sequential consistency     | Sequential consistency | Sequential consistency  |
-| Guarantee for racy code   | No out-of-thin-air, type safe | Undefined behavior  | Limited (some races OK) |
-| Complexity                | High (causality)           | Very high (relaxed atomics) | Low (simple rules) |
-| Developer control         | Medium (volatile, sync)    | Fine-grained (acquire, release, relaxed) | Coarse (channels, mutexes) |
-| Primary mechanism         | Happens-before edges       | Acquire/release fences | Channel synchronization |
+| Aspect                  | JMM (happens-before)          | C++ Memory Model                         | Go Memory Model            |
+| ----------------------- | ----------------------------- | ---------------------------------------- | -------------------------- |
+| Guarantee for race-free | Sequential consistency        | Sequential consistency                   | Sequential consistency     |
+| Guarantee for racy code | No out-of-thin-air, type safe | Undefined behavior                       | Limited (some races OK)    |
+| Complexity              | High (causality)              | Very high (relaxed atomics)              | Low (simple rules)         |
+| Developer control       | Medium (volatile, sync)       | Fine-grained (acquire, release, relaxed) | Coarse (channels, mutexes) |
+| Primary mechanism       | Happens-before edges          | Acquire/release fences                   | Channel synchronization    |
 
 ### ⚡ Decision Snap
 
@@ -2350,13 +2350,13 @@ A service ran correctly on x86 servers for 3 years. Migration to ARM-based insta
 
 ### ⚠️ Top Traps
 
-| #   | Misconception                                       | Reality                                                                                      |
-| --- | --------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| 1   | "Volatile means atomic"                             | Volatile guarantees visibility + ordering. Not atomicity of compound operations (i++ is not atomic). |
-| 2   | "If it works on x86, it's correct"                  | x86 TSO masks many races. ARM/POWER expose them. JMM is the contract, not hardware behavior. |
-| 3   | "synchronized is just mutual exclusion"             | synchronized provides: mutual exclusion + happens-before (visibility of all prior writes).    |
-| 4   | "Final fields need no synchronization"              | True ONLY if object is safely published (reference assigned after construction completes).    |
-| 5   | "Happens-before means happens before in time"       | HB is a visibility guarantee, not a temporal ordering. Unrelated HB-ordered actions may execute in any temporal order. |
+| #   | Misconception                                 | Reality                                                                                                                |
+| --- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 1   | "Volatile means atomic"                       | Volatile guarantees visibility + ordering. Not atomicity of compound operations (i++ is not atomic).                   |
+| 2   | "If it works on x86, it's correct"            | x86 TSO masks many races. ARM/POWER expose them. JMM is the contract, not hardware behavior.                           |
+| 3   | "synchronized is just mutual exclusion"       | synchronized provides: mutual exclusion + happens-before (visibility of all prior writes).                             |
+| 4   | "Final fields need no synchronization"        | True ONLY if object is safely published (reference assigned after construction completes).                             |
+| 5   | "Happens-before means happens before in time" | HB is a visibility guarantee, not a temporal ordering. Unrelated HB-ordered actions may execute in any temporal order. |
 
 ### 🪜 Learning Ladder
 
@@ -2587,14 +2587,14 @@ A team maintained a service with both sync (JDBC) and async (WebClient) code pat
 
 ### ⚖️ Trade-offs & Alternatives
 
-| Aspect                 | Loom (Virtual Threads) | Go (Goroutines)     | Kotlin (Coroutines) | Reactive (Reactor)    |
-| ---------------------- | ---------------------- | ------------------- | ------------------- | --------------------- |
-| API compatibility      | Full (Thread API)      | Clean-slate         | New suspend keyword | New types (Mono/Flux) |
-| Colored functions      | No                     | No                  | Yes (suspend)       | Yes (Mono/Flux)       |
-| Existing code works    | Yes (blocking)         | N/A (new language)  | No (must be suspend)| No (must be reactive) |
-| Debugging              | Normal stack traces    | Normal              | Partially reconstructed | Complex            |
-| Pinning risk           | Yes (synchronized)     | No                  | No                  | N/A (non-blocking)    |
-| Maturity (2024)        | Production (JDK 21)    | 15+ years           | 6+ years            | 8+ years              |
+| Aspect              | Loom (Virtual Threads) | Go (Goroutines)    | Kotlin (Coroutines)     | Reactive (Reactor)    |
+| ------------------- | ---------------------- | ------------------ | ----------------------- | --------------------- |
+| API compatibility   | Full (Thread API)      | Clean-slate        | New suspend keyword     | New types (Mono/Flux) |
+| Colored functions   | No                     | No                 | Yes (suspend)           | Yes (Mono/Flux)       |
+| Existing code works | Yes (blocking)         | N/A (new language) | No (must be suspend)    | No (must be reactive) |
+| Debugging           | Normal stack traces    | Normal             | Partially reconstructed | Complex               |
+| Pinning risk        | Yes (synchronized)     | No                 | No                      | N/A (non-blocking)    |
+| Maturity (2024)     | Production (JDK 21)    | 15+ years          | 6+ years                | 8+ years              |
 
 ### ⚡ Decision Snap
 
@@ -2616,13 +2616,13 @@ A team maintained a service with both sync (JDBC) and async (WebClient) code pat
 
 ### ⚠️ Top Traps
 
-| #   | Misconception                                  | Reality                                                                                     |
-| --- | ---------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| 1   | "Loom is just green threads again"             | Green threads (Java 1.0) could not use multiple CPUs. Loom uses ForkJoinPool across all cores. |
-| 2   | "Virtual threads replace thread pools"         | For I/O-bound: yes. For CPU-bound: you still need sized pools (VTs do not add CPUs).        |
-| 3   | "No new APIs needed"                           | Thread.ofVirtual() is new. But the programming MODEL is unchanged (blocking style).         |
-| 4   | "Kotlin coroutines and Loom are equivalent"    | Kotlin requires suspend/colored functions. Loom is invisible to application code.           |
-| 5   | "Pinning will be fixed in a future JDK"        | Partial: JEP draft exists to allow yield during monitors. But synchronized + native = still pins. |
+| #   | Misconception                               | Reality                                                                                           |
+| --- | ------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| 1   | "Loom is just green threads again"          | Green threads (Java 1.0) could not use multiple CPUs. Loom uses ForkJoinPool across all cores.    |
+| 2   | "Virtual threads replace thread pools"      | For I/O-bound: yes. For CPU-bound: you still need sized pools (VTs do not add CPUs).              |
+| 3   | "No new APIs needed"                        | Thread.ofVirtual() is new. But the programming MODEL is unchanged (blocking style).               |
+| 4   | "Kotlin coroutines and Loom are equivalent" | Kotlin requires suspend/colored functions. Loom is invisible to application code.                 |
+| 5   | "Pinning will be fixed in a future JDK"     | Partial: JEP draft exists to allow yield during monitors. But synchronized + native = still pins. |
 
 ### 🪜 Learning Ladder
 
@@ -2850,13 +2850,13 @@ A service used parallel streams (which use commonPool) alongside CompletableFutu
 
 ### ⚖️ Trade-offs & Alternatives
 
-| Aspect             | Work-Stealing (FJP) | FIFO (ThreadPoolExecutor) | CFS (Linux)        | Event Loop (Netty) |
-| ------------------ | -------------------- | ------------------------- | ------------------ | ------------------ |
-| Load balance       | Automatic (steal)    | None (fixed assignment)   | Periodic migration | None (affinity)    |
-| Fairness           | Approximate          | FIFO order                | Virtual runtime    | Per-channel        |
-| Overhead           | CAS per steal        | Lock per submit           | Timer + tree ops   | Minimal (no yield) |
-| Best for           | Recursive/parallel   | Bounded I/O pools         | General OS         | Network I/O        |
-| Worst for          | Tiny tasks           | Imbalanced loads          | Real-time          | CPU-bound tasks    |
+| Aspect       | Work-Stealing (FJP) | FIFO (ThreadPoolExecutor) | CFS (Linux)        | Event Loop (Netty) |
+| ------------ | ------------------- | ------------------------- | ------------------ | ------------------ |
+| Load balance | Automatic (steal)   | None (fixed assignment)   | Periodic migration | None (affinity)    |
+| Fairness     | Approximate         | FIFO order                | Virtual runtime    | Per-channel        |
+| Overhead     | CAS per steal       | Lock per submit           | Timer + tree ops   | Minimal (no yield) |
+| Best for     | Recursive/parallel  | Bounded I/O pools         | General OS         | Network I/O        |
+| Worst for    | Tiny tasks          | Imbalanced loads          | Real-time          | CPU-bound tasks    |
 
 ### ⚡ Decision Snap
 
@@ -2879,13 +2879,13 @@ A service used parallel streams (which use commonPool) alongside CompletableFutu
 
 ### ⚠️ Top Traps
 
-| #   | Misconception                                      | Reality                                                                                        |
-| --- | -------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| 1   | "More threads = more throughput"                   | Beyond CPU count: context-switch overhead increases. Optimal pool size depends on workload type. |
-| 2   | "Work-stealing is always better than FIFO"         | For uniform tasks: FIFO with sized pool is simpler and equivalent. Stealing adds overhead.      |
-| 3   | "ForkJoinPool.commonPool is for everything"        | Shared pool = contention between parallel streams, async, and VTs. Use dedicated pools.        |
-| 4   | "Scheduler fairness means equal CPU time"          | Fairness means progress guarantee (no starvation). Not equal time per time slice.              |
-| 5   | "Task affinity (same CPU) is always good"          | Affinity helps cache. But if one CPU is overloaded: migration to idle CPU is faster overall.   |
+| #   | Misconception                               | Reality                                                                                          |
+| --- | ------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| 1   | "More threads = more throughput"            | Beyond CPU count: context-switch overhead increases. Optimal pool size depends on workload type. |
+| 2   | "Work-stealing is always better than FIFO"  | For uniform tasks: FIFO with sized pool is simpler and equivalent. Stealing adds overhead.       |
+| 3   | "ForkJoinPool.commonPool is for everything" | Shared pool = contention between parallel streams, async, and VTs. Use dedicated pools.          |
+| 4   | "Scheduler fairness means equal CPU time"   | Fairness means progress guarantee (no starvation). Not equal time per time slice.                |
+| 5   | "Task affinity (same CPU) is always good"   | Affinity helps cache. But if one CPU is overloaded: migration to idle CPU is faster overall.     |
 
 ### 🪜 Learning Ladder
 
@@ -3116,13 +3116,13 @@ A team built a lock-free connection pool using AtomicReference<Connection> for t
 
 ### ⚖️ Trade-offs & Alternatives
 
-| Aspect                    | AtomicStampedReference | Hazard Pointers   | Epoch-Based Reclamation | GC (no action)     |
-| ------------------------- | ---------------------- | ----------------- | ----------------------- | ------------------ |
-| ABA prevention            | Yes (stamp)            | Yes (deferred reuse) | Yes (deferred reuse) | Yes (no reuse)     |
-| Overhead                  | Wider CAS (128-bit)    | Per-read publish   | Per-epoch check        | GC pause           |
-| Complexity                | Low (Java API)         | High (manual)      | Medium                 | Zero               |
-| Applicable in Java        | Yes                    | Rarely (Unsafe)    | Rarely (Unsafe)        | Default behavior   |
-| Use case                  | Object pools, integers | Off-heap/native    | Off-heap/native        | Normal Java objects |
+| Aspect             | AtomicStampedReference | Hazard Pointers      | Epoch-Based Reclamation | GC (no action)      |
+| ------------------ | ---------------------- | -------------------- | ----------------------- | ------------------- |
+| ABA prevention     | Yes (stamp)            | Yes (deferred reuse) | Yes (deferred reuse)    | Yes (no reuse)      |
+| Overhead           | Wider CAS (128-bit)    | Per-read publish     | Per-epoch check         | GC pause            |
+| Complexity         | Low (Java API)         | High (manual)        | Medium                  | Zero                |
+| Applicable in Java | Yes                    | Rarely (Unsafe)      | Rarely (Unsafe)         | Default behavior    |
+| Use case           | Object pools, integers | Off-heap/native      | Off-heap/native         | Normal Java objects |
 
 ### ⚡ Decision Snap
 
@@ -3144,13 +3144,13 @@ A team built a lock-free connection pool using AtomicReference<Connection> for t
 
 ### ⚠️ Top Traps
 
-| #   | Misconception                                    | Reality                                                                                        |
-| --- | ------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
-| 1   | "ABA affects all CAS code"                       | Only when values can recur. GC-managed unique objects: no ABA. Integers/pooled nodes: yes ABA. |
-| 2   | "Java's GC makes ABA impossible"                 | True for object references (no reuse while referenced). False for primitive AtomicInteger.     |
-| 3   | "AtomicStampedReference should always be used"   | Overhead is real (128-bit CAS). Use only when ABA is possible.                                 |
-| 4   | "ABA is a theoretical concern"                   | Reproducible under contention with pooled objects. jcstress can trigger it reliably.           |
-| 5   | "Double-word CAS (DWCAS) solves everything"      | Not all hardware supports it. AtomicStampedReference emulates via indirection (allocation).    |
+| #   | Misconception                                  | Reality                                                                                        |
+| --- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| 1   | "ABA affects all CAS code"                     | Only when values can recur. GC-managed unique objects: no ABA. Integers/pooled nodes: yes ABA. |
+| 2   | "Java's GC makes ABA impossible"               | True for object references (no reuse while referenced). False for primitive AtomicInteger.     |
+| 3   | "AtomicStampedReference should always be used" | Overhead is real (128-bit CAS). Use only when ABA is possible.                                 |
+| 4   | "ABA is a theoretical concern"                 | Reproducible under contention with pooled objects. jcstress can trigger it reliably.           |
+| 5   | "Double-word CAS (DWCAS) solves everything"    | Not all hardware supports it. AtomicStampedReference emulates via indirection (allocation).    |
 
 ### 🪜 Learning Ladder
 
