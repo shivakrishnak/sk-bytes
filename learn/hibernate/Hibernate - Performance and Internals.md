@@ -3911,6 +3911,22 @@ succeeds or fails with `OptimisticLockException`.
 6. User B's UPDATE overwrites priority back to 'low'.
 7. No error. No exception. Silent data corruption.
 
+The danger compounds with `@DynamicUpdate`. Some developers
+assume `@DynamicUpdate` prevents lost updates because it only
+sets changed columns. It does not. Each transaction tracks
+changes from its own snapshot. User A's UPDATE sets
+`priority='high'`. User B's UPDATE sets `assignee='Carol'`.
+Both succeed because they touch different columns from their
+own perspective. But if both change the SAME column, last
+write still wins - and no exception is thrown.
+`@DynamicUpdate` reduces columns per UPDATE but adds zero
+conflict detection.
+
+To detect this in an existing codebase, scan for `@Entity`
+classes without a `@Version` field. Any entity edited through
+a UI form, REST endpoint, or concurrent process is a
+candidate for silent lost updates.
+
 ```text
   Without @Version:
   A loads: (low, Bob)     B loads: (low, Bob)
@@ -3992,6 +4008,19 @@ try {
 }
 ```
 
+**Production: codebase audit for missing @Version:**
+
+```bash
+# Find @Entity classes without @Version
+grep -rn "@Entity" src/ | \
+  sed 's/:.*//g' | sort -u | \
+  while read f; do
+    grep -L "@Version" "$f"
+  done
+# Every file listed is a candidate for
+# silent lost updates under concurrency.
+```
+
 ---
 
 ### ⚖️ Trade-offs
@@ -4009,6 +4038,14 @@ changes.
 | Data integrity     | Silent corruption | Protected             |
 | Runtime cost       | None              | Negligible (+1 col)   |
 | User experience    | Silently wrong    | Conflict notification |
+| Schema migration   | N/A               | Add NOT NULL int col  |
+| Hibernate behavior | Bare UPDATE       | UPDATE ... WHERE v=N  |
+
+Integer `@Version` is preferred over timestamp because integer
+comparison is exact. Timestamp `@Version` can suffer from
+clock precision issues - two transactions within the same
+millisecond may read the same timestamp, defeating the
+conflict check. Use `int` or `long`, not `Timestamp`.
 
 ---
 
@@ -4072,6 +4109,16 @@ users do not realize their changes were overwritten. The bug
 manifests as "I updated the ticket but it went back to the old
 value" - a support ticket about a ghost problem that no one
 can reproduce because it depends on concurrent timing.
+
+The detection gap is large: you cannot find lost updates in
+application logs because no error occurred. You cannot find
+them in database logs because both UPDATEs succeeded. The
+only evidence is an audit trail (if one exists) showing a
+field value that was set and then immediately reverted. Teams
+that add `@Version` to entities that previously lacked it
+are often surprised by the volume of
+`OptimisticLockException` that surfaces - revealing conflicts
+that were silently corrupting data for months.
 
 ---
 
@@ -4150,6 +4197,24 @@ adds. The runway analogy undersells how limited `update` is.
 | create      | DROP ALL then CREATE                         | No             |
 | create-drop | CREATE on start, DROP on close               | No             |
 
+**validate vs none in production:** `validate` reads database
+metadata at startup and compares table names, column names,
+and column types against entity mappings. If a column is
+missing or a type is incompatible, startup fails with a
+`SchemaManagementException`. This is a fail-fast safety net.
+`none` skips the check entirely, which is faster but means
+schema mismatches surface as runtime SQL errors instead of
+startup failures. Most teams prefer `validate` for the early
+detection, switching to `none` only if metadata queries are
+slow against their database.
+
+**create-drop lifecycle:** `create-drop` creates all tables at
+`SessionFactory` creation and drops them at `SessionFactory`
+close. In tests, this means clean state per test class. But
+if the JVM crashes or the application does not shut down
+cleanly, tables persist with stale data - the next startup
+creates duplicates or fails.
+
 ```text
   Development flow:
   hbm2ddl.auto=update -> quick iteration
@@ -4221,6 +4286,21 @@ spring.jpa.hibernate.ddl-auto=create-drop
 # application-prod.properties
 spring.jpa.hibernate.ddl-auto=validate
 ```
+
+**Production: Flyway vs Liquibase decision:**
+
+| Aspect           | Flyway          | Liquibase          |
+| ---------------- | --------------- | ------------------ |
+| Migration format | SQL files       | XML/YAML/SQL       |
+| Learning curve   | Low (plain SQL) | Medium (DSL)       |
+| Rollback         | Paid feature    | Built-in           |
+| Diff generation  | No              | Yes (diff command) |
+| Spring Boot      | Auto-configured | Auto-configured    |
+
+Both tools version-control schema changes as ordered
+migration scripts. Choose Flyway for simplicity (plain SQL
+migrations). Choose Liquibase for database-agnostic DSL and
+built-in rollback support.
 
 ---
 
@@ -4304,6 +4384,14 @@ accumulates ghost columns that no entity maps to. This is
 why `update` is unsuitable for anything beyond throwaway
 development databases.
 
+A subtler danger: `update` adds new columns as nullable
+regardless of your `@Column(nullable = false)` annotation.
+Hibernate cannot add a NOT NULL column to a table that
+already has rows (no default value). So it silently drops
+the constraint. Your entity says non-null; the schema says
+nullable. The mismatch is invisible until a null value slips
+through a code path that bypasses validation.
+
 ---
 
 ### 📇 Revision Card
@@ -4348,7 +4436,11 @@ JPA providers (Hibernate, EclipseLink, OpenJPA). **Hibernate-
 proprietary annotations** (`org.hibernate.annotations.*`) are
 extensions specific to Hibernate that provide features beyond
 the JPA specification. Using proprietary annotations couples
-the code to Hibernate.
+the code to Hibernate. The distinction is not academic:
+Hibernate major version upgrades routinely deprecate and remove
+proprietary annotations, while JPA annotations remain stable
+across specification revisions. Choosing JPA by default
+minimizes the blast radius of every upgrade.
 
 ---
 
@@ -4382,10 +4474,31 @@ provider switching.
 `@DynamicInsert`, `@Where`, `@Filter`,
 `@NaturalId`, `@Immutable`, `@SQLDelete`
 
+The key decision rule: check whether `jakarta.persistence`
+provides the annotation first. Import from
+`org.hibernate.annotations` only after confirming JPA has
+no equivalent. IDE auto-import often picks the wrong one
+when both packages offer a class with the same simple name.
+
 **Avoid (Hibernate duplicates of JPA features):**
 `org.hibernate.annotations.Entity` (use `jakarta.persistence.Entity`),
 `@Cascade` (use JPA `cascade` attribute),
 `@Type` (use JPA `@Convert` or `AttributeConverter`)
+
+**Hibernate-to-JPA equivalent mapping:**
+
+| Hibernate-specific         | JPA equivalent              |
+| -------------------------- | --------------------------- |
+| `@org.hibernate...Entity`  | `@jakarta...Entity`         |
+| `@Cascade(ALL)`            | `cascade = CascadeType.ALL` |
+| `@Type`                    | `@Convert` + converter      |
+| `@LazyCollection`          | `fetch` attribute on assoc  |
+| `@Fetch(FetchMode.SELECT)` | `@EntityGraph` or JPQL      |
+
+When no JPA equivalent exists, the Hibernate annotation is
+justified. Document each usage with a comment explaining
+why the proprietary annotation is necessary, so future
+maintainers know it was a deliberate choice.
 
 ```text
   JPA standard         Hibernate-only
@@ -4460,6 +4573,27 @@ grep -rn "org.hibernate.annotations.Cascade" src/
 # Replace with jakarta.persistence equivalents
 ```
 
+**Production: justified proprietary usage:**
+
+```java
+// Document WHY a Hibernate annotation is used.
+// Future maintainers need to know this was
+// deliberate, not accidental coupling.
+@Entity
+public class Product {
+    @NaturalId // Hibernate-only: JPA has no
+    // natural ID concept. Used for lookup-by-SKU
+    // without hitting the DB by primary key.
+    private String sku;
+
+    @Formula("(SELECT avg(r.score) FROM reviews r"
+        + " WHERE r.product_id = id)")
+    // Hibernate-only: computed column. JPA has
+    // no equivalent for derived read-only fields.
+    private double avgRating;
+}
+```
+
 ---
 
 ### ⚖️ Trade-offs
@@ -4477,6 +4611,16 @@ Hibernate optimizations.
 | JPA only        | Full        | 80% of needs     |
 | JPA + Hibernate | Partial     | 99% of needs     |
 | Hibernate only  | None        | 100%             |
+
+The "80% of needs" figure is practical, not theoretical.
+JPA covers entities, relationships, basic queries, locking,
+and lifecycle callbacks. The remaining 20% where Hibernate
+annotations are genuinely needed falls into performance
+optimization (`@BatchSize`, `@DynamicUpdate`), data modeling
+(`@Formula`, `@NaturalId`), and filtering (`@Where`,
+`@Filter`). For most CRUD applications, JPA-only is
+sufficient. For complex domain models with performance
+requirements, targeted Hibernate annotations are justified.
 
 ---
 
@@ -4539,6 +4683,15 @@ Hibernate 6 and removed. Codebases that imported it instead of
 `jakarta.persistence.Entity` had to update every entity class
 during migration. Codebases that used the JPA standard import
 from the beginning required zero changes.
+
+The same pattern repeated with `@Type`: Hibernate 6 replaced
+the entire type system, moving from `BasicType` registration
+to `JdbcType` and `JavaType` converters. Teams using JPA
+`@Convert` with standard `AttributeConverter` were unaffected.
+Teams using Hibernate `@Type` had to rewrite every custom
+type mapping. The lesson repeats on every major version: JPA
+standard annotations absorb upgrades; proprietary annotations
+amplify them.
 
 ---
 
@@ -4629,14 +4782,31 @@ OpenRewrite can handle the namespace change automatically.
 - Implicit joins in multi-valued paths changed behavior.
 - Some HQL functions renamed or removed.
 
+**Phase 4: Removed and renamed APIs:**
+
+- `Session.load()` -> `Session.getReference()`
+  (or `em.getReference()`).
+- `Session.update()` -> `Session.merge()`
+  (or `em.merge()`).
+- `Session.save()` -> `Session.persist()`
+  (or `em.persist()`).
+- `Session.delete()` -> `Session.remove()`
+  (or `em.remove()`).
+- `hibernate.ejb.naming_strategy` ->
+  `hibernate.physical_naming_strategy`.
+- `hibernate.id.new_generator_mappings` -> removed
+  (H6 always uses new generator mappings).
+
 ```text
   H5 -> H6 Migration Checklist:
   1. javax.* -> jakarta.* (automated)
   2. GenerationType.AUTO -> explicit SEQUENCE/IDENTITY
   3. Integer division semantics in HQL
-  4. Removed: Session.load(), Session.update()
+  4. Removed: Session.load/update/save/delete
   5. Type system: BasicType -> JdbcType changes
   6. Criteria API: minor incompatibilities
+  7. Property renames (naming_strategy, etc.)
+  8. Removed: hibernate.id.new_generator_mappings
 ```
 
 ```mermaid
@@ -4709,6 +4879,28 @@ the AUTO behavior change; jakarta namespace is correct.
 <!-- mvn rewrite:run -> automated replacement -->
 ```
 
+**Production: migration testing strategy:**
+
+```java
+// 1. Assert query result correctness, not just
+//    "no exceptions." HQL semantic changes
+//    produce different results silently.
+@Test
+void integerDivision_h6Behavior() {
+    // H5: 5/2 = 2 (integer truncation)
+    // H6: 5/2 = 2.5 (real division)
+    var result = em.createQuery(
+        "SELECT 5/2 FROM dual", Number.class)
+        .getSingleResult();
+    // Verify your code handles the new semantics
+}
+
+// 2. Verify ID generation: check that new inserts
+//    do not collide with existing
+//    IDENTITY-generated IDs after switching
+//    to SEQUENCE.
+```
+
 ---
 
 ### ⚖️ Trade-offs
@@ -4726,6 +4918,13 @@ conflicts.
 | ID generation     | Medium  | Manual review        |
 | HQL semantics     | Medium  | Integration tests    |
 | Removed APIs      | Low-Med | Compiler errors      |
+| Type system       | Medium  | Manual refactor      |
+| Property renames  | Low     | Search-replace       |
+
+The namespace change is high volume but low risk because it
+is mechanical and tool-assisted. ID generation changes are
+low volume but high risk because they affect existing data.
+Prioritize testing ID generation paths with real data.
 
 ---
 
@@ -4789,6 +4988,14 @@ that used IDENTITY generation now get SEQUENCE, creating new
 sequences that start at 1 while existing IDENTITY-generated
 IDs may already be in the thousands. The result: duplicate key
 exceptions on INSERT.
+
+The second most dangerous change is HQL integer division.
+Code that relied on `quantity / batchSize` returning a
+truncated integer now gets a decimal result. This can silently
+break pagination logic, batch calculations, and reporting
+queries. Unlike compile errors, these produce wrong results
+without any exception - discovered only when someone notices
+the numbers are off.
 
 ---
 
@@ -4879,6 +5086,20 @@ means missing useful optimizations.
 - Fetch profiles (JPA has `EntityGraph`, Hibernate adds
   `@FetchProfile`)
 
+**JPA 3.1+ features that reduce Hibernate dependency:**
+
+- `@GeneratedValue` with UUID strategy (JPA 3.1).
+- Programmatic `EntityGraph` construction via
+  `em.createEntityGraph()`.
+- `CriteriaBuilder` numeric functions: `ceiling()`,
+  `floor()`, `round()`, `power()`, `sign()`.
+- `UNION` / `INTERSECT` / `EXCEPT` in Criteria queries.
+
+Each JPA revision absorbs features that previously required
+Hibernate extensions. Reviewing the latest JPA spec before
+reaching for a Hibernate annotation often reveals a standard
+alternative that did not exist in earlier JPA versions.
+
 ```text
   Portability spectrum:
   JPA only -> works with any provider, any version
@@ -4944,6 +5165,23 @@ providers and versions.
 private int itemCount; // No JPA equivalent
 ```
 
+**Production: compliance audit checklist:**
+
+```java
+// 1. Search for Session usage:
+//    grep -rn ".unwrap(Session.class)" src/
+//    Each unwrap is a Hibernate coupling point.
+//
+// 2. Search for Hibernate imports:
+//    grep -rn "org.hibernate" src/
+//    Classify: needed (no JPA equiv) vs avoidable
+//
+// 3. Test portability: run integration tests
+//    with EclipseLink to verify JPA-only paths
+//    work. Not required often, but reveals
+//    hidden coupling.
+```
+
 ---
 
 ### ⚖️ Trade-offs
@@ -4961,6 +5199,14 @@ sometimes necessary.
 | JPA only        | Full        | 80%            | Low          |
 | JPA + H. annot. | Partial     | 95%            | Medium       |
 | Session API     | None        | 100%           | High         |
+
+The "upgrade risk" column is the practical concern. JPA
+standard APIs changed twice in a decade (JPA 2.1 to 2.2 to
+3.0/3.1). Hibernate-specific APIs change on every major
+release (5.x to 6.x removed `Session.load()`,
+`Session.update()`, the entire `@Type` system, and
+`@LazyCollection`). The more Hibernate surface area your
+code touches, the larger every major upgrade becomes.
 
 ---
 
@@ -5024,6 +5270,15 @@ JPA standard APIs change once per specification revision
 version release. Teams that use JPA standard consistently
 spend days on major upgrades. Teams with heavy Hibernate API
 usage spend weeks.
+
+There is no official JPA compliance test suite available to
+application developers. The JPA TCK (Technology Compatibility
+Kit) is for provider vendors, not end users. The closest
+practical test is running your integration test suite against
+a different JPA provider. If your tests pass with EclipseLink
+without code changes, your codebase is genuinely portable.
+Most teams never do this, which is why hidden Hibernate
+coupling accumulates unnoticed.
 
 ---
 
@@ -5110,6 +5365,20 @@ logging.
 3. Change driver: `com.p6spy.engine.spy.P6SpyDriver`.
 4. Configure `spy.properties` for log format.
 5. Every SQL statement logged with parameters and time.
+6. Slow query threshold: `outagedetection=true` and
+   `outagedetectioninterval=N` (seconds) in
+   `spy.properties` flags queries exceeding N seconds.
+
+**Advanced Statistics (per-query and per-entity):**
+
+- `getQueryStatistics("FROM Order o")` returns per-query
+  execution count, average time, max time, and rows.
+- `getEntityStatistics("com.example.Order")` returns
+  load/insert/update/delete counts per entity type.
+- `getCollectionStatistics("com.example.Order.items")`
+  returns fetch/load/update counts per collection role.
+- Per-query statistics reveal which specific JPQL or SQL
+  statement is the bottleneck, not just the total count.
 
 ```text
   Hibernate Statistics:
@@ -5183,6 +5452,35 @@ void listOrders_queryCount() {
 }
 ```
 
+**Production: p6spy slow query configuration:**
+
+```properties
+# spy.properties
+appender=\
+  com.p6spy.engine.spy.appender.Slf4JLogger
+logMessageFormat=\
+  com.p6spy.engine.spy.appender.CustomLineFormat
+customLogMessageFormat=\
+  %(executionTime)ms|%(sqlSingleLine)
+# Log queries > 1s as outages
+outagedetection=true
+outagedetectioninterval=1
+```
+
+**Production: per-query statistics for bottleneck
+identification:**
+
+```java
+var qs = stats.getQueryStatistics(
+    "SELECT o FROM Order o WHERE o.status=:s");
+log.info("Executions={}, avgTime={}ms, max={}ms",
+    qs.getExecutionCount(),
+    qs.getExecutionAvgTime(),
+    qs.getExecutionMaxTime());
+// Identifies the specific slow query, not just
+// "too many queries."
+```
+
 ---
 
 ### ⚖️ Trade-offs
@@ -5200,6 +5498,13 @@ volume.
 | show_sql   | SQL without params   | Low        | No (noisy)      |
 | Statistics | Counters per Session | Very low   | Yes             |
 | p6spy      | SQL + params + time  | Low-Medium | With sampling   |
+| Per-query  | Stats per JPQL/SQL   | Low        | Yes (read-only) |
+
+Statistics counters are cumulative by default. Call
+`statistics.clear()` at request boundaries to get per-request
+counts. In Spring, a servlet filter or interceptor that calls
+`clear()` at request start and logs counts at request end
+gives per-request query visibility with minimal code.
 
 ---
 
@@ -5263,6 +5568,15 @@ and test environments. Combined with a CI assertion on
 `getPrepareStatementCount()`, it catches N+1 regressions
 automatically on every pull request - before code review,
 before staging, before production.
+
+The per-query statistics (`getQueryStatistics()`) reveal a
+pattern invisible to aggregate counters: a single JPQL query
+may execute fast individually but be called thousands of times
+per minute. Aggregate counters show "high query count" but
+per-query statistics show "this specific query runs 3,000
+times/minute with 2ms average." That distinction changes the
+fix from "reduce total queries" to "cache this specific
+query's result."
 
 ---
 
@@ -5350,6 +5664,22 @@ them is not physical but conceptual.
 - Invalidated explicitly via `@CacheEvict`.
 - Full control over TTL, eviction, and cache key.
 
+**L2 cache concurrency strategies:**
+
+| Strategy              | Reads | Writes    | Use case        |
+| --------------------- | ----- | --------- | --------------- |
+| READ_ONLY             | Fast  | Rejected  | Reference data  |
+| READ_WRITE            | Fast  | Lock-based| Mutable+correct |
+| NONSTRICT_READ_WRITE  | Fast  | No lock   | Eventual cons.  |
+| TRANSACTIONAL         | Fast  | JTA       | XA environments |
+
+Choose `READ_ONLY` for truly immutable data (countries,
+currencies). Choose `READ_WRITE` when correctness matters
+more than throughput. `NONSTRICT_READ_WRITE` tolerates brief
+staleness for higher throughput. Each entity gets its own
+cache region (e.g., `com.example.Country`), configurable
+independently for TTL and max entries.
+
 ```text
   L2 Cache:
   find(Product, 1) -> L2 hit -> return entity
@@ -5425,6 +5755,21 @@ public void updateProduct(ProductDTO dto) {
 }
 ```
 
+**Production: L2 cache invalidation pitfall:**
+
+```java
+// L2 auto-evicts on Hibernate entity changes.
+// But direct SQL bypasses Hibernate entirely:
+em.createNativeQuery(
+    "UPDATE product SET price = 9.99 "
+    + "WHERE id = 1").executeUpdate();
+// L2 still holds stale price for product 1!
+// Fix: manually evict after native SQL:
+sessionFactory.getCache()
+    .evict(Product.class, 1L);
+// Or: avoid native SQL on cached entities.
+```
+
 ---
 
 ### ⚖️ Trade-offs
@@ -5441,6 +5786,15 @@ hit). Application cache requires explicit eviction management.
 | Integration   | Transparent    | Explicit             |
 | Eviction      | Automatic      | Manual (@CacheEvict) |
 | Best for      | Reference data | Aggregates, lists    |
+| Stale data    | Auto-invalidated | Developer manages  |
+| Native SQL    | NOT invalidated| N/A                  |
+| Clustered     | Provider-dep.  | Redis/Hazelcast      |
+
+L2 cache auto-invalidation only works for changes made
+through Hibernate's entity lifecycle. Native SQL, bulk
+HQL updates (`UPDATE ... SET`), and direct database changes
+bypass the cache. Application cache has no such blind spot
+because eviction is always explicit.
 
 ---
 
@@ -5503,6 +5857,16 @@ where `find()` by ID is a measured bottleneck. Application
 cache is simpler to reason about, debug, and control. L2 cache
 is powerful but its transparency makes it harder to debug
 stale data issues.
+
+The hardest L2 cache bug to diagnose is stale data after a
+bulk operation. `em.createQuery("UPDATE Product p SET
+p.price = :p").executeUpdate()` modifies the database but
+does NOT invalidate the L2 cache. Subsequent `find()` calls
+return the old price from cache. The fix is calling
+`sessionFactory.getCache().evictAll()` after bulk operations,
+but most developers do not know this because L2 eviction is
+"automatic" for normal entity lifecycle - just not for bulk
+updates.
 
 ---
 
