@@ -5910,7 +5910,12 @@ containers for integration tests. For Hibernate testing, it
 provides a real database instance (PostgreSQL, MySQL, etc.)
 that matches production. Tests run against the actual SQL
 dialect, DDL, and database behavior instead of an in-memory
-substitute.
+substitute. The library handles container lifecycle
+automatically: pulling the Docker image on first run, starting
+the container before tests, providing a randomized JDBC URL
+via `@DynamicPropertySource`, and stopping the container after
+the test class completes. This eliminates the manual Docker
+setup that previously made integration testing fragile.
 
 ---
 
@@ -5943,6 +5948,15 @@ vs milliseconds for startup).
 4. Hibernate connects to the real PostgreSQL instance.
 5. Container starts before tests, stops after.
 6. Each test class gets a fresh or shared container.
+7. `@DataJpaTest` uses an embedded database by default.
+   Override with `@AutoConfigureTestDatabase(replace=NONE)`
+   to use the Testcontainer instead.
+8. If using Flyway or Liquibase, migrations run against the
+   container on startup - validating the same DDL scripts
+   that production uses.
+9. With `withReuse(true)`, the container survives across
+   test runs. Testcontainers checks if a matching container
+   already exists before starting a new one.
 
 ```text
   Test startup:
@@ -6041,6 +6055,30 @@ abstract class BaseIntegrationTest {
 }
 ```
 
+Enable `@DataJpaTest` with Testcontainers by overriding the
+default embedded database replacement:
+
+```java
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = NONE)
+@Testcontainers
+class OrderRepoSliceTest
+        extends BaseIntegrationTest {
+    @Autowired OrderRepository repo;
+
+    @Test
+    void nativeQuery_runsOnRealPostgres() {
+        // Flyway migrations already applied
+        assertThat(repo.findActiveJsonb())
+            .isNotEmpty();
+    }
+}
+```
+
+Without `replace = NONE`, `@DataJpaTest` silently swaps your
+Testcontainer datasource for an embedded H2 - exactly the
+problem Testcontainers was meant to solve.
+
 ---
 
 ### ⚖️ Trade-offs
@@ -6058,6 +6096,13 @@ startup than H2 (2-5 seconds for container).
 | Native queries  | Often fail | Work correctly |
 | Startup time    | ~100ms     | 2-5 seconds    |
 | Docker required | No         | Yes            |
+| Schema scripts  | Untested   | Validated      |
+| CI overhead     | None       | Docker daemon  |
+
+Schema migration testing is a hidden benefit: Flyway or
+Liquibase scripts run against the real dialect, catching
+column type mismatches and unsupported DDL syntax before
+deployment.
 
 ---
 
@@ -6119,7 +6164,13 @@ Teams that switch from H2 to Testcontainers typically discover
 3-5 SQL incompatibilities that were silently passing in H2 but
 would have failed in production. The most common: native
 queries using database-specific functions, DDL constraints that
-H2 ignores, and timestamp precision differences.
+H2 ignores, and timestamp precision differences. A subtler
+issue is schema migration scripts: Flyway migrations that
+reference PostgreSQL-specific types (`jsonb`, `text[]`,
+`serial`) pass on H2 in compatibility mode but produce
+different column types. The Testcontainer catches this because
+the migration runs on the real engine, exposing type mismatches
+that only surface in staging without container-based testing.
 
 ---
 
@@ -6164,7 +6215,10 @@ observability of Hibernate behavior: JDBC statement count,
 entity load/store/delete counts, L2 cache hit/miss rates,
 query execution counts and times, and connection pool usage.
 Metrics are typically exported to Prometheus and visualized in
-Grafana.
+Grafana. Metrics divide into two categories: session-level
+(entity loads, flushes, session opens) and query-level
+(statement count, slow query time, query cache hits). Both
+are needed for complete visibility.
 
 ---
 
@@ -6197,6 +6251,15 @@ averages, percentiles) rather than instantaneous readings.
    `hibernate.entities.loads`, `hibernate.cache.hits`.
 4. Prometheus scrapes `/actuator/prometheus`.
 5. Grafana dashboards visualize trends and alerts.
+6. Micrometer auto-discovers the `SessionFactory` bean.
+   No manual meter registration needed in Spring Boot -
+   adding the actuator starter is sufficient.
+7. Per-request query count is not a built-in metric.
+   Derive it by dividing `hibernate_statements_total` rate
+   by `http_server_requests_seconds_count` rate.
+8. Session open time (`hibernate.sessions.open.total`)
+   tracks how many sessions are created. A climbing count
+   without matching closes signals a session leak.
 
 ```text
   Metrics exposed:
@@ -6295,6 +6358,20 @@ required.
 | Slow query time      | Unoptimized queries |
 | Connection wait time | Pool sizing issues  |
 
+**Alerting thresholds (starting points, tune per app):**
+
+- Statements per request > 10: likely N+1 regression.
+- L2 cache hit rate < 50%: cache not effective - either
+  the wrong entities are cached or the access pattern
+  does not benefit from caching.
+- Slow query > 1 second: missing index or unoptimized
+  JPQL.
+- Session open count diverging from close count: session
+  leak.
+
+These thresholds are starting points. After one week of
+baseline data, tighten them to 2x your observed p95 values.
+
 ---
 
 ### ⚡ Decision Snap
@@ -6354,6 +6431,12 @@ by a single Grafana alert: "statements per request > 10."
 This one metric catches N+1 regressions, accidental EAGER
 fetching, and missing JOIN FETCH queries - the top three
 Hibernate performance issues - before they reach users.
+The second most valuable metric is L2 cache hit ratio. A
+cache hit rate below 50% typically means the cache is storing
+entities that are rarely re-read in the same interval - the
+eviction cost exceeds the query savings. Correlating cache
+hit rate with entity load count reveals whether the cache is
+helping or just consuming heap.
 
 ---
 
@@ -6441,6 +6524,17 @@ Remove @BatchSize. Add `@EntityGraph(attributePaths=
 {"customer"})` on the repository method.
 Assert count == 1.
 
+**Step 6 - Verify in CI:**
+Wrap each assertion in a repeatable integration test.
+Run as part of the CI pipeline so any future N+1
+regression fails the build automatically.
+
+**Step 7 - Predict before running:**
+Before executing each fix, write down your predicted query
+count. Compare with the actual count. If your prediction is
+wrong, re-read the mechanism. Accurate prediction is the
+skill this kata builds.
+
 ```text
   Kata flow:
   Write N+1 -> Detect (stats) -> Fix A -> Verify
@@ -6526,8 +6620,21 @@ void compareFixStrategies() {
 
     log.info("JOIN FETCH: {}, @BatchSize: {}, "
         + "EntityGraph: {}", countA, countB, countC);
+
+    // CI assertion: fail if any fix regresses
+    assertThat(countA).isEqualTo(1);
+    assertThat(countB)
+        .isLessThanOrEqualTo(3); // 1 + ceil(N/B)
+    assertThat(countC).isEqualTo(1);
 }
 ```
+
+These assertions run in CI. If a future code change
+reintroduces N+1 (for example, by removing a JOIN FETCH
+or changing the entity graph), the test fails before the
+code reaches code review. The query count assertion is
+the automated equivalent of a performance regression
+gate.
 
 ---
 
@@ -6544,6 +6651,15 @@ Hibernate statistics enabled and test data.
 | JOIN FETCH   | 1           | New JPQL query | Per query |
 | @BatchSize   | 1 + N/B     | Annotation     | Global    |
 | EntityGraph  | 1           | Annotation     | Reusable  |
+
+JOIN FETCH produces a single SQL JOIN. The trade-off is
+that it limits pagination (`firstResult`/`maxResults` apply
+in memory for collection fetches). @BatchSize keeps
+the original query structure but adds batched
+`WHERE id IN (...)` queries - it cannot reach 1 query but
+prevents the full N+1. EntityGraph behaves like JOIN FETCH
+but is declared on the repository method, making it
+reusable across callers without rewriting JPQL.
 
 ---
 
@@ -6604,6 +6720,11 @@ It is the detection. N+1 is invisible in code, invisible in
 logs (unless you count), and invisible in response time with
 small data. This kata builds the habit of ALWAYS checking
 `getPrepareStatementCount()` after every service method.
+Teams that add query count assertions to CI typically catch
+2-3 N+1 regressions per quarter that would otherwise have
+reached production undetected. The regression usually comes
+from a new field access added during a feature change, not
+from the original query.
 
 ---
 
@@ -6647,7 +6768,12 @@ modification to demonstrate: lost updates (no locking),
 optimistic conflict detection (`@Version` +
 `OptimisticLockException`), and pessimistic serialization
 (`PESSIMISTIC_WRITE` + blocking). The goal is to observe
-each behavior directly.
+each behavior directly. The exercise uses multi-threaded
+test code with explicit synchronization (`CountDownLatch` or
+`CyclicBarrier`) to control transaction interleaving. This
+controlled interleaving is essential - without it, thread
+scheduling is non-deterministic and the scenarios may not
+reproduce the intended conflict.
 
 ---
 
@@ -6694,6 +6820,22 @@ second transaction eventually proceeds.
 3. TX1 sets quantity=9, commits (lock released).
 4. TX2 unblocked, reads quantity=9, sets to 8, commits.
 5. Result: quantity=8 (correct).
+
+**Scenario 4: Deadlock reproduction**
+
+1. TX1 locks Product(id=1), then tries to lock Product(id=2).
+2. TX2 locks Product(id=2), then tries to lock Product(id=1).
+3. Both block. Database detects the cycle and aborts one
+   transaction with a deadlock error.
+4. Observe: the aborted TX receives a database-level
+   exception (not an `OptimisticLockException`).
+
+**Timing control:**
+Use `CountDownLatch` barriers to ensure both threads reach
+the critical section before either proceeds. Without
+explicit synchronization, thread scheduling makes the
+test non-deterministic. A `CyclicBarrier(2)` at each
+lock acquisition point guarantees the interleaving.
 
 ```text
   No locking:   TX1(10->9) TX2(10->9) = 9  WRONG
@@ -6790,6 +6932,32 @@ void optimisticLock_detectsConflict() {
 }
 ```
 
+**Production: retry on optimistic conflict:**
+
+```java
+// Retry pattern for optimistic failures
+int retries = 3;
+while (retries-- > 0) {
+    try {
+        txTemplate.execute(s -> {
+            Product p = em.find(
+                Product.class, 1L);
+            p.setQuantity(
+                p.getQuantity() - 1);
+            return null;
+        }); // version checked at commit
+        break; // success
+    } catch (OptimisticLockException e) {
+        if (retries == 0) throw e;
+        // Retry with fresh read
+    }
+}
+```
+
+The retry loop is the production complement to `@Version`.
+Without it, optimistic conflicts propagate as 500 errors
+to the caller.
+
 ---
 
 ### ⚖️ Trade-offs
@@ -6806,6 +6974,14 @@ requires TransactionTemplate or manual TX management.
 | No locking  | Low        | See the problem   |
 | Optimistic  | Medium     | See the detection |
 | Pessimistic | High       | See the blocking  |
+| Deadlock    | High       | See the danger    |
+
+Deadlock reproduction is the most instructive scenario
+because it demonstrates that pessimistic locking is not
+free of failure modes. Two transactions acquiring locks
+in different order will deadlock. The fix is consistent
+lock ordering: always acquire locks on entities sorted
+by primary key.
 
 ---
 
@@ -6865,7 +7041,12 @@ Most developers have never seen `OptimisticLockException`
 thrown in their code. They add `@Version` because they were
 told to, but never test the conflict path. The first time you
 see the exception in a controlled exercise, you understand why
-handling it properly matters.
+handling it properly matters. The deeper lesson: `@Version`
+without a retry or conflict-handling strategy is half an
+implementation. The annotation detects the conflict, but the
+application must decide what happens next - retry, merge, or
+report. Untested conflict paths become 500 errors in
+production because no catch block was ever written.
 
 ---
 
@@ -6908,7 +7089,12 @@ performance optimization and production readiness: N+1
 detection and fix (statistics + JOIN FETCH), DTO projections
 for list endpoints, optimistic locking on concurrent entities,
 pessimistic locking on inventory, query count assertions in
-tests, and Hibernate statistics monitoring.
+tests, and Hibernate statistics monitoring. Each optimization
+targets a specific production failure mode: N+1 causes
+latency spikes, full entity loading wastes memory and
+bandwidth, missing locking causes silent data corruption,
+and absent monitoring means issues are discovered by users
+instead of alerts.
 
 ---
 
@@ -6947,6 +7133,21 @@ Add `@Version` to Order and Product entities. Implement
 **Step 4 - Monitoring:**
 Add Micrometer metrics. Create assertions for query count
 per endpoint.
+
+**Step 5 - Before/After Measurement:**
+Record baseline metrics before each optimization: query
+count, response time (p50/p95), heap usage during list
+operations. After applying each fix, re-measure and
+document the delta. This measurement habit proves the
+value of each change and prevents premature optimization.
+
+**Step 6 - Connection Pool Sizing:**
+Set HikariCP's `maximumPoolSize` based on the formula:
+`connections = (CPU cores * 2) + spindle count`. For a
+4-core server with SSD, start with 10 connections. Monitor
+`hikaricp_connections_pending` in Grafana. If pending
+connections are consistently above zero, the pool is
+undersized relative to concurrent request volume.
 
 ```text
   Phase 3 checklist:
@@ -7026,7 +7227,24 @@ void listOrders_noNPlus1() {
         .as("List should be 1-2 queries max")
         .isLessThanOrEqualTo(2);
 }
+
+@Test
+void updateOrder_versionIncremented() {
+    Order order = orderRepo.findById(1L)
+        .orElseThrow();
+    int vBefore = order.getVersion();
+    order.setStatus(Status.SHIPPED);
+    orderRepo.saveAndFlush(order);
+    assertThat(order.getVersion())
+        .isEqualTo(vBefore + 1);
+}
 ```
+
+Each Phase 3 test verifies one optimization property:
+query count for N+1, version increment for locking,
+DTO field count for projections. These tests serve as
+living documentation of the application's performance
+contract.
 
 ---
 
@@ -7043,6 +7261,15 @@ of all preceding L3 keywords; more complex codebase.
 | 1     | CRUD          | Not ready            |
 | 2     | Relationships | Partially ready      |
 | 3     | Performance   | Production ready     |
+
+**Phase 3 measurement targets (typical improvements):**
+
+| Optimization      | Before        | After           |
+| ----------------- | ------------- | --------------- |
+| N+1 fix           | N+1 queries   | 1-2 queries     |
+| DTO projection    | 40 columns    | 5-8 columns     |
+| Pagination        | Full scan     | Constant time   |
+| @Version locking  | Lost updates  | Conflict detect |
 
 ---
 
@@ -7106,7 +7333,12 @@ memory usage by 50%, and add concurrency safety - all on the
 same Phase 2 codebase. The code structure barely changes.
 The difference between "works in dev" and "production ready"
 is four specific additions: JOIN FETCH, DTO projections,
-@Version, and statistics assertions.
+@Version, and statistics assertions. The most overlooked
+step is measurement. Without recording before/after query
+counts and response times, teams cannot distinguish
+effective optimizations from unnecessary ones. The Phase 3
+habit of "measure, optimize, re-measure" prevents both
+under-optimization and premature optimization.
 
 ---
 
@@ -7215,6 +7447,25 @@ Ten L3 design questions with expected answer depth:
     Statistics + Micrometer + Prometheus. Alert on queries per
     request > 10, L2 cache hit rate, slow queries.
 
+**Follow-up depth pattern:**
+Interviewers probe depth by asking "why" after each answer.
+Example chain: "How do you fix N+1?" -> "JOIN FETCH" ->
+"What SQL does that generate?" -> "A LEFT JOIN" -> "What
+happens with pagination and JOIN FETCH on a collection?" ->
+"Hibernate fetches all rows and paginates in memory" ->
+"How do you fix that?" -> "Split into two queries or use
+a subquery." Following the chain to the end signals
+production experience. Stopping at the first answer signals
+documentation-level knowledge.
+
+**Whiteboard approach:**
+When asked to design a Hibernate data model, start by
+drawing the entity relationship diagram with cardinality
+and fetch strategies annotated on each edge. Then trace
+the SQL that Hibernate generates for the two most common
+queries. This shows the interviewer you think in SQL, not
+just annotations.
+
 ```text
   L3 Interview answer structure:
   1. Name the mechanism
@@ -7303,6 +7554,13 @@ monitoring to answer authentically.
 | Naming only     | Surface knowledge | Read the docs        |
 | Mechanism       | Understanding     | Studied deeply       |
 | Trade-off + fix | Production skill  | Debugged real issues |
+| Follow-up chain | Expert knowledge  | Solved edge cases    |
+
+The follow-up chain is what separates mid-level from senior
+answers. Knowing the primary mechanism is expected. Knowing
+what breaks at the edges (pagination with collection JOIN
+FETCH, @Version on inherited entities, cache invalidation
+across services) proves depth.
 
 ---
 
@@ -7362,7 +7620,12 @@ The single most impactful interview skill for Hibernate is not
 knowing the API - it is the ability to reason about the SQL
 that Hibernate generates. Candidates who can draw the SQL on a
 whiteboard for any given entity graph and query are immediately
-identified as experienced practitioners.
+identified as experienced practitioners. The second signal
+interviewers look for is awareness of what Hibernate cannot
+do well: reporting queries across large datasets, bulk updates
+on millions of rows, and real-time analytics. Knowing when to
+bypass Hibernate (native queries, JDBC, or a read-optimized
+store) shows architectural maturity.
 
 ---
 
@@ -7476,6 +7739,22 @@ deep understanding, not just checking a box.
   hibernate_version property in logs
 ```
 
+**Scoring approach:**
+For each of the four categories (N+1, Locking, Internals,
+Production), rate yourself: (A) can explain the mechanism,
+(B) can predict the behavior, (C) can diagnose from
+symptoms. Rate A/B/C for each category. Any category below
+B is a gap requiring hands-on practice with the
+corresponding kata or exercise.
+
+**Gap identification and study plan:**
+Sort gaps by production impact. N+1 and @Version gaps are
+highest priority because they cause the most common
+production incidents. Build a study plan: re-read the
+keyword, run the exercise, then re-assess. A gap is closed
+when you can predict the query count or locking behavior
+before running the test.
+
 ```mermaid
 mindmap
   root((Hibernate L3))
@@ -7540,7 +7819,25 @@ Pre-deploy verification:
 [ ] Micrometer Hibernate metrics configured
 [ ] No show_sql=true in production config
 [ ] DTO projections for list endpoints
+[ ] Connection pool sized (not default 10)
+[ ] Flyway/Liquibase migrations tested
 ```
+
+**Study plan construction:**
+After scoring each category, identify the lowest-rated
+areas and map them to specific keywords:
+
+```text
+  Gap -> Action
+  N+1 weak     -> Re-do HIB-067 kata
+  Locking weak -> Re-do HIB-068 exercise
+  Flush/merge  -> Re-read HIB-052, HIB-053
+  Monitoring   -> Set up HIB-066 in a project
+```
+
+Build a one-week plan: one gap per day, with the
+corresponding exercise completed and the self-assessment
+re-taken at the end of the week.
 
 ---
 
@@ -7557,6 +7854,12 @@ requires re-reading the full keyword.
 | Pre-interview | Quick refresh   | Shallow without study       |
 | Pre-deploy    | Safety check    | Checklist is not exhaustive |
 | Gap detection | Find weak areas | Must follow up              |
+| Study plan    | Targeted work   | Requires discipline         |
+
+The highest-value use of this card is gap detection followed
+by targeted re-study. Passive re-reading does not close gaps.
+Only hands-on practice (kata, exercise, Phase 3 app) moves
+a rating from A to C.
 
 ---
 
@@ -7619,7 +7922,13 @@ The three highest-impact Hibernate skills at L3 are: (1) N+1
 detection and fix (JOIN FETCH), (2) @Version on every mutable
 entity, and (3) DTO projections for list endpoints. These
 three alone prevent the majority of Hibernate production
-incidents. Everything else in L3 is refinement.
+incidents. Everything else in L3 is refinement. Most
+developers who complete L3 over-index on query optimization
+and under-index on locking. When asked "does every mutable
+entity in your application have @Version?", the answer is
+usually "no." That single gap accounts for more silent data
+corruption than all N+1 issues combined - because N+1 is
+slow but visible, while lost updates are fast and silent.
 
 ---
 
