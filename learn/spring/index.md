@@ -725,5 +725,5 @@ CROSS-CATEGORY DEPENDENCIES:
 | ----------------------------- | -------------------------- | ---------------- |
 | SPR-032 @Transactional Basics | JLG-031 Lambdas            | Java Language    |
 | SPR-046 Proxy Mechanism       | JLG-044 Module System      | Java Language    |
-| SPR-072 Startup Optimization  | JVM-xxx (GC tuning)        | Java JVM         |
-| SPR-076 WebFlux               | JCC-xxx (reactive streams) | Java Concurrency |
+| SPR-072 Startup Optimization  | JVM-061 GC Tuning Methodology | Java JVM      |
+| SPR-076 WebFlux               | JCC-073 Reactive Streams vs VT Decision | Java Concurrency |
