@@ -5666,12 +5666,12 @@ them is not physical but conceptual.
 
 **L2 cache concurrency strategies:**
 
-| Strategy              | Reads | Writes    | Use case        |
-| --------------------- | ----- | --------- | --------------- |
-| READ_ONLY             | Fast  | Rejected  | Reference data  |
-| READ_WRITE            | Fast  | Lock-based| Mutable+correct |
-| NONSTRICT_READ_WRITE  | Fast  | No lock   | Eventual cons.  |
-| TRANSACTIONAL         | Fast  | JTA       | XA environments |
+| Strategy             | Reads | Writes     | Use case        |
+| -------------------- | ----- | ---------- | --------------- |
+| READ_ONLY            | Fast  | Rejected   | Reference data  |
+| READ_WRITE           | Fast  | Lock-based | Mutable+correct |
+| NONSTRICT_READ_WRITE | Fast  | No lock    | Eventual cons.  |
+| TRANSACTIONAL        | Fast  | JTA        | XA environments |
 
 Choose `READ_ONLY` for truly immutable data (countries,
 currencies). Choose `READ_WRITE` when correctness matters
@@ -5780,15 +5780,15 @@ Application cache is flexible and caches any shape of data.
 **Cost:** L2 stores dehydrated state (re-hydration cost on
 hit). Application cache requires explicit eviction management.
 
-| Aspect        | L2 Cache       | Application Cache    |
-| ------------- | -------------- | -------------------- |
-| Cached object | Entity by ID   | Any (DTO, list)      |
-| Integration   | Transparent    | Explicit             |
-| Eviction      | Automatic      | Manual (@CacheEvict) |
-| Best for      | Reference data | Aggregates, lists    |
-| Stale data    | Auto-invalidated | Developer manages  |
-| Native SQL    | NOT invalidated| N/A                  |
-| Clustered     | Provider-dep.  | Redis/Hazelcast      |
+| Aspect        | L2 Cache         | Application Cache    |
+| ------------- | ---------------- | -------------------- |
+| Cached object | Entity by ID     | Any (DTO, list)      |
+| Integration   | Transparent      | Explicit             |
+| Eviction      | Automatic        | Manual (@CacheEvict) |
+| Best for      | Reference data   | Aggregates, lists    |
+| Stale data    | Auto-invalidated | Developer manages    |
+| Native SQL    | NOT invalidated  | N/A                  |
+| Clustered     | Provider-dep.    | Redis/Hazelcast      |
 
 L2 cache auto-invalidation only works for changes made
 through Hibernate's entity lifecycle. Native SQL, bulk
@@ -7264,12 +7264,12 @@ of all preceding L3 keywords; more complex codebase.
 
 **Phase 3 measurement targets (typical improvements):**
 
-| Optimization      | Before        | After           |
-| ----------------- | ------------- | --------------- |
-| N+1 fix           | N+1 queries   | 1-2 queries     |
-| DTO projection    | 40 columns    | 5-8 columns     |
-| Pagination        | Full scan     | Constant time   |
-| @Version locking  | Lost updates  | Conflict detect |
+| Optimization     | Before       | After           |
+| ---------------- | ------------ | --------------- |
+| N+1 fix          | N+1 queries  | 1-2 queries     |
+| DTO projection   | 40 columns   | 5-8 columns     |
+| Pagination       | Full scan    | Constant time   |
+| @Version locking | Lost updates | Conflict detect |
 
 ---
 

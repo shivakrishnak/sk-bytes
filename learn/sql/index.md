@@ -18,7 +18,7 @@ PROVENANCE:      user request via /learn: "sql"
 TIER:            tier-2-data
 FOLDER:          learn/sql/
 LEVELS:          L0 + L1 + L2 + L3 + L4 + L5 + L6 + META
-TOTAL:           142 keywords across 5 sub-topic files
+TOTAL:           142 keywords across 9 sub-topic files
 GENERATED_FROM:  LEARN_KEYWORD_GENERATOR.md v1.0
 ═══════════════════════════════════════════════════════
 ```
@@ -44,8 +44,12 @@ per `LEARN_PROMPT.md` v1.0 (tri-template auto-routing).
 | [SQL - Foundations](SQL%20-%20Foundations.md)                               | 25       | L0 + L1        | stub   |
 | [SQL - Working Queries](SQL%20-%20Working%20Queries.md)                     | 27       | L2             | stub   |
 | [SQL - Design and Optimization](SQL%20-%20Design%20and%20Optimization.md)   | 32       | L3             | stub   |
-| [SQL - Production and Internals](SQL%20-%20Production%20and%20Internals.md) | 28       | L4             | stub   |
-| [SQL - Architecture and META](SQL%20-%20Architecture%20and%20META.md)       | 30       | L5 + L6 + META | stub   |
+| [SQL - Production and Internals Part 1](SQL%20-%20Production%20and%20Internals%20Part%201.md) | 10 | L4 | stub |
+| [SQL - Production and Internals Part 2](SQL%20-%20Production%20and%20Internals%20Part%202.md) | 9 | L4 | stub |
+| [SQL - Production and Internals Part 3](SQL%20-%20Production%20and%20Internals%20Part%203.md) | 9 | L4 | stub |
+| [SQL - Architecture and META Part 1](SQL%20-%20Architecture%20and%20META%20Part%201.md) | 10 | L5 + L6 + META | stub |
+| [SQL - Architecture and META Part 2](SQL%20-%20Architecture%20and%20META%20Part%202.md) | 10 | L5 + L6 + META | stub |
+| [SQL - Architecture and META Part 3](SQL%20-%20Architecture%20and%20META%20Part%203.md) | 10 | L5 + L6 + META | stub |
 
 ## Keyword table
 

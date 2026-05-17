@@ -18,7 +18,7 @@ PROVENANCE:      user request via /learn: "spring ecosystem"
 TIER:            tier-2-frameworks
 FOLDER:          learn/spring/
 LEVELS:          L0 + L1 + L2 + L3 + L4 + L5 + L6 + META
-TOTAL:           115 keywords across 5 sub-topic files
+TOTAL:           115 keywords across 8 sub-topic files
 GENERATED_FROM:  LEARN_KEYWORD_GENERATOR.md v1.0
 ═══════════════════════════════════════════════════════
 ```
@@ -40,13 +40,16 @@ per `LEARN_PROMPT.md` v1.0 (tri-template auto-routing).
 
 ## Sub-topic files
 
-| File                                                                        | Keywords | Levels         | Status |
-| --------------------------------------------------------------------------- | -------- | -------------- | ------ |
-| [Spring - Core and Foundations](Spring%20-%20Core%20and%20Foundations.md)   | 23       | L0 + L1        | stub   |
-| [Spring - Web and Data](Spring%20-%20Web%20and%20Data.md)                   | 20       | L2             | stub   |
-| [Spring - Internals and Design](Spring%20-%20Internals%20and%20Design.md)   | 26       | L3             | stub   |
-| [Spring - Production and Cloud](Spring%20-%20Production%20and%20Cloud.md)   | 20       | L4             | stub   |
-| [Spring - Architecture and META](Spring%20-%20Architecture%20and%20META.md) | 26       | L5 + L6 + META | stub   |
+| File                                                                                          | Keywords | Levels         | Status |
+| --------------------------------------------------------------------------------------------- | -------- | -------------- | ------ |
+| [Spring - Core and Foundations](Spring%20-%20Core%20and%20Foundations.md)                     | 23       | L0 + L1        | stub   |
+| [Spring - Web and Data](Spring%20-%20Web%20and%20Data.md)                                     | 20       | L2             | stub   |
+| [Spring - Internals and Design](Spring%20-%20Internals%20and%20Design.md)                     | 26       | L3             | stub   |
+| [Spring - Production and Cloud Part 1](Spring%20-%20Production%20and%20Cloud%20Part%201.md)   | 10       | L4             | stub   |
+| [Spring - Production and Cloud Part 2](Spring%20-%20Production%20and%20Cloud%20Part%202.md)   | 10       | L4             | stub   |
+| [Spring - Architecture and META Part 1](Spring%20-%20Architecture%20and%20META%20Part%201.md) | 9        | L5 + L6 + META | stub   |
+| [Spring - Architecture and META Part 2](Spring%20-%20Architecture%20and%20META%20Part%202.md) | 9        | L5 + L6 + META | stub   |
+| [Spring - Architecture and META Part 3](Spring%20-%20Architecture%20and%20META%20Part%203.md) | 8        | L5 + L6 + META | stub   |
 
 ## Keyword table
 

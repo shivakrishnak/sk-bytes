@@ -18,7 +18,7 @@ PROVENANCE:      user request via /learn: "java jvm"
 TIER:            tier-3-infrastructure
 FOLDER:          learn/java-jvm/
 LEVELS:          L0 + L1 + L2 + L3 + L4 + L5 + L6 + META
-TOTAL:           132 keywords across 5 sub-topic files
+TOTAL:           132 keywords across 7 sub-topic files
 GENERATED_FROM:  LEARN_KEYWORD_GENERATOR.md v1.0
 ════════════════════════════════════════════════════════════════════════
 ```
@@ -43,7 +43,9 @@ per `LEARN_PROMPT.md` v1.0 (tri-template auto-routing).
 | [Java JVM - Runtime Foundations](Java%20JVM%20-%20Runtime%20Foundations.md)               | 25       | L0 + L1        | stub   |
 | [Java JVM - Memory and GC Essentials](Java%20JVM%20-%20Memory%20and%20GC%20Essentials.md) | 22       | L2             | stub   |
 | [Java JVM - GC Internals and Tuning](Java%20JVM%20-%20GC%20Internals%20and%20Tuning.md)   | 28       | L3             | stub   |
-| [Java JVM - Production Diagnostics](Java%20JVM%20-%20Production%20Diagnostics.md)         | 26       | L4             | stub   |
+| [Java JVM - Production Diagnostics Part 1](Java%20JVM%20-%20Production%20Diagnostics%20Part%201.md) | 9 | L4 | stub |
+| [Java JVM - Production Diagnostics Part 2](Java%20JVM%20-%20Production%20Diagnostics%20Part%202.md) | 9 | L4 | stub |
+| [Java JVM - Production Diagnostics Part 3](Java%20JVM%20-%20Production%20Diagnostics%20Part%203.md) | 8 | L4 | stub |
 | [Java JVM - Architecture and Strategy](Java%20JVM%20-%20Architecture%20and%20Strategy.md) | 31       | L5 + L6 + META | stub   |
 
 ## Keyword table

@@ -234,12 +234,12 @@ both sides consistent; forgetting `mappedBy` silently creates
 a join table; EAGER default on `@ManyToOne` can trigger
 cascading loads.
 
-| Aspect       | Bidirectional ManyToOne/OneToMany | Unidirectional ManyToOne only |
-| ------------ | -------------------------------- | ---------------------------- |
-| Navigation   | Both directions                  | Child-to-parent only         |
-| Complexity   | Sync methods required            | Simpler mapping              |
-| Join table   | None (with mappedBy)             | None                         |
-| Use case     | Parent manages children          | Child references parent      |
+| Aspect     | Bidirectional ManyToOne/OneToMany | Unidirectional ManyToOne only |
+| ---------- | --------------------------------- | ----------------------------- |
+| Navigation | Both directions                   | Child-to-parent only          |
+| Complexity | Sync methods required             | Simpler mapping               |
+| Join table | None (with mappedBy)              | None                          |
+| Use case   | Parent manages children           | Child references parent       |
 
 ---
 
@@ -270,11 +270,11 @@ cascading loads.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | `@OneToMany` without `mappedBy` uses the FK column | Without `mappedBy`, Hibernate creates a separate join table with worse performance |
-| 2 | Setting only the parent-side collection is enough | The owning side (`@ManyToOne`) must be set; only the FK-holder triggers the write |
-| 3 | `@ManyToOne` defaults to LAZY | `@ManyToOne` defaults to EAGER (FetchType.EAGER); always set `fetch = LAZY` explicitly |
+| #   | Misconception                                      | Reality                                                                                |
+| --- | -------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| 1   | `@OneToMany` without `mappedBy` uses the FK column | Without `mappedBy`, Hibernate creates a separate join table with worse performance     |
+| 2   | Setting only the parent-side collection is enough  | The owning side (`@ManyToOne`) must be set; only the FK-holder triggers the write      |
+| 3   | `@ManyToOne` defaults to LAZY                      | `@ManyToOne` defaults to EAGER (FetchType.EAGER); always set `fetch = LAZY` explicitly |
 
 ---
 
@@ -313,7 +313,7 @@ N+1 query risks.
 ### 📇 Revision Card
 
 1. `@ManyToOne` = owning side (FK holder). `@OneToMany
-   (mappedBy)` = inverse side (read-only mirror).
+(mappedBy)` = inverse side (read-only mirror).
 2. Without `mappedBy`, Hibernate silently creates a join
    table - always set it.
 3. `@ManyToOne` defaults to EAGER - always override with
@@ -485,12 +485,12 @@ with no extra columns; Hibernate manages the join table DDL.
 required (List causes duplicate issues); join table is
 invisible to JPQL queries.
 
-| Aspect          | @ManyToMany            | Intermediate entity    |
-| --------------- | ---------------------- | ---------------------- |
-| Extra columns   | Not supported          | Fully supported        |
-| Query join data | Not possible           | Standard JPQL          |
-| Mapping effort  | Minimal (2 annotations)| More boilerplate       |
-| Flexibility     | Low (pure link table)  | High (full entity)     |
+| Aspect          | @ManyToMany             | Intermediate entity |
+| --------------- | ----------------------- | ------------------- |
+| Extra columns   | Not supported           | Fully supported     |
+| Query join data | Not possible            | Standard JPQL       |
+| Mapping effort  | Minimal (2 annotations) | More boilerplate    |
+| Flexibility     | Low (pure link table)   | High (full entity)  |
 
 ---
 
@@ -522,11 +522,11 @@ invisible to JPQL queries.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | Both sides can declare `@JoinTable` | Only one side owns the join table; the other uses `mappedBy`. Two owners = two tables. |
-| 2 | `List` works fine with `@ManyToMany` | `List` causes Hibernate to delete ALL join rows and re-insert on modification. Use `Set`. |
-| 3 | `@ManyToMany` is the default choice for M:N | Start with an intermediate entity unless you are certain the join table will never gain columns |
+| #   | Misconception                               | Reality                                                                                         |
+| --- | ------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| 1   | Both sides can declare `@JoinTable`         | Only one side owns the join table; the other uses `mappedBy`. Two owners = two tables.          |
+| 2   | `List` works fine with `@ManyToMany`        | `List` causes Hibernate to delete ALL join rows and re-insert on modification. Use `Set`.       |
+| 3   | `@ManyToMany` is the default choice for M:N | Start with an intermediate entity unless you are certain the join table will never gain columns |
 
 ---
 
@@ -744,12 +744,12 @@ LAZY loading (with bytecode enhancement), and simplifies joins.
 `@MapsId` requires careful lifecycle management; bytecode
 enhancement is needed for parent-side LAZY.
 
-| Aspect         | Separate FK @OneToOne | @MapsId shared PK     |
-| -------------- | --------------------- | --------------------- |
-| Extra column   | Yes (FK on one table) | No (PK = FK)          |
-| LAZY on parent | Broken without tricks | Works with enhancement|
-| Lifecycle      | Independent           | Strongly coupled      |
-| Join cost      | PK-to-FK join         | PK-to-PK join (faster)|
+| Aspect         | Separate FK @OneToOne | @MapsId shared PK      |
+| -------------- | --------------------- | ---------------------- |
+| Extra column   | Yes (FK on one table) | No (PK = FK)           |
+| LAZY on parent | Broken without tricks | Works with enhancement |
+| Lifecycle      | Independent           | Strongly coupled       |
+| Join cost      | PK-to-FK join         | PK-to-PK join (faster) |
 
 ---
 
@@ -777,11 +777,11 @@ enhancement is needed for parent-side LAZY.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | `@OneToOne(fetch = LAZY)` works out of the box | Parent-side LAZY requires bytecode enhancement or `@MapsId`; without either, Hibernate eagerly loads |
-| 2 | `@OneToOne` is symmetric - either side can own the FK | Only one side owns the FK; the non-owning side MUST use `mappedBy` |
-| 3 | Shared PK means the child can exist without the parent | `@MapsId` ties the child's PK to the parent's PK; the child cannot exist independently |
+| #   | Misconception                                          | Reality                                                                                              |
+| --- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| 1   | `@OneToOne(fetch = LAZY)` works out of the box         | Parent-side LAZY requires bytecode enhancement or `@MapsId`; without either, Hibernate eagerly loads |
+| 2   | `@OneToOne` is symmetric - either side can own the FK  | Only one side owns the FK; the non-owning side MUST use `mappedBy`                                   |
+| 3   | Shared PK means the child can exist without the parent | `@MapsId` ties the child's PK to the parent's PK; the child cannot exist independently               |
 
 ---
 
@@ -840,14 +840,15 @@ avoid the annotation entirely by embedding the data.
 Loading an Order should not require loading every LineItem,
 every Product for each LineItem, and every Category for each
 Product. Yet with EAGER fetching, that is exactly what happens
+
 - one `find(Order.class, id)` triggers a cascade of JOINs or
-SELECTs that pulls the entire object graph into memory. On a
-page listing 20 orders, EAGER turns one query into hundreds.
-Conversely, excessive LAZY loading without strategic fetching
-triggers N+1 queries when you iterate a collection. The
-decision between LAZY and EAGER is the single most impactful
-configuration choice in Hibernate. This is exactly why
-understanding fetch types is non-negotiable.
+  SELECTs that pulls the entire object graph into memory. On a
+  page listing 20 orders, EAGER turns one query into hundreds.
+  Conversely, excessive LAZY loading without strategic fetching
+  triggers N+1 queries when you iterate a collection. The
+  decision between LAZY and EAGER is the single most impactful
+  configuration choice in Hibernate. This is exactly why
+  understanding fetch types is non-negotiable.
 
 ---
 
@@ -978,12 +979,12 @@ and query count for targeted access patterns.
 `LazyInitializationException`); needs explicit `JOIN FETCH`
 for known access patterns; proxy initialization has overhead.
 
-| Aspect               | LAZY                     | EAGER                |
-| -------------------- | ------------------------ | -------------------- |
-| Default query count  | 1 (+ N on access)       | 1 JOIN or 1+N        |
-| Memory               | Low (loaded on demand)   | High (full graph)    |
-| Risk                 | LazyInitializationException | Fetch storms      |
-| Control              | High (explicit fetching) | Low (always loads)   |
+| Aspect              | LAZY                        | EAGER              |
+| ------------------- | --------------------------- | ------------------ |
+| Default query count | 1 (+ N on access)           | 1 JOIN or 1+N      |
+| Memory              | Low (loaded on demand)      | High (full graph)  |
+| Risk                | LazyInitializationException | Fetch storms       |
+| Control             | High (explicit fetching)    | Low (always loads) |
 
 ---
 
@@ -1013,11 +1014,11 @@ for known access patterns; proxy initialization has overhead.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | `@ManyToOne` defaults to LAZY | `@ManyToOne` and `@OneToOne` default to EAGER. You MUST explicitly set `fetch = LAZY`. |
-| 2 | LAZY means fewer queries always | Without `JOIN FETCH`, LAZY triggers N+1: 1 parent query + N child queries on iteration |
-| 3 | EAGER is fine for small collections | "Small" grows. EAGER on any collection multiplies with other EAGER associations |
+| #   | Misconception                       | Reality                                                                                |
+| --- | ----------------------------------- | -------------------------------------------------------------------------------------- |
+| 1   | `@ManyToOne` defaults to LAZY       | `@ManyToOne` and `@OneToOne` default to EAGER. You MUST explicitly set `fetch = LAZY`. |
+| 2   | LAZY means fewer queries always     | Without `JOIN FETCH`, LAZY triggers N+1: 1 parent query + N child queries on iteration |
+| 3   | EAGER is fine for small collections | "Small" grows. EAGER on any collection multiplies with other EAGER associations        |
 
 ---
 
@@ -1123,7 +1124,7 @@ what you want.
 
 1. You annotate a collection with
    `@OneToMany(cascade = {CascadeType.PERSIST,
-   CascadeType.MERGE})`.
+CascadeType.MERGE})`.
 2. When `em.persist(parent)` is called, Hibernate walks
    the cascade graph and calls `persist()` on each child.
 3. When `em.merge(parent)` is called, children are also
@@ -1208,11 +1209,11 @@ the entire aggregate; consistent lifecycle management.
 on wrong relationships silently deletes shared data; debugging
 cascade chains requires understanding the graph.
 
-| Aspect         | No cascade         | Selective cascade    | ALL + orphanRemoval |
-| -------------- | ------------------ | -------------------- | ------------------- |
-| Boilerplate    | High (manual)      | Medium               | Minimal             |
-| Safety         | Explicit, safe     | Controlled           | Risky if misapplied |
-| Use case       | Independent entities| Mixed ownership      | True composition    |
+| Aspect      | No cascade           | Selective cascade | ALL + orphanRemoval |
+| ----------- | -------------------- | ----------------- | ------------------- |
+| Boilerplate | High (manual)        | Medium            | Minimal             |
+| Safety      | Explicit, safe       | Controlled        | Risky if misapplied |
+| Use case    | Independent entities | Mixed ownership   | True composition    |
 
 ---
 
@@ -1240,11 +1241,11 @@ cascade chains requires understanding the graph.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | `CascadeType.ALL` is the safe default | ALL includes REMOVE; on shared relationships this deletes entities other parents still reference |
-| 2 | Cascade affects fetch behavior | Cascade controls operation propagation ONLY; fetching is controlled by FetchType |
-| 3 | Cascade flows bidirectionally | Cascade flows only in the direction declared; parent-to-child, not child-to-parent |
+| #   | Misconception                         | Reality                                                                                          |
+| --- | ------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| 1   | `CascadeType.ALL` is the safe default | ALL includes REMOVE; on shared relationships this deletes entities other parents still reference |
+| 2   | Cascade affects fetch behavior        | Cascade controls operation propagation ONLY; fetching is controlled by FetchType                 |
+| 3   | Cascade flows bidirectionally         | Cascade flows only in the direction declared; parent-to-child, not child-to-parent               |
 
 ---
 
@@ -1285,7 +1286,7 @@ other LineItems. Yet this pattern appears in countless tutorials.
 2. `CascadeType.ALL` is safe ONLY for true composition where
    the parent exclusively owns children.
 3. NEVER cascade REMOVE from child to parent (`@ManyToOne
-   cascade REMOVE`) - it deletes the parent and all siblings.
+cascade REMOVE`) - it deletes the parent and all siblings.
 
 ---
 
@@ -1441,12 +1442,12 @@ composition semantics.
 children; cannot reassign a child to a different parent
 (removal = deletion); collection.clear() deletes everything.
 
-| Aspect              | CascadeType.REMOVE   | orphanRemoval = true  |
-| ------------------- | -------------------- | --------------------- |
-| Trigger: parent removed | Deletes children  | Deletes children      |
-| Trigger: child removed  | No effect (orphan) | Deletes the child     |
-| Child independence   | Can exist alone      | Cannot exist alone    |
-| Risk                 | Orphan accumulation  | Accidental mass delete|
+| Aspect                  | CascadeType.REMOVE  | orphanRemoval = true   |
+| ----------------------- | ------------------- | ---------------------- |
+| Trigger: parent removed | Deletes children    | Deletes children       |
+| Trigger: child removed  | No effect (orphan)  | Deletes the child      |
+| Child independence      | Can exist alone     | Cannot exist alone     |
+| Risk                    | Orphan accumulation | Accidental mass delete |
 
 ---
 
@@ -1477,11 +1478,11 @@ children; cannot reassign a child to a different parent
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | `orphanRemoval` and `CascadeType.REMOVE` are the same | REMOVE triggers only on `em.remove(parent)`. orphanRemoval also triggers on `collection.remove(child)`. |
-| 2 | Replacing the collection reference is safe with orphanRemoval | `setItems(newList)` orphans ALL old items, triggering mass DELETE. Modify in place with `clear()` + `addAll()`. |
-| 3 | orphanRemoval works on `@ManyToMany` | orphanRemoval is only supported on `@OneToMany` and `@OneToOne`. Using it on `@ManyToMany` throws a mapping exception. |
+| #   | Misconception                                                 | Reality                                                                                                                |
+| --- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 1   | `orphanRemoval` and `CascadeType.REMOVE` are the same         | REMOVE triggers only on `em.remove(parent)`. orphanRemoval also triggers on `collection.remove(child)`.                |
+| 2   | Replacing the collection reference is safe with orphanRemoval | `setItems(newList)` orphans ALL old items, triggering mass DELETE. Modify in place with `clear()` + `addAll()`.        |
+| 3   | orphanRemoval works on `@ManyToMany`                          | orphanRemoval is only supported on `@OneToMany` and `@OneToOne`. Using it on `@ManyToMany` throws a mapping exception. |
 
 ---
 
@@ -1701,12 +1702,12 @@ objects, DDD-aligned value type semantics.
 is awkward (all-null = null reference); no independent queries
 on embeddable.
 
-| Aspect          | @Embeddable       | Separate @Entity   |
-| --------------- | ----------------- | ------------------- |
-| Table           | Inlined in parent | Own table + joins   |
-| Identity        | None (value type) | Has @Id             |
-| Reuse           | Via @Embedded     | Via @ManyToOne      |
-| Querying        | Via parent        | Independent queries |
+| Aspect   | @Embeddable       | Separate @Entity    |
+| -------- | ----------------- | ------------------- |
+| Table    | Inlined in parent | Own table + joins   |
+| Identity | None (value type) | Has @Id             |
+| Reuse    | Via @Embedded     | Via @ManyToOne      |
+| Querying | Via parent        | Independent queries |
 
 ---
 
@@ -1735,11 +1736,11 @@ on embeddable.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | An embeddable with all null fields returns an empty object | Hibernate returns null for the entire embeddable reference when all its columns are null |
-| 2 | `@Embeddable` can have an `@Id` | Embeddables are value types with NO identity. Adding `@Id` makes it an entity. |
-| 3 | You can use `@OneToMany` inside an embeddable | Standard JPA does not support collections inside embeddables; some providers allow it as an extension |
+| #   | Misconception                                              | Reality                                                                                               |
+| --- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| 1   | An embeddable with all null fields returns an empty object | Hibernate returns null for the entire embeddable reference when all its columns are null              |
+| 2   | `@Embeddable` can have an `@Id`                            | Embeddables are value types with NO identity. Adding `@Id` makes it an entity.                        |
+| 3   | You can use `@OneToMany` inside an embeddable              | Standard JPA does not support collections inside embeddables; some providers allow it as an extension |
 
 ---
 
@@ -1843,6 +1844,7 @@ suggests - one table scan vs multi-table joins.
 ### ⚙️ How It Works
 
 **SINGLE_TABLE (default):**
+
 1. One table holds all subclass columns. Columns unique to
    a subclass are nullable.
 2. A discriminator column (`DTYPE` by default) identifies
@@ -1850,6 +1852,7 @@ suggests - one table scan vs multi-table joins.
 3. Polymorphic queries (`FROM Payment`) scan one table.
 
 **JOINED:**
+
 1. Base class gets its own table with shared columns.
 2. Each subclass gets a table with only its unique columns
    plus a FK to the base table.
@@ -1857,6 +1860,7 @@ suggests - one table scan vs multi-table joins.
    tables.
 
 **TABLE_PER_CLASS:**
+
 1. Each concrete class gets a complete table with ALL columns
    (shared + unique).
 2. No discriminator, no joins. Each table is self-contained.
@@ -1968,12 +1972,12 @@ normalized; TABLE_PER_CLASS avoids nullables.
 expensive polymorphic queries; TABLE_PER_CLASS has no shared
 sequences and terrible UNION ALL performance.
 
-| Aspect               | SINGLE_TABLE   | JOINED         | TABLE_PER_CLASS |
-| -------------------- | -------------- | -------------- | --------------- |
-| Polymorphic query    | Fast (1 table) | Slow (N JOINs) | Slow (UNION ALL)|
-| Nullable columns     | Many           | None           | None            |
-| Schema normalization | Low            | High           | Low (redundant) |
-| Adding subclass      | No DDL change  | New table      | New table       |
+| Aspect               | SINGLE_TABLE   | JOINED         | TABLE_PER_CLASS  |
+| -------------------- | -------------- | -------------- | ---------------- |
+| Polymorphic query    | Fast (1 table) | Slow (N JOINs) | Slow (UNION ALL) |
+| Nullable columns     | Many           | None           | None             |
+| Schema normalization | Low            | High           | Low (redundant)  |
+| Adding subclass      | No DDL change  | New table      | New table        |
 
 ---
 
@@ -2003,11 +2007,11 @@ sequences and terrible UNION ALL performance.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | JOINED is better because it is normalized | JOINED normalization costs N JOINs per polymorphic query - often worse than nullable columns |
-| 2 | TABLE_PER_CLASS is clean because each class has its own table | TABLE_PER_CLASS cannot share sequences, uses UNION ALL for polymorphic queries, and duplicates columns |
-| 3 | Adding NOT NULL constraints works with SINGLE_TABLE | Subclass columns MUST be nullable in SINGLE_TABLE because rows of other subtypes leave them empty |
+| #   | Misconception                                                 | Reality                                                                                                |
+| --- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| 1   | JOINED is better because it is normalized                     | JOINED normalization costs N JOINs per polymorphic query - often worse than nullable columns           |
+| 2   | TABLE_PER_CLASS is clean because each class has its own table | TABLE_PER_CLASS cannot share sequences, uses UNION ALL for polymorphic queries, and duplicates columns |
+| 3   | Adding NOT NULL constraints works with SINGLE_TABLE           | Subclass columns MUST be nullable in SINGLE_TABLE because rows of other subtypes leave them empty      |
 
 ---
 
@@ -2201,12 +2205,12 @@ risk.
 **Cost:** Extremely verbose for simple queries; harder to
 read than JPQL; Metamodel generation requires build plugin.
 
-| Aspect           | JPQL               | Criteria API         |
-| ---------------- | ------------------ | -------------------- |
-| Readability      | High (SQL-like)    | Low (verbose Java)   |
-| Type safety      | None (strings)     | Full (with Metamodel)|
-| Dynamic queries  | String concat      | Predicate composition|
-| Learning curve   | Low                | High                 |
+| Aspect          | JPQL            | Criteria API          |
+| --------------- | --------------- | --------------------- |
+| Readability     | High (SQL-like) | Low (verbose Java)    |
+| Type safety     | None (strings)  | Full (with Metamodel) |
+| Dynamic queries | String concat   | Predicate composition |
+| Learning curve  | Low             | High                  |
 
 ---
 
@@ -2236,11 +2240,11 @@ read than JPQL; Metamodel generation requires build plugin.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | Criteria API is always better than JPQL because it is type-safe | For static queries, JPQL is far more readable. Use Criteria API only for dynamic queries. |
-| 2 | `u.get("name")` is type-safe | String-based `get()` fails at runtime. True type safety requires JPA Metamodel (`User_.name`). |
-| 3 | Criteria API prevents all query errors | It prevents syntax and type errors, not logical errors (wrong joins, missing predicates, N+1 patterns) |
+| #   | Misconception                                                   | Reality                                                                                                |
+| --- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| 1   | Criteria API is always better than JPQL because it is type-safe | For static queries, JPQL is far more readable. Use Criteria API only for dynamic queries.              |
+| 2   | `u.get("name")` is type-safe                                    | String-based `get()` fails at runtime. True type safety requires JPA Metamodel (`User_.name`).         |
+| 3   | Criteria API prevents all query errors                          | It prevents syntax and type errors, not logical errors (wrong joins, missing predicates, N+1 patterns) |
 
 ---
 
@@ -2336,7 +2340,7 @@ not database-level optimization.
 ### ⚙️ How It Works
 
 1. Annotate an entity with `@NamedQuery(name = "...",
-   query = "SELECT ...")`.
+query = "SELECT ...")`.
 2. At `EntityManagerFactory` creation, Hibernate parses ALL
    named queries and validates them against the metamodel.
 3. If any named query has a syntax error, startup fails with
@@ -2429,12 +2433,12 @@ definitions.
 called in repository); annotation-based definition is less
 readable for complex queries; cannot build dynamic queries.
 
-| Aspect         | Inline JPQL       | @NamedQuery         |
-| -------------- | ----------------- | ------------------- |
-| Validation     | Runtime only      | Startup             |
-| Plan caching   | Per-call parsing  | Pre-cached          |
-| Readability    | Close to usage    | Distant from usage  |
-| Dynamic        | Yes (string ops)  | No (static only)    |
+| Aspect       | Inline JPQL      | @NamedQuery        |
+| ------------ | ---------------- | ------------------ |
+| Validation   | Runtime only     | Startup            |
+| Plan caching | Per-call parsing | Pre-cached         |
+| Readability  | Close to usage   | Distant from usage |
+| Dynamic      | Yes (string ops) | No (static only)   |
 
 ---
 
@@ -2463,11 +2467,11 @@ readable for complex queries; cannot build dynamic queries.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | Named queries are faster at runtime | The speedup is from skipping JPQL parsing; the actual SQL execution is identical |
-| 2 | `@NamedNativeQuery` is validated like `@NamedQuery` | Native SQL cannot be validated against the JPA metamodel - only JPQL named queries get startup validation |
-| 3 | Named queries must be on the entity they query | Convention says yes (e.g., `User.findByEmail` on `User`), but JPA allows them on any entity class |
+| #   | Misconception                                       | Reality                                                                                                   |
+| --- | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| 1   | Named queries are faster at runtime                 | The speedup is from skipping JPQL parsing; the actual SQL execution is identical                          |
+| 2   | `@NamedNativeQuery` is validated like `@NamedQuery` | Native SQL cannot be validated against the JPA metamodel - only JPQL named queries get startup validation |
+| 3   | Named queries must be on the entity they query      | Convention says yes (e.g., `User.findByEmail` on `User`), but JPA allows them on any entity class         |
 
 ---
 
@@ -2659,12 +2663,12 @@ reduces database load; transparent to application code.
 cache invalidation complexity in clustered environments;
 debugging cache behavior requires statistics logging.
 
-| Aspect          | No L2 cache     | L2 cache enabled     |
-| --------------- | --------------- | -------------------- |
-| Read latency    | DB round-trip   | In-memory (sub-ms)   |
-| Data freshness  | Always current  | TTL-dependent        |
-| Memory          | Low             | Higher (cache heap)  |
-| Complexity      | None            | Config + invalidation|
+| Aspect         | No L2 cache    | L2 cache enabled      |
+| -------------- | -------------- | --------------------- |
+| Read latency   | DB round-trip  | In-memory (sub-ms)    |
+| Data freshness | Always current | TTL-dependent         |
+| Memory         | Low            | Higher (cache heap)   |
+| Complexity     | None           | Config + invalidation |
 
 ---
 
@@ -2693,11 +2697,11 @@ debugging cache behavior requires statistics logging.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | L2 cache stores entity objects | L2 stores dehydrated column values (a "disassembled state"), not Java objects. Hibernate re-hydrates on every hit. |
-| 2 | Enabling L2 cache automatically caches all entities | L2 is opt-in per entity. Only entities annotated with `@Cacheable` (and `@Cache`) are cached. |
-| 3 | L2 cache works for JPQL query results | Entity L2 caches `find()` by ID only. For query result caching, enable `hibernate.cache.use_query_cache=true` separately. |
+| #   | Misconception                                       | Reality                                                                                                                   |
+| --- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| 1   | L2 cache stores entity objects                      | L2 stores dehydrated column values (a "disassembled state"), not Java objects. Hibernate re-hydrates on every hit.        |
+| 2   | Enabling L2 cache automatically caches all entities | L2 is opt-in per entity. Only entities annotated with `@Cacheable` (and `@Cache`) are cached.                             |
+| 3   | L2 cache works for JPQL query results               | Entity L2 caches `find()` by ID only. For query result caching, enable `hibernate.cache.use_query_cache=true` separately. |
 
 ---
 
@@ -2934,11 +2938,11 @@ migration.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | JOINED is always better because it is normalized | Normalization is a goal, not a mandate. SINGLE_TABLE is intentionally denormalized for polymorphic query performance. |
-| 2 | TABLE_PER_CLASS is clean and independent | TABLE_PER_CLASS breaks shared sequences, requires UNION ALL for polymorphic queries, and is poorly supported by some providers |
-| 3 | You can switch strategies easily later | Switching inheritance strategy requires schema migration (table restructuring), data migration, and query rewriting |
+| #   | Misconception                                    | Reality                                                                                                                        |
+| --- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | JOINED is always better because it is normalized | Normalization is a goal, not a mandate. SINGLE_TABLE is intentionally denormalized for polymorphic query performance.          |
+| 2   | TABLE_PER_CLASS is clean and independent         | TABLE_PER_CLASS breaks shared sequences, requires UNION ALL for polymorphic queries, and is poorly supported by some providers |
+| 3   | You can switch strategies easily later           | Switching inheritance strategy requires schema migration (table restructuring), data migration, and query rewriting            |
 
 ---
 
@@ -3146,12 +3150,12 @@ wasted queries or memory; maximum flexibility.
 more repository methods; must remember to JOIN FETCH
 associations before accessing them.
 
-| Aspect         | All EAGER       | All LAZY + JOIN FETCH |
-| -------------- | --------------- | --------------------- |
-| Query count    | 1 (but heavy)   | 1 (targeted)          |
-| Data loaded    | Everything      | Only what's needed    |
-| Code effort    | Minimal         | One query per use case|
-| Risk           | Fetch storms    | Forgot JOIN FETCH -> N+1 |
+| Aspect      | All EAGER     | All LAZY + JOIN FETCH    |
+| ----------- | ------------- | ------------------------ |
+| Query count | 1 (but heavy) | 1 (targeted)             |
+| Data loaded | Everything    | Only what's needed       |
+| Code effort | Minimal       | One query per use case   |
+| Risk        | Fetch storms  | Forgot JOIN FETCH -> N+1 |
 
 ---
 
@@ -3179,11 +3183,11 @@ associations before accessing them.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | LAZY mappings prevent all N+1 | LAZY prevents eager loading but causes N+1 when you iterate collections without JOIN FETCH |
-| 2 | JOIN FETCH and regular JOIN are the same | JOIN filters results; JOIN FETCH loads the association. A JOIN without FETCH still leaves the collection uninitialized. |
-| 3 | You can JOIN FETCH multiple collections in one query | Fetching multiple `List` collections causes a Cartesian product. Use `Set` or separate queries. |
+| #   | Misconception                                        | Reality                                                                                                                 |
+| --- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| 1   | LAZY mappings prevent all N+1                        | LAZY prevents eager loading but causes N+1 when you iterate collections without JOIN FETCH                              |
+| 2   | JOIN FETCH and regular JOIN are the same             | JOIN filters results; JOIN FETCH loads the association. A JOIN without FETCH still leaves the collection uninitialized. |
+| 3   | You can JOIN FETCH multiple collections in one query | Fetching multiple `List` collections causes a Cartesian product. Use `Set` or separate queries.                         |
 
 ---
 
@@ -3290,7 +3294,7 @@ count, not a single crash.
 4. Loading A triggers B, which triggers all C instances,
    each of which triggers D.
 5. With M instances of C and N instances of D, a single
-   `find(A)` can generate 1 + 1 + M + (M * N) queries.
+   `find(A)` can generate 1 + 1 + M + (M \* N) queries.
 
 ```text
   find(Product)
@@ -3388,12 +3392,12 @@ developers must understand which associations each endpoint
 needs; risks `LazyInitializationException` if Session closes
 early.
 
-| Aspect           | EAGER everywhere    | LAZY + JOIN FETCH    |
-| ---------------- | ------------------- | -------------------- |
-| Queries per req  | 100s (cascading)    | 1-5 (targeted)       |
-| Developer effort | None (bad default)  | One query per use case|
-| Memory per req   | High (full graph)   | Low (needed data)    |
-| Debuggability    | Hard (implicit)     | Easy (explicit SQL)  |
+| Aspect           | EAGER everywhere   | LAZY + JOIN FETCH      |
+| ---------------- | ------------------ | ---------------------- |
+| Queries per req  | 100s (cascading)   | 1-5 (targeted)         |
+| Developer effort | None (bad default) | One query per use case |
+| Memory per req   | High (full graph)  | Low (needed data)      |
+| Debuggability    | Hard (implicit)    | Easy (explicit SQL)    |
 
 ---
 
@@ -3421,11 +3425,11 @@ early.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | EAGER is fine for small related entities | "Small" entities have their own EAGER associations. The chain grows exponentially regardless of individual entity size. |
-| 2 | JPA defaults are production-safe | `@ManyToOne` and `@OneToOne` default to EAGER. These defaults are widely considered a JPA specification mistake. |
-| 3 | Fixing EAGER requires refactoring the entire codebase | Start by overriding `@ManyToOne` and `@OneToOne` to LAZY. Then add JOIN FETCH to queries that break. |
+| #   | Misconception                                         | Reality                                                                                                                 |
+| --- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| 1   | EAGER is fine for small related entities              | "Small" entities have their own EAGER associations. The chain grows exponentially regardless of individual entity size. |
+| 2   | JPA defaults are production-safe                      | `@ManyToOne` and `@OneToOne` default to EAGER. These defaults are widely considered a JPA specification mistake.        |
+| 3   | Fixing EAGER requires refactoring the entire codebase | Start by overriding `@ManyToOne` and `@OneToOne` to LAZY. Then add JOIN FETCH to queries that break.                    |
 
 ---
 
@@ -3631,12 +3635,12 @@ relationship management.
 to always use sync methods; mutable setters on child side
 must exist.
 
-| Aspect              | Direct collection access | Sync methods        |
-| ------------------- | ------------------------ | ------------------- |
-| In-memory consistency | Broken               | Guaranteed          |
-| FK correctness      | Depends on which side    | Always correct      |
-| API clarity         | Error-prone              | Intent-revealing    |
-| Boilerplate         | None                     | 2 methods per rel.  |
+| Aspect                | Direct collection access | Sync methods       |
+| --------------------- | ------------------------ | ------------------ |
+| In-memory consistency | Broken                   | Guaranteed         |
+| FK correctness        | Depends on which side    | Always correct     |
+| API clarity           | Error-prone              | Intent-revealing   |
+| Boilerplate           | None                     | 2 methods per rel. |
 
 ---
 
@@ -3664,11 +3668,11 @@ must exist.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | Adding to the collection is enough to set the FK | Only the owning side (`@ManyToOne`) writes the FK. Collection modifications on the inverse side are ignored by Hibernate. |
-| 2 | Setting the owning side is enough | It persists correctly, but the in-memory collection is stale until the Session is refreshed. Both sides must be updated. |
-| 3 | Sync methods are optional nice-to-haves | Without sync methods, every call site must remember to update both sides. One forgotten update = data inconsistency. |
+| #   | Misconception                                    | Reality                                                                                                                   |
+| --- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Adding to the collection is enough to set the FK | Only the owning side (`@ManyToOne`) writes the FK. Collection modifications on the inverse side are ignored by Hibernate. |
+| 2   | Setting the owning side is enough                | It persists correctly, but the in-memory collection is stale until the Session is refreshed. Both sides must be updated.  |
+| 3   | Sync methods are optional nice-to-haves          | Without sync methods, every call site must remember to update both sides. One forgotten update = data inconsistency.      |
 
 ---
 
@@ -3885,12 +3889,12 @@ layers (controller, service, persistence).
 from DDL); custom constraints require implementation classes;
 validation groups add complexity.
 
-| Aspect            | DDL constraints only | Bean Validation      |
-| ----------------- | -------------------- | -------------------- |
-| Error clarity     | Cryptic SQL errors   | Clear Java messages  |
-| Validation timing | After SQL execution  | Before SQL generation|
-| Reusability       | DB-only              | Any Java layer       |
-| Maintenance       | DDL + Java separate  | Annotations in entity|
+| Aspect            | DDL constraints only | Bean Validation       |
+| ----------------- | -------------------- | --------------------- |
+| Error clarity     | Cryptic SQL errors   | Clear Java messages   |
+| Validation timing | After SQL execution  | Before SQL generation |
+| Reusability       | DB-only              | Any Java layer        |
+| Maintenance       | DDL + Java separate  | Annotations in entity |
 
 ---
 
@@ -3919,11 +3923,11 @@ validation groups add complexity.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | `@Column(nullable = false)` validates in Java | `@Column(nullable=false)` only affects DDL generation. Use `@NotNull` for Java validation. |
-| 2 | Hibernate Validator requires Hibernate ORM | Hibernate Validator is a standalone library. It works with any JPA provider or even without JPA. |
-| 3 | Validation happens automatically everywhere | Auto-validation fires on JPA lifecycle events. In REST controllers, you must explicitly use `@Valid` or `@Validated`. |
+| #   | Misconception                                 | Reality                                                                                                               |
+| --- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| 1   | `@Column(nullable = false)` validates in Java | `@Column(nullable=false)` only affects DDL generation. Use `@NotNull` for Java validation.                            |
+| 2   | Hibernate Validator requires Hibernate ORM    | Hibernate Validator is a standalone library. It works with any JPA provider or even without JPA.                      |
+| 3   | Validation happens automatically everywhere   | Auto-validation fires on JPA lifecycle events. In REST controllers, you must explicitly use `@Valid` or `@Validated`. |
 
 ---
 
@@ -3962,7 +3966,7 @@ coupled.
 ### 📇 Revision Card
 
 1. `@NotNull` validates in Java (before SQL). `@Column
-   (nullable=false)` validates in DDL (after SQL). Use both.
+(nullable=false)` validates in DDL (after SQL). Use both.
 2. Hibernate Validator auto-integrates with JPA lifecycle
    events (pre-persist, pre-update).
 3. Hibernate Validator is independent from Hibernate ORM -
@@ -4137,11 +4141,11 @@ verification builds debugging skills.
 **Cost:** Time investment; requires a working project setup
 (H2, persistence.xml, SQL logging).
 
-| Aspect           | Reading only     | Hands-on exercise   |
-| ---------------- | ---------------- | ------------------- |
-| Error recognition| Theoretical      | Experiential        |
-| Retention        | Low              | High                |
-| Debug confidence | None             | Built from practice |
+| Aspect            | Reading only | Hands-on exercise   |
+| ----------------- | ------------ | ------------------- |
+| Error recognition | Theoretical  | Experiential        |
+| Retention         | Low          | High                |
+| Debug confidence  | None         | Built from practice |
 
 ---
 
@@ -4169,11 +4173,11 @@ verification builds debugging skills.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | You can learn mappings by reading alone | Until you see a null FK in the database from a missing sync method, the concept is abstract |
-| 2 | The exercise works without SQL logging | Without `show_sql=true`, you cannot verify what Hibernate generates. Logging is mandatory for learning. |
-| 3 | The first attempt should be correct | The learning value comes from making mistakes and observing the consequences. Intentionally break things. |
+| #   | Misconception                           | Reality                                                                                                   |
+| --- | --------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| 1   | You can learn mappings by reading alone | Until you see a null FK in the database from a missing sync method, the concept is abstract               |
+| 2   | The exercise works without SQL logging  | Without `show_sql=true`, you cannot verify what Hibernate generates. Logging is mandatory for learning.   |
+| 3   | The first attempt should be correct     | The learning value comes from making mistakes and observing the consequences. Intentionally break things. |
 
 ---
 
@@ -4378,11 +4382,11 @@ filter composition; no injection risk; pagination support.
 **Cost:** Verbose compared to JPQL for simple cases; requires
 Metamodel setup for true type safety.
 
-| Aspect         | JPQL string    | Criteria API     | Querydsl       |
-| -------------- | -------------- | ---------------- | -------------- |
-| Dynamic filters| Fragile concat | Predicate list   | Fluent builder |
-| Type safety    | None           | With Metamodel   | Built-in       |
-| Readability    | High           | Low              | High           |
+| Aspect          | JPQL string    | Criteria API   | Querydsl       |
+| --------------- | -------------- | -------------- | -------------- |
+| Dynamic filters | Fragile concat | Predicate list | Fluent builder |
+| Type safety     | None           | With Metamodel | Built-in       |
+| Readability     | High           | Low            | High           |
 
 ---
 
@@ -4409,11 +4413,11 @@ Metamodel setup for true type safety.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | Criteria API prevents all query bugs | It prevents syntax bugs. Logic bugs (wrong join, missing filter) are still possible. |
-| 2 | The exercise is complete without pagination | Production search endpoints always need pagination. Add `setFirstResult` and `setMaxResults`. |
-| 3 | `root.get("field")` is type-safe | String-based field names fail at runtime. Use JPA Metamodel (`Product_.name`) for compile-time safety. |
+| #   | Misconception                               | Reality                                                                                                |
+| --- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| 1   | Criteria API prevents all query bugs        | It prevents syntax bugs. Logic bugs (wrong join, missing filter) are still possible.                   |
+| 2   | The exercise is complete without pagination | Production search endpoints always need pagination. Add `setFirstResult` and `setMaxResults`.          |
+| 3   | `root.get("field")` is type-safe            | String-based field names fail at runtime. Use JPA Metamodel (`Product_.name`) for compile-time safety. |
 
 ---
 
@@ -4596,11 +4600,11 @@ discipline.
 **Cost:** Significant time investment; many moving parts;
 requires understanding of all preceding keywords.
 
-| Phase          | Entities | Concepts practiced               |
-| -------------- | -------- | -------------------------------- |
-| Phase 1        | 1        | CRUD, lifecycle, config          |
-| Phase 2        | 4        | Relationships, fetch, DTO        |
-| Phase 3 (L3)   | 4+       | Performance, N+1, locking        |
+| Phase        | Entities | Concepts practiced        |
+| ------------ | -------- | ------------------------- |
+| Phase 1      | 1        | CRUD, lifecycle, config   |
+| Phase 2      | 4        | Relationships, fetch, DTO |
+| Phase 3 (L3) | 4+       | Performance, N+1, locking |
 
 ---
 
@@ -4629,11 +4633,11 @@ requires understanding of all preceding keywords.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | Returning entities from REST controllers is fine | Entities have lazy proxies and bidirectional references that break JSON serialization. Always use DTOs. |
-| 2 | Phase 2 is optional if you understood the annotations | Annotations are theory. Building and debugging a multi-entity app is the practice that creates retention. |
-| 3 | SQL logging is only for Phase 1 | SQL logging is even MORE critical in Phase 2. Every JOIN FETCH and N+1 pattern must be verified. |
+| #   | Misconception                                         | Reality                                                                                                   |
+| --- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| 1   | Returning entities from REST controllers is fine      | Entities have lazy proxies and bidirectional references that break JSON serialization. Always use DTOs.   |
+| 2   | Phase 2 is optional if you understood the annotations | Annotations are theory. Building and debugging a multi-entity app is the practice that creates retention. |
+| 3   | SQL logging is only for Phase 1                       | SQL logging is even MORE critical in Phase 2. Every JOIN FETCH and N+1 pattern must be verified.          |
 
 ---
 
@@ -4874,11 +4878,11 @@ genuine understanding (not just memorization).
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | Memorizing annotation names is sufficient | Interviewers test "what SQL does this generate" and "what happens if you change X." Prediction > memorization. |
-| 2 | Fetch strategy is a minor topic | Fetch strategy (LAZY/EAGER/JOIN FETCH) is the #1 Hibernate interview topic at every level |
-| 3 | You only need to know JPA, not Hibernate specifics | Most interviews ask about Hibernate-specific features: `@BatchSize`, `@Filter`, `StatelessSession`, `show_sql` |
+| #   | Misconception                                      | Reality                                                                                                        |
+| --- | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| 1   | Memorizing annotation names is sufficient          | Interviewers test "what SQL does this generate" and "what happens if you change X." Prediction > memorization. |
+| 2   | Fetch strategy is a minor topic                    | Fetch strategy (LAZY/EAGER/JOIN FETCH) is the #1 Hibernate interview topic at every level                      |
+| 3   | You only need to know JPA, not Hibernate specifics | Most interviews ask about Hibernate-specific features: `@BatchSize`, `@Filter`, `StatelessSession`, `show_sql` |
 
 ---
 
@@ -4972,12 +4976,12 @@ The goal is to not need it.
 
 **Relationship defaults:**
 
-| Annotation     | Default Fetch | FK side  | Owns FK?  |
-| -------------- | ------------- | -------- | --------- |
-| `@ManyToOne`   | EAGER         | This     | Yes       |
-| `@OneToMany`   | LAZY          | Other    | No (inv.) |
-| `@OneToOne`    | EAGER         | Declared | Depends   |
-| `@ManyToMany`  | LAZY          | Join tbl | Declared  |
+| Annotation    | Default Fetch | FK side  | Owns FK?  |
+| ------------- | ------------- | -------- | --------- |
+| `@ManyToOne`  | EAGER         | This     | Yes       |
+| `@OneToMany`  | LAZY          | Other    | No (inv.) |
+| `@OneToOne`   | EAGER         | Declared | Depends   |
+| `@ManyToMany` | LAZY          | Join tbl | Declared  |
 
 **Cascade rules:**
 
@@ -5086,11 +5090,11 @@ useful during code reviews and pre-interview prep.
 **Cost:** Compression sacrifices explanation depth; should not
 replace understanding of the underlying keywords.
 
-| Usage            | Value        | Risk             |
-| ---------------- | ------------ | ---------------- |
-| Pre-interview    | High recall  | Shallow if only source |
-| Code review      | Fast checks  | Misses context   |
-| Daily reference  | Quick lookup | Dependency risk  |
+| Usage           | Value        | Risk                   |
+| --------------- | ------------ | ---------------------- |
+| Pre-interview   | High recall  | Shallow if only source |
+| Code review     | Fast checks  | Misses context         |
+| Daily reference | Quick lookup | Dependency risk        |
 
 ---
 
@@ -5118,11 +5122,11 @@ replace understanding of the underlying keywords.
 
 ### ⚠️ Top Traps
 
-| # | Misconception | Reality |
-| - | ------------- | ------- |
-| 1 | This card replaces studying the keywords | It is a recall aid, not a learning tool. If you rely on it without understanding, interviews will expose the gaps. |
-| 2 | All facts here are version-independent | Some defaults changed between Hibernate 5 and 6 (e.g., `GenerationType.AUTO` behavior). Verify against your version. |
-| 3 | The card covers everything | This covers L2 mapping essentials only. L3 (performance) and L4 (internals) have their own patterns. |
+| #   | Misconception                            | Reality                                                                                                              |
+| --- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| 1   | This card replaces studying the keywords | It is a recall aid, not a learning tool. If you rely on it without understanding, interviews will expose the gaps.   |
+| 2   | All facts here are version-independent   | Some defaults changed between Hibernate 5 and 6 (e.g., `GenerationType.AUTO` behavior). Verify against your version. |
+| 3   | The card covers everything               | This covers L2 mapping essentials only. L3 (performance) and L4 (internals) have their own patterns.                 |
 
 ---
 

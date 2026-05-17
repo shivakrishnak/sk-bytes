@@ -1,7 +1,88 @@
 ---
 description: "Custom agent for sk-learn. Routes work to tri-template content generation, keyword generation, validation, ladder building. Triggers: /learn, new topic, fill keyword, validate file."
 tools:
-  [vscode/installExtension, vscode/memory, vscode/newWorkspace, vscode/resolveMemoryFileUri, vscode/runCommand, vscode/vscodeAPI, vscode/extensions, vscode/askQuestions, vscode/toolSearch, execute/runNotebookCell, execute/executionSubagent, execute/getTerminalOutput, execute/killTerminal, execute/sendToTerminal, execute/createAndRunTask, execute/runInTerminal, execute/runTests, read/getNotebookSummary, read/problems, read/readFile, read/viewImage, read/terminalSelection, read/terminalLastCommand, agent/runSubagent, edit/createDirectory, edit/createFile, edit/createJupyterNotebook, edit/editFiles, edit/editNotebook, edit/rename, search/codebase, search/fileSearch, search/listDirectory, search/textSearch, search/usages, web/fetch, web/githubRepo, web/githubTextSearch, browser/openBrowserPage, browser/readPage, browser/screenshotPage, browser/navigatePage, browser/clickElement, browser/dragElement, browser/hoverElement, browser/typeInPage, browser/runPlaywrightCode, browser/handleDialog, pylance-mcp-server/pylanceDocString, pylance-mcp-server/pylanceDocuments, pylance-mcp-server/pylanceFileSyntaxErrors, pylance-mcp-server/pylanceImports, pylance-mcp-server/pylanceInstalledTopLevelModules, pylance-mcp-server/pylanceInvokeRefactoring, pylance-mcp-server/pylancePythonEnvironments, pylance-mcp-server/pylanceRunCodeSnippet, pylance-mcp-server/pylanceSettings, pylance-mcp-server/pylanceSyntaxErrors, pylance-mcp-server/pylanceUpdatePythonEnvironment, pylance-mcp-server/pylanceWorkspaceRoots, pylance-mcp-server/pylanceWorkspaceUserFiles, vscode.mermaid-chat-features/renderMermaidDiagram, mermaidchart.vscode-mermaid-chart/get_syntax_docs, mermaidchart.vscode-mermaid-chart/mermaid-diagram-validator, mermaidchart.vscode-mermaid-chart/mermaid-diagram-preview, ms-python.python/getPythonEnvironmentInfo, ms-python.python/getPythonExecutableCommand, ms-python.python/installPythonPackage, ms-python.python/configurePythonEnvironment, vscjava.vscode-java-debug/debugJavaApplication, vscjava.vscode-java-debug/setJavaBreakpoint, vscjava.vscode-java-debug/debugStepOperation, vscjava.vscode-java-debug/getDebugVariables, vscjava.vscode-java-debug/getDebugStackTrace, vscjava.vscode-java-debug/evaluateDebugExpression, vscjava.vscode-java-debug/getDebugThreads, vscjava.vscode-java-debug/removeJavaBreakpoints, vscjava.vscode-java-debug/stopDebugSession, vscjava.vscode-java-debug/getDebugSessionInfo, todo]
+  [
+    vscode/installExtension,
+    vscode/memory,
+    vscode/newWorkspace,
+    vscode/resolveMemoryFileUri,
+    vscode/runCommand,
+    vscode/vscodeAPI,
+    vscode/extensions,
+    vscode/askQuestions,
+    vscode/toolSearch,
+    execute/runNotebookCell,
+    execute/executionSubagent,
+    execute/getTerminalOutput,
+    execute/killTerminal,
+    execute/sendToTerminal,
+    execute/createAndRunTask,
+    execute/runInTerminal,
+    execute/runTests,
+    read/getNotebookSummary,
+    read/problems,
+    read/readFile,
+    read/viewImage,
+    read/terminalSelection,
+    read/terminalLastCommand,
+    agent/runSubagent,
+    edit/createDirectory,
+    edit/createFile,
+    edit/createJupyterNotebook,
+    edit/editFiles,
+    edit/editNotebook,
+    edit/rename,
+    search/codebase,
+    search/fileSearch,
+    search/listDirectory,
+    search/textSearch,
+    search/usages,
+    web/fetch,
+    web/githubRepo,
+    web/githubTextSearch,
+    browser/openBrowserPage,
+    browser/readPage,
+    browser/screenshotPage,
+    browser/navigatePage,
+    browser/clickElement,
+    browser/dragElement,
+    browser/hoverElement,
+    browser/typeInPage,
+    browser/runPlaywrightCode,
+    browser/handleDialog,
+    pylance-mcp-server/pylanceDocString,
+    pylance-mcp-server/pylanceDocuments,
+    pylance-mcp-server/pylanceFileSyntaxErrors,
+    pylance-mcp-server/pylanceImports,
+    pylance-mcp-server/pylanceInstalledTopLevelModules,
+    pylance-mcp-server/pylanceInvokeRefactoring,
+    pylance-mcp-server/pylancePythonEnvironments,
+    pylance-mcp-server/pylanceRunCodeSnippet,
+    pylance-mcp-server/pylanceSettings,
+    pylance-mcp-server/pylanceSyntaxErrors,
+    pylance-mcp-server/pylanceUpdatePythonEnvironment,
+    pylance-mcp-server/pylanceWorkspaceRoots,
+    pylance-mcp-server/pylanceWorkspaceUserFiles,
+    vscode.mermaid-chat-features/renderMermaidDiagram,
+    mermaidchart.vscode-mermaid-chart/get_syntax_docs,
+    mermaidchart.vscode-mermaid-chart/mermaid-diagram-validator,
+    mermaidchart.vscode-mermaid-chart/mermaid-diagram-preview,
+    ms-python.python/getPythonEnvironmentInfo,
+    ms-python.python/getPythonExecutableCommand,
+    ms-python.python/installPythonPackage,
+    ms-python.python/configurePythonEnvironment,
+    vscjava.vscode-java-debug/debugJavaApplication,
+    vscjava.vscode-java-debug/setJavaBreakpoint,
+    vscjava.vscode-java-debug/debugStepOperation,
+    vscjava.vscode-java-debug/getDebugVariables,
+    vscjava.vscode-java-debug/getDebugStackTrace,
+    vscjava.vscode-java-debug/evaluateDebugExpression,
+    vscjava.vscode-java-debug/getDebugThreads,
+    vscjava.vscode-java-debug/removeJavaBreakpoints,
+    vscjava.vscode-java-debug/stopDebugSession,
+    vscjava.vscode-java-debug/getDebugSessionInfo,
+    todo,
+  ]
 ---
 
 # /learn - Generation Agent (sk-learn v1.0)
@@ -40,16 +121,16 @@ COMPLEX) auto-selected from each keyword's level.
 
 ## Capabilities
 
-| Intent                                  | Behaviour                                                                 |
-| --------------------------------------- | ------------------------------------------------------------------------- |
-| "new topic X"                           | Run keyword generator workflow; emit folder + index + sub-topic stubs.    |
+| Intent                                  | Behaviour                                                                                                                |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| "new topic X"                           | Run keyword generator workflow; emit folder + index + sub-topic stubs.                                                   |
 | "fill `<file>`"                         | Read `keywords:` from YAML; per keyword detect tier; write tier template. If file has 10+ COMPLEX keywords, split first. |
-| "split `<file>`"                        | Split file with 10+ COMPLEX keywords into files of 5-7 each. |
-| "fill keyword `<name>` in `<file>`"     | Locate keyword block; rewrite per its tier template.                      |
-| "validate `<path>`"                     | Run `validate-learn.py`; fix every error.                                 |
-| "build ladder for `<topic>`"            | Topologically sort by S11/S15 Learning Ladder; emit `learning-path.md`.   |
-| "upgrade `<file>` to v1.0"              | Diff against tier templates; rewrite missing/wrong sections.              |
-| "add unlearn keyword `<misconception>`" | Apply Rule 24; place at L1 or L3-L4.                                      |
+| "split `<file>`"                        | Split file with 10+ COMPLEX keywords into files of 5-7 each.                                                             |
+| "fill keyword `<name>` in `<file>`"     | Locate keyword block; rewrite per its tier template.                                                                     |
+| "validate `<path>`"                     | Run `validate-learn.py`; fix every error.                                                                                |
+| "build ladder for `<topic>`"            | Topologically sort by S11/S15 Learning Ladder; emit `learning-path.md`.                                                  |
+| "upgrade `<file>` to v1.0"              | Diff against tier templates; rewrite missing/wrong sections.                                                             |
+| "add unlearn keyword `<misconception>`" | Apply Rule 24; place at L1 or L3-L4.                                                                                     |
 
 ## Tier routing (every keyword)
 

@@ -18,7 +18,7 @@ PROVENANCE:      user request via /learn: "hibernate"
 TIER:            tier-2-data
 FOLDER:          learn/hibernate/
 LEVELS:          L0 + L1 + L2 + L3 + L4 + L5 + L6 + META
-TOTAL:           115 keywords across 5 sub-topic files
+TOTAL:           115 keywords across 7 sub-topic files
 GENERATED_FROM:  LEARN_KEYWORD_GENERATOR.md v1.0
 ═══════════════════════════════════════════════════════
 ```
@@ -40,13 +40,15 @@ per `LEARN_PROMPT.md` v1.0 (tri-template auto-routing).
 
 ## Sub-topic files
 
-| File                                                                                        | Keywords | Levels         | Status |
-| ------------------------------------------------------------------------------------------- | -------- | -------------- | ------ |
-| [Hibernate - Foundations](Hibernate%20-%20Foundations.md)                                   | 22       | L0 + L1        | stub   |
-| [Hibernate - Mappings and Queries](Hibernate%20-%20Mappings%20and%20Queries.md)             | 21       | L2             | stub   |
-| [Hibernate - Performance and Internals](Hibernate%20-%20Performance%20and%20Internals.md)   | 28       | L3             | stub   |
-| [Hibernate - Production and Diagnostics](Hibernate%20-%20Production%20and%20Diagnostics.md) | 22       | L4             | stub   |
-| [Hibernate - Architecture and META](Hibernate%20-%20Architecture%20and%20META.md)           | 22       | L5 + L6 + META | stub   |
+| File                                                                                                          | Keywords | Levels         | Status |
+| ------------------------------------------------------------------------------------------------------------- | -------- | -------------- | ------ |
+| [Hibernate - Foundations](Hibernate%20-%20Foundations.md)                                                     | 22       | L0 + L1        | stub   |
+| [Hibernate - Mappings and Queries](Hibernate%20-%20Mappings%20and%20Queries.md)                               | 21       | L2             | stub   |
+| [Hibernate - Performance and Internals](Hibernate%20-%20Performance%20and%20Internals.md)                     | 28       | L3             | stub   |
+| [Hibernate - Production and Diagnostics Part 1](Hibernate%20-%20Production%20and%20Diagnostics%20Part%201.md) | 11       | L4             | stub   |
+| [Hibernate - Production and Diagnostics Part 2](Hibernate%20-%20Production%20and%20Diagnostics%20Part%202.md) | 11       | L4             | stub   |
+| [Hibernate - Architecture and META Part 1](Hibernate%20-%20Architecture%20and%20META%20Part%201.md)           | 11       | L5 + L6 + META | stub   |
+| [Hibernate - Architecture and META Part 2](Hibernate%20-%20Architecture%20and%20META%20Part%202.md)           | 11       | L5 + L6 + META | stub   |
 
 ## Keyword table
 
