@@ -519,7 +519,7 @@ def validate_learning_ladder(
         return
     nxt = block.find("\n### ", ll_start + 5)
     ll = block[ll_start:nxt if nxt != -1 else len(block)]
-    refs = re.findall(r"^- ([^\-\n]+?)\s+-\s+", ll, re.MULTILINE)
+    refs = re.findall(r"^- ([^\-\n]+?)[ \t]+-[ \t]+", ll, re.MULTILINE)
     for ref in refs:
         ref = ref.strip()
         if ref.startswith("[FILL"):
