@@ -117,6 +117,11 @@ Rules:
 - Double-quote any title containing `: ` (colon-space).
 - `keywords:` array has **>=5 entries** and matches the order of
   the `# Keyword Name` H1 headings inside the file.
+- **COMPLEX file size limit:** When a file contains 10 or more
+  COMPLEX-tier keywords (L4, L5, L6, META), split it into
+  smaller files of 5-7 COMPLEX keywords each (max 9 per file).
+  COMPLEX content is 1,400-2,000 words per keyword; files with
+  10+ become 14,000-20,000+ words - too large to process.
 - Keywords are separated by the double-rule divider:
   blank line, `---`, blank line, `---`, blank line.
 - A `## Keywords` TOC block MUST appear between the closing

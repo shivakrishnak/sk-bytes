@@ -1489,6 +1489,15 @@ SECTION 3: OUTPUT FORMAT - 14 COMPONENTS
   Use 3-7 clusters per level. Name each cluster clearly.
   List keywords within each cluster in learning order.
 
+  COMPLEX-TIER FILE SIZE LIMIT (non-negotiable):
+  COMPLEX keywords (L4, L5, L6, META) produce 1,400-2,000
+  words each. When a sub-topic file would contain 10 or more
+  COMPLEX-tier keywords, split it into multiple files of 5-7
+  COMPLEX keywords each. Files with 10+ COMPLEX keywords
+  become 14,000-20,000+ words - too large to read and process
+  efficiently. Use descriptive subtopic names for each split.
+  Minimum per file: 5 keywords. Maximum COMPLEX per file: 9.
+
   Format:
 
   ── CLUSTER: [Cluster Name] ──────────────────────────

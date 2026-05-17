@@ -475,6 +475,19 @@ FOLDER STRUCTURE
     - {Topic} - Architecture and Strategy.md
                                        (L5 + L6 + META, >=5)
 
+  COMPLEX-tier file size limit (non-negotiable):
+    COMPLEX keywords (L4, L5, L6, META) produce 1,400-2,000
+    words each. A file with 10+ COMPLEX keywords becomes
+    14,000-20,000+ words - too large to read and process
+    efficiently. When a sub-topic file would contain 10 or
+    more COMPLEX-tier keywords, split it into smaller files
+    of 5-7 COMPLEX keywords each. Use descriptive subtopic
+    names for each split (e.g. "Architecture and META" splits
+    into "Architecture Part 1" and "Architecture Part 2", or
+    better: "Architecture - Internals" and
+    "Architecture - Strategy").
+    Minimum per file: 5 keywords. Maximum COMPLEX per file: 9.
+
 ----------------------------------------------------------------
 KEYWORD LEVEL COVERAGE (MANDATORY)
 ----------------------------------------------------------------

@@ -40,6 +40,11 @@ generator = v1.0. Three templates auto-selected by keyword level:
 | INTERMEDIATE | L2, L3        | 13       | 900-1,300   |
 | COMPLEX      | L4,L5,L6,META | 16       | 1,400-2,000 |
 
+**COMPLEX file size limit:** When a sub-topic file contains
+10+ COMPLEX-tier keywords, split it into files of 5-7 COMPLEX
+keywords each (max 9). COMPLEX content is 1,400-2,000 words
+per keyword - files with 10+ become too large to process.
+
 **NON-NEGOTIABLE:** Any list of concepts, sub-topics, keywords,
 roadmap nodes, or learning paths - for any skill, language,
 framework, CS topic, free-text blob, or job description - MUST

@@ -26,6 +26,18 @@ L2, L3            -> INTERMEDIATE  13 sections, 900-1,300 words
 L4, L5, L6, META  -> COMPLEX       16 sections, 1,400-2,000 words
 ```
 
+## Pre-fill check (non-negotiable)
+
+Before filling any file, count its COMPLEX-tier keywords
+(L4, L5, L6, META). If count >= 10, do NOT fill. Instead:
+1. Split the file into smaller files of 5-7 COMPLEX each.
+2. Update frontmatter and TOC for each split file.
+3. Update the topic index.md.
+4. Then fill each smaller file separately.
+COMPLEX content is 1,400-2,000 words per keyword; 10+
+COMPLEX in one file produces 14,000-20,000+ words - too
+large to read, process, and maintain.
+
 ## Workflow per file
 
 1. Read the file. Parse YAML frontmatter (`keywords[]`,

@@ -47,6 +47,12 @@ then scaffold the folder + sub-topic stub files.
    - `{Topic} - Foundations.md` (L0 + L1)
    - `{Topic} - {Working Area}.md` (L2-L4)
    - `{Topic} - Architecture and Strategy.md` (L5 + L6 + META)
+   **COMPLEX file size limit:** If any sub-topic file would
+   contain 10+ COMPLEX-tier keywords (L4, L5, L6, META),
+   split it into smaller files of 5-7 COMPLEX keywords each
+   (max 9 per file). COMPLEX content is 1,400-2,000 words
+   per keyword; 10+ becomes too large to process. Use
+   descriptive subtopic names for each split.
 4. Emit:
    - `learn/<topic_slug>/index.md` with the file table.
    - One sub-topic stub `.md` file per group, frontmatter-only,

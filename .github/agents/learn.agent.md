@@ -43,7 +43,8 @@ COMPLEX) auto-selected from each keyword's level.
 | Intent                                  | Behaviour                                                                 |
 | --------------------------------------- | ------------------------------------------------------------------------- |
 | "new topic X"                           | Run keyword generator workflow; emit folder + index + sub-topic stubs.    |
-| "fill `<file>`"                         | Read `keywords:` from YAML; per keyword detect tier; write tier template. |
+| "fill `<file>`"                         | Read `keywords:` from YAML; per keyword detect tier; write tier template. If file has 10+ COMPLEX keywords, split first. |
+| "split `<file>`"                        | Split file with 10+ COMPLEX keywords into files of 5-7 each. |
 | "fill keyword `<name>` in `<file>`"     | Locate keyword block; rewrite per its tier template.                      |
 | "validate `<path>`"                     | Run `validate-learn.py`; fix every error.                                 |
 | "build ladder for `<topic>`"            | Topologically sort by S11/S15 Learning Ladder; emit `learning-path.md`.   |
@@ -61,6 +62,19 @@ level in (L4, L5, L6, META)          -> COMPLEX      (16 sections, 1.4-2k)
 Within a single file, keywords MAY span multiple tiers. Apply
 each keyword's own template; the validator confirms by detecting
 the tier from the actual section markers.
+
+## COMPLEX file size limit (non-negotiable)
+
+COMPLEX keywords produce 1,400-2,000 words each. A file with
+10+ COMPLEX keywords becomes 14,000-20,000+ words - too large
+to read and process efficiently. Before filling a file:
+
+1. Count COMPLEX-tier keywords (L4, L5, L6, META).
+2. If count >= 10, split into files of 5-7 COMPLEX each
+   (max 9 per file, min 5 per file).
+3. Use descriptive subtopic names for each split.
+4. Update the topic index.md after splitting.
+5. Then fill each smaller file separately.
 
 ## Mandatory per-tier deliverables
 
