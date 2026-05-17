@@ -505,7 +505,12 @@ def collect_all_keywords() -> set:
         except Exception:
             continue
         for m in re.finditer(r"^# (.+)$", text, re.MULTILINE):
-            titles.add(m.group(1).strip())
+            full = m.group(1).strip()
+            titles.add(full)
+            # Also add title without code prefix (e.g. HIB-084).
+            short = re.sub(r'^[A-Z]+-\d+\s+', '', full)
+            if short != full:
+                titles.add(short)
     return titles
 
 
@@ -518,8 +523,16 @@ def validate_learning_ladder(
     if ll_start == -1:
         return
     nxt = block.find("\n### ", ll_start + 5)
-    ll = block[ll_start:nxt if nxt != -1 else len(block)]
-    refs = re.findall(r"^- ([^\-\n]+?)[ \t]+-[ \t]+", ll, re.MULTILINE)
+    end = nxt if nxt != -1 else len(block)
+    # S16 closing triplet starts at **The Surprising Truth:**
+    st = block.find("**The Surprising Truth:**", ll_start)
+    if st != -1 and st < end:
+        end = st
+    ll = block[ll_start:end]
+    # Join continuation lines (indented) into their parent
+    # list items so multi-line references are handled.
+    ll = re.sub(r'\n  +', ' ', ll)
+    refs = re.findall(r"^- (.+)[ \t]+-[ \t]+", ll, re.MULTILINE)
     for ref in refs:
         ref = ref.strip()
         if ref.startswith("[FILL"):
