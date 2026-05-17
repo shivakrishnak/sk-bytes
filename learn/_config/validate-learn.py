@@ -529,19 +529,47 @@ def validate_learning_ladder(
     if st != -1 and st < end:
         end = st
     ll = block[ll_start:end]
-    # Join continuation lines (indented) into their parent
-    # list items so multi-line references are handled.
-    ll = re.sub(r'\n  +', ' ', ll)
+    # Join continuation lines (indented, non-bold-label) into
+    # their parent list items so multi-line references work.
+    ll = re.sub(r'\n  +(?!\*\*)', ' ', ll)
     refs = re.findall(r"^- (.+)[ \t]+-[ \t]+", ll, re.MULTILINE)
     for ref in refs:
         ref = ref.strip()
         if ref.startswith("[FILL"):
             continue
-        if ref not in corpus:
-            errors.append(
-                f"[{title}] Learning Ladder references "
-                f"unknown keyword: '{ref}'"
-            )
+        # Skip lines that are bold labels (e.g. **THIS:** or
+        # **Prerequisites:**) - not keyword references.
+        if ref.startswith("**"):
+            continue
+        # Strip trailing level suffixes like (L3), (L4), (L5).
+        ref = re.sub(r'\s*\(L\d\)\s*$', '', ref)
+        # Skip meta-references like "All L3 keywords ..."
+        # or "topic architecture keywords (L5+)".
+        if re.match(r'^All\b', ref, re.IGNORECASE):
+            continue
+        if re.search(r'keywords\s*\(L\d', ref):
+            continue
+        if ref in corpus:
+            continue
+        # Accept prefix match: 'Entity Graphs' matches
+        # 'Entity Graphs (@EntityGraph, @NamedEntityGraph)'.
+        if any(c.startswith(ref) for c in corpus):
+            continue
+        # Strip parenthetical suffixes for base-name matching.
+        base = re.sub(r'\s*\(.*$', '', ref).strip()
+        if len(base.split()) >= 2 and any(base in c for c in corpus):
+            continue
+        # Accept ID-prefixed references where the ID matches
+        # a corpus keyword (title may be paraphrased).
+        id_m = re.match(r'^([A-Z]+-\d+)\s', ref)
+        if id_m:
+            pfx = id_m.group(1) + " "
+            if any(c.startswith(pfx) for c in corpus):
+                continue
+        errors.append(
+            f"[{title}] Learning Ladder references "
+            f"unknown keyword: '{ref}'"
+        )
 
 
 def validate_toc(
