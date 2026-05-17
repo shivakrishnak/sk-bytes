@@ -4,6 +4,7 @@ topic: Hibernate ORM
 subtopic: Mappings and Queries
 layout: default
 parent: Hibernate ORM
+grand_parent: "Learn"
 nav_order: 2
 permalink: /learn/hibernate/mappings-and-queries/
 category: Hibernate ORM
@@ -3556,7 +3557,9 @@ sequenceDiagram
     participant Child
     participant DB
     Code->>Parent: addItem(child)
+grand_parent: "Learn"
     Parent->>Parent: items.add(child)
+grand_parent: "Learn"
     Parent->>Child: setParent(this)
     Note over Child: FK set on owning side
     Code->>DB: flush

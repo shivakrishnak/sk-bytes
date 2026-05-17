@@ -4,6 +4,7 @@ topic: Java JVM
 subtopic: GC Internals and Tuning
 layout: default
 parent: Java JVM
+grand_parent: "Learn"
 nav_order: 3
 permalink: /learn/java-jvm/gc-internals-tuning/
 category: Java JVM

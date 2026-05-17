@@ -4,6 +4,7 @@ topic: Spring Ecosystem
 subtopic: Core and Foundations
 layout: default
 parent: Spring Ecosystem
+grand_parent: "Learn"
 nav_order: 1
 permalink: /learn/spring/core-and-foundations/
 category: Spring Ecosystem

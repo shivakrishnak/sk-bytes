@@ -1,6 +1,7 @@
 ---
 title: Java Concurrency
 layout: default
+parent: "Learn"
 nav_order: 5
 has_children: true
 permalink: /learn/java-concurrency/

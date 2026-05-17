@@ -4,6 +4,7 @@ topic: Java Language
 subtopic: Architecture and META
 layout: default
 parent: Java Language
+grand_parent: "Learn"
 nav_order: 6
 permalink: /learn/java/architecture-and-meta/
 category: Java Language

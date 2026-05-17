@@ -4,6 +4,7 @@ topic: SQL
 subtopic: Foundations
 layout: default
 parent: SQL
+grand_parent: "Learn"
 nav_order: 1
 permalink: /learn/sql/foundations/
 category: SQL
@@ -2092,6 +2093,7 @@ directory.
    row exists; if not, the INSERT fails with a constraint
    violation immediately.
 3. On DELETE from the parent: behavior is set by `ON DELETE` -
+grand_parent: "Learn"
    `RESTRICT` blocks deletion, `CASCADE` deletes all children,
    `SET NULL` clears the FK column.
 4. FK lookups are fast because the referenced column (usually

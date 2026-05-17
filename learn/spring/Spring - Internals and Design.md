@@ -4,6 +4,7 @@ topic: Spring Ecosystem
 subtopic: Internals and Design
 layout: default
 parent: Spring Ecosystem
+grand_parent: "Learn"
 nav_order: 3
 permalink: /learn/spring/internals-and-design/
 category: Spring Ecosystem
@@ -3947,6 +3948,7 @@ The single highest-value monitoring investment is not dashboards, traces, or fan
 ### 🔥 The Problem in One Paragraph
 
 Your team runs a Spring Boot 2.7 application in production. Java 17 LTS is now the baseline, Spring Boot 2.x has reached end of open-source support, and security patches only land on the 3.x line. You attempt a version bump from `spring-boot-starter-parent:2.7.x` to `3.x` and the build produces hundreds of compilation errors: every `javax.servlet`, `javax.persistence`, and `javax.validation` import is unresolved. The Spring Security configuration class no longer compiles because `WebSecurityConfigurerAdapter` was removed. Property keys like `spring.redis.*` are now `spring.data.redis.*`. Half the auto-configuration classes have moved packages. The migration is not a version bump - it is a coordinated update across the Java platform, Jakarta EE, Spring Framework 6, and Spring Security 6 simultaneously. Without a structured plan, teams stall for weeks or ship half-migrated code with runtime failures.
+grand_parent: "Learn"
 
 ### 📘 Textbook Definition
 

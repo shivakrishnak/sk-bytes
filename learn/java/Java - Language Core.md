@@ -4,6 +4,7 @@ topic: Java Language
 subtopic: Language Core
 layout: default
 parent: Java Language
+grand_parent: "Learn"
 nav_order: 1
 permalink: /learn/java/language-core/
 category: Java Language

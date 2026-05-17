@@ -4,6 +4,7 @@ topic: SQL
 subtopic: Design and Optimization
 layout: default
 parent: SQL
+grand_parent: "Learn"
 nav_order: 3
 permalink: /learn/sql/design-and-optimization/
 category: SQL

@@ -4,6 +4,7 @@ topic: SQL
 subtopic: Working Queries
 layout: default
 parent: SQL
+grand_parent: "Learn"
 nav_order: 2
 permalink: /learn/sql/working-queries/
 category: SQL

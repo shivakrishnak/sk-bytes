@@ -1,6 +1,7 @@
 ---
 title: Java JVM
 layout: default
+parent: "Learn"
 nav_order: 4
 has_children: true
 permalink: /learn/java-jvm/

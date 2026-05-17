@@ -50,6 +50,15 @@ REQUIRED_FM_FIELDS = [
     "status", "version",
 ]
 
+# Jekyll / just-the-docs frontmatter fields required for
+# GitHub Pages navigation to work correctly.
+JEKYLL_REQUIRED_CONTENT = [
+    "layout", "parent", "grand_parent", "nav_order", "permalink",
+]
+JEKYLL_REQUIRED_INDEX = [
+    "layout", "parent", "has_children", "nav_order", "permalink",
+]
+
 # ------------------------------------------------------------------
 # Tier section schemas (exact ordered list of `### ` headers).
 # ------------------------------------------------------------------
@@ -248,6 +257,59 @@ def validate_frontmatter(fields: dict, errors: list) -> None:
     version = fields.get("version", "")
     if version not in ("0", "1"):
         errors.append(f"version '{version}' must be 0 or 1")
+
+
+def validate_jekyll_frontmatter(
+    fields: dict, path: Path, errors: list
+) -> None:
+    """Validate just-the-docs frontmatter fields needed for
+    GitHub Pages navigation (3-level hierarchy).
+
+    Hierarchy:
+      learn/index.md          -> title: Learn, has_children: true
+      learn/<topic>/index.md  -> parent: Learn, has_children: true
+      learn/<topic>/<file>.md -> parent: <topic>, grand_parent: Learn
+    """
+    for f in JEKYLL_REQUIRED_CONTENT:
+        if f not in fields:
+            errors.append(
+                f"missing Jekyll frontmatter field: {f} "
+                f"(required for GitHub Pages)"
+            )
+    gp = fields.get("grand_parent", "")
+    if gp and gp != "Learn":
+        errors.append(
+            f"grand_parent is '{gp}' but must be 'Learn'"
+        )
+    if not gp:
+        errors.append(
+            "grand_parent must be 'Learn' for just-the-docs "
+            "3-level navigation"
+        )
+    layout = fields.get("layout", "")
+    if layout and layout != "default":
+        errors.append(
+            f"layout is '{layout}' but must be 'default'"
+        )
+    parent = fields.get("parent", "")
+    topic = fields.get("topic", "")
+    if parent and topic and parent != topic:
+        errors.append(
+            f"parent '{parent}' does not match topic '{topic}'"
+        )
+    permalink = fields.get("permalink", "")
+    if permalink and not permalink.startswith("/learn/"):
+        errors.append(
+            f"permalink '{permalink}' must start with '/learn/'"
+        )
+    nav_order = fields.get("nav_order", "")
+    if nav_order:
+        try:
+            int(nav_order)
+        except ValueError:
+            errors.append(
+                f"nav_order '{nav_order}' must be an integer"
+            )
 
 
 def validate_keyword_order(
@@ -622,6 +684,73 @@ def validate_toc(
 
 
 # ------------------------------------------------------------------
+# Index file validation (topic index.md)
+# ------------------------------------------------------------------
+
+def validate_index_file(path: Path) -> list:
+    """Validate a topic index.md for just-the-docs requirements."""
+    errors: list = []
+    try:
+        text = read_file_text(path)
+    except ValidationError as e:
+        return [str(e)]
+
+    try:
+        fields, _ = parse_frontmatter(text)
+    except ValidationError as e:
+        errors.append(str(e))
+        return errors
+
+    # Determine if this is learn/index.md (root) or topic index.
+    is_root = path.parent.name == "learn"
+
+    title = fields.get("title", "")
+    if not title:
+        errors.append("missing frontmatter field: title")
+
+    layout = fields.get("layout", "")
+    if layout != "default":
+        errors.append(
+            f"layout is '{layout}' but must be 'default'"
+        )
+
+    if "has_children" not in fields:
+        errors.append(
+            "missing frontmatter field: has_children "
+            "(required for just-the-docs navigation)"
+        )
+
+    if "nav_order" not in fields:
+        errors.append("missing frontmatter field: nav_order")
+
+    if "permalink" not in fields:
+        errors.append("missing frontmatter field: permalink")
+
+    if is_root:
+        # learn/index.md must NOT have parent.
+        if "parent" in fields and fields["parent"]:
+            errors.append(
+                "learn/index.md must not have a parent "
+                "(it is the top-level page)"
+            )
+    else:
+        # Topic index must have parent: "Learn".
+        parent = fields.get("parent", "")
+        if not parent:
+            errors.append(
+                "missing frontmatter field: parent "
+                "(must be 'Learn' for topic index)"
+            )
+        elif parent != "Learn":
+            errors.append(
+                f"parent is '{parent}' but must be 'Learn' "
+                f"for topic index"
+            )
+
+    return errors
+
+
+# ------------------------------------------------------------------
 # Driver
 # ------------------------------------------------------------------
 
@@ -642,6 +771,7 @@ def validate_file(path: Path, corpus: set) -> list:
         return errors
 
     validate_frontmatter(fields, errors)
+    validate_jekyll_frontmatter(fields, path, errors)
     blocks = split_keyword_blocks(body)
     status = fields.get("status", "draft")
 
@@ -673,18 +803,43 @@ def validate_file(path: Path, corpus: set) -> list:
 def validate_path(target: Path) -> int:
     corpus = collect_all_keywords()
     if target.is_file():
-        files = [target]
+        if target.name == "index.md":
+            files = []
+            index_files = [target]
+        else:
+            files = [target]
+            index_files = []
     elif target.is_dir():
         files = sorted([
             f for f in target.rglob("*.md")
             if f.name != "index.md" and "_config" not in f.parts
+        ])
+        index_files = sorted([
+            f for f in target.rglob("index.md")
+            if "_config" not in f.parts
         ])
     else:
         print(f"ERROR: path not found: {target}")
         return 1
 
     total_errors = 0
-    print(f"\nValidating {len(files)} file(s)...\n")
+    all_files = index_files + files
+    print(f"\nValidating {len(all_files)} file(s)...\n")
+
+    for f in index_files:
+        errs = validate_index_file(f)
+        try:
+            rel = f.relative_to(BASE)
+        except ValueError:
+            rel = f
+        if errs:
+            print(f"FAIL  {rel}")
+            for e in errs:
+                print(f"   - {e}")
+            total_errors += len(errs)
+        else:
+            print(f"PASS  {rel}")
+
     for f in files:
         errs = validate_file(f, corpus)
         try:
@@ -701,11 +856,11 @@ def validate_path(target: Path) -> int:
 
     print(f"\n{'='*60}")
     if total_errors == 0:
-        print(f"ALL PASS - {len(files)} file(s) validated")
+        print(f"ALL PASS - {len(all_files)} file(s) validated")
         return 0
     print(
         f"FAILED - {total_errors} error(s) across "
-        f"{len(files)} file(s)"
+        f"{len(all_files)} file(s)"
     )
     print(
         "Hint: each keyword's tier is auto-detected. See "

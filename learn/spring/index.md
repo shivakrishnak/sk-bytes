@@ -1,6 +1,7 @@
 ---
 title: Spring Ecosystem
 layout: default
+parent: "Learn"
 nav_order: 6
 has_children: true
 permalink: /learn/spring/

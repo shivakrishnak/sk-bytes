@@ -1,6 +1,7 @@
 ---
 title: Java Language
 layout: default
+parent: "Learn"
 nav_order: 3
 has_children: true
 permalink: /learn/java/

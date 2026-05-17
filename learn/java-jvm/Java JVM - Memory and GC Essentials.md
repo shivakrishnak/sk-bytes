@@ -4,6 +4,7 @@ topic: Java JVM
 subtopic: Memory and GC Essentials
 layout: default
 parent: Java JVM
+grand_parent: "Learn"
 nav_order: 2
 permalink: /learn/java-jvm/memory-gc-essentials/
 category: Java JVM

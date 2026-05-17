@@ -4,6 +4,7 @@ topic: Hibernate ORM
 subtopic: Performance and Internals
 layout: default
 parent: Hibernate ORM
+grand_parent: "Learn"
 nav_order: 3
 permalink: /learn/hibernate/performance-and-internals/
 category: Hibernate ORM

@@ -4,6 +4,7 @@ topic: Spring Ecosystem
 subtopic: Web and Data
 layout: default
 parent: Spring Ecosystem
+grand_parent: "Learn"
 nav_order: 2
 permalink: /learn/spring/web-and-data/
 category: Spring Ecosystem

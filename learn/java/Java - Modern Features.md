@@ -4,6 +4,7 @@ topic: Java Language
 subtopic: Modern Features
 layout: default
 parent: Java Language
+grand_parent: "Learn"
 nav_order: 4
 permalink: /learn/java/modern-features/
 category: Java Language

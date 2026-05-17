@@ -1,6 +1,7 @@
 ---
 title: Hibernate ORM
 layout: default
+parent: "Learn"
 nav_order: 8
 has_children: true
 permalink: /learn/hibernate/

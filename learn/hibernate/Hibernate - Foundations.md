@@ -4,6 +4,7 @@ topic: Hibernate ORM
 subtopic: Foundations
 layout: default
 parent: Hibernate ORM
+grand_parent: "Learn"
 nav_order: 1
 permalink: /learn/hibernate/foundations/
 category: Hibernate ORM

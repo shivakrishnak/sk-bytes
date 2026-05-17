@@ -4,6 +4,7 @@ topic: Java JVM
 subtopic: Runtime Foundations
 layout: default
 parent: Java JVM
+grand_parent: "Learn"
 nav_order: 1
 permalink: /learn/java-jvm/runtime-foundations/
 category: Java JVM

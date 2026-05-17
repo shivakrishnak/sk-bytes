@@ -4,6 +4,7 @@ topic: Java Language
 subtopic: Generics and Collections
 layout: default
 parent: Java Language
+grand_parent: "Learn"
 nav_order: 2
 permalink: /learn/java/generics-and-collections/
 category: Java Language

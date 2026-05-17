@@ -1,6 +1,7 @@
 ---
 title: SQL
 layout: default
+parent: "Learn"
 nav_order: 7
 has_children: true
 permalink: /learn/sql/
