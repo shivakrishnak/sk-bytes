@@ -364,6 +364,16 @@ configured size. With 13 remaining proxies and
    (1, 2, 4, 8, 16...) to cover the remaining count.
 5. Global default: `hibernate.default_batch_fetch_size`
    applies to all entities without per-entity annotation.
+6. The batch algorithm decomposes the remaining proxy count
+   into power-of-two chunks. With 13 remaining and size=25,
+   Hibernate fetches batches of 8, 4, and 1 - three
+   PreparedStatements instead of thirteen. This reduces the
+   number of unique statement forms the database must parse.
+7. Oracle limits IN clauses to 1000 elements. Hibernate
+   respects this by splitting oversized batches. PostgreSQL
+   has no hard IN limit but query plan cost rises beyond
+   ~10,000 parameters. Practical ceiling: 16-32 for most
+   workloads.
 
 ```text
   Without @BatchSize (N=100):
@@ -436,6 +446,20 @@ public class Order {
 }
 ```
 
+**Verifying batch behavior in SQL logs:**
+
+```text
+  -- Enable: hibernate.generate_statistics=true
+  -- With @BatchSize(size=16) and 50 proxies:
+  SELECT ... WHERE id IN (?,?,...,?)  -- 16
+  SELECT ... WHERE id IN (?,?,...,?)  -- 16
+  SELECT ... WHERE id IN (?,?,...,?)  -- 16
+  SELECT ... WHERE id IN (?,?)        -- 2
+  -- Total: 4 queries instead of 50
+  -- Stats log: "50 entities fetched,
+  --             4 JDBC statements executed"
+```
+
 ---
 
 ### ⚖️ Trade-offs
@@ -452,7 +476,13 @@ proxy is accessed.
 | -------------- | ---------------------- | ----------- |
 | No batching    | 100                    | None needed |
 | @BatchSize(25) | ~4-7                   | Annotation  |
+| @BatchSize(16) | ~7                     | Annotation  |
 | JOIN FETCH     | 1                      | Per query   |
+
+Batch size 16 is the most common production default: it stays
+well under Oracle's 1000-element IN limit, aligns with the
+power-of-two algorithm (no remainder splitting), and yields
+PreparedStatement reuse across different query executions.
 
 ---
 
@@ -517,6 +547,15 @@ requires zero code changes and reduces N+1 impact across the
 entire application. Many production applications see 5-10x
 query count reduction from this one property alone.
 
+The power-of-two batch algorithm means `@BatchSize(size=32)`
+does not always fetch 32 at once. With 20 remaining proxies,
+Hibernate issues batches of 16 + 4. This is deliberate:
+reusing a small set of PreparedStatement forms (IN with 1, 2,
+4, 8, 16, 32 params) lets the database cache the parsed plan
+for each form. Arbitrary sizes like `@BatchSize(size=23)`
+defeat this optimization because the remainder splits produce
+unique statement forms the database must re-parse.
+
 ---
 
 ### 📇 Revision Card
@@ -562,6 +601,13 @@ graph** loads specified attributes eagerly and all others per
 their mapping default. Spring Data's `@EntityGraph` annotation
 applies a graph to a repository method.
 
+The JPA 2.1 specification defines entity graphs as hints, not
+directives. This means a JPA provider MAY ignore the graph
+if it cannot honor it efficiently. In practice, Hibernate
+always respects entity graphs, but EclipseLink and OpenJPA
+may silently ignore subgraph definitions they cannot optimize.
+Portability requires testing graph behavior per provider.
+
 ---
 
 ### 🧠 Mental Model
@@ -593,6 +639,15 @@ graph uses mapping defaults for unlisted attributes.
    in the same SQL query.
 4. Fetch graph: listed = EAGER, unlisted = LAZY.
 5. Load graph: listed = EAGER, unlisted = mapping default.
+6. Spring Data defaults to `EntityGraphType.FETCH` when
+   `@EntityGraph` is used without specifying `type`.
+   This forces all unlisted associations to LAZY, even
+   if the mapping says `FetchType.EAGER`. This catches
+   developers who expect EAGER mappings to still apply.
+7. Subgraphs extend the graph into nested associations.
+   `Order -> items -> product` requires a subgraph on
+   `items` that includes `product`. Without the subgraph,
+   `product` remains lazy even though `items` is loaded.
 
 ```text
   Entity graph: [customer, items]
@@ -688,6 +743,13 @@ multiple collections (same as JOIN FETCH).
 | JOIN FETCH   | JPQL string  | @Query only | No       |
 | @EntityGraph | Annotation   | Yes         | Yes      |
 | @BatchSize   | Entity-level | Automatic   | Global   |
+| Programmatic | EntityGraph API | Yes      | Dynamic  |
+
+Programmatic entity graphs via `em.createEntityGraph()`
+allow runtime decisions about which associations to fetch.
+This is useful when different API callers need different
+fetch profiles, but adds code complexity compared to the
+annotation-based approach.
 
 ---
 
@@ -748,6 +810,15 @@ pagination (`Pageable`) silently disable SQL-level pagination.
 Hibernate logs a warning and fetches ALL rows, then paginates
 in Java memory. This is a common production performance trap
 that is invisible without checking the logs.
+
+The fetch graph vs load graph distinction is the most
+misunderstood JPA concept. Teams almost always want a load
+graph (keep EAGER mappings for basic fields like `@Lob` or
+`@Basic(fetch=LAZY)`) but use the default fetch graph
+(which forces LAZY on everything unlisted). The symptom is
+`LazyInitializationException` on fields that "should" be
+loaded. The fix: use `EntityGraphType.LOAD` or explicitly
+list every attribute that must be present.
 
 ---
 
@@ -823,6 +894,19 @@ the JOIN condition.
    persistence context; subsequent access triggers no query.
 5. Cannot use `JOIN FETCH` with pagination on collections
    (Hibernate paginates in memory).
+6. Multiple `JOIN FETCH` on `List` collections produces a
+   Cartesian product. If Order has 5 items and 3 payments,
+   the SQL result has 5 x 3 = 15 rows. Hibernate
+   deduplicates entities but the network transfer and
+   database work scale multiplicatively.
+7. `SELECT DISTINCT o FROM Order o JOIN FETCH o.items`
+   adds SQL DISTINCT in Hibernate 5, which may cause
+   issues with LOB columns or performance. Hibernate 6
+   changed default behavior: it applies DISTINCT at the
+   entity level without adding SQL DISTINCT to the
+   generated query. In Hibernate 5, set
+   `hibernate.query.passDistinctThrough=false` for the
+   same entity-level deduplication behavior.
 
 ```text
   Regular JOIN (filter only):
@@ -903,6 +987,32 @@ SELECT list and initializes the association.
 // Orders without coupons are still included
 ```
 
+**Production: avoiding Cartesian products:**
+
+```java
+// BAD: two List collections = Cartesian product
+// "SELECT o FROM Order o "
+//   + "JOIN FETCH o.items "
+//   + "JOIN FETCH o.payments"
+// 5 items x 3 payments = 15 rows returned
+
+// GOOD: split into two queries
+List<Order> orders = em.createQuery(
+    "SELECT o FROM Order o "
+    + "JOIN FETCH o.items "
+    + "WHERE o.id IN :ids", Order.class)
+    .setParameter("ids", orderIds)
+    .getResultList();
+em.createQuery(
+    "SELECT o FROM Order o "
+    + "JOIN FETCH o.payments "
+    + "WHERE o IN :orders", Order.class)
+    .setParameter("orders", orders)
+    .getResultList();
+// Two queries, no Cartesian product.
+// Persistence context merges both results.
+```
+
 ---
 
 ### ⚖️ Trade-offs
@@ -920,6 +1030,15 @@ query must be JPQL/HQL (not available for derived methods).
 | Loads assoc.   | No (still lazy) | Yes (initialized)    |
 | Result filter  | Yes             | Yes                  |
 | SELECT columns | Parent only     | Parent + association |
+| 2 collections  | Safe            | Cartesian product    |
+| Pagination     | SQL LIMIT       | In-memory (warning)  |
+
+When fetching multiple collections, use `Set` instead of
+`List` to avoid `MultipleBagFetchException`. Hibernate
+refuses to fetch two `List` (bag) collections in one query
+because bag semantics cannot handle Cartesian deduplication.
+`Set` collections have unique semantics that allow safe
+deduplication.
 
 ---
 
@@ -983,6 +1102,16 @@ compiles. It even filters correctly. But the association is
 still lazy. Developers assume JOIN loads the data because
 that is how SQL works. In JPQL, JOIN only filters; JOIN FETCH
 loads.
+
+The Cartesian product from fetching two List collections is
+not just a performance issue - it produces incorrect results.
+If Order has items [A, B] and payments [X, Y], the SQL result
+has 4 rows. Hibernate sees item A paired with rows containing
+payment X and Y, and may duplicate collection entries. This
+is why Hibernate throws `MultipleBagFetchException` for two
+`List` fetches. The fix is either `Set` collections or
+separate queries that let the persistence context merge
+results safely.
 
 ---
 
@@ -1056,6 +1185,17 @@ FETCH). The fix is simple. The detection is the hard part.
 5. Connection pool exhausted. Other endpoints affected.
 6. On-call engineer sees high DB query count in metrics.
 7. Root cause: N+1 pattern in code shipped months ago.
+8. **Detection with p6spy:** p6spy is a JDBC driver wrapper
+   that logs every SQL statement with execution time. It
+   intercepts at the JDBC layer, so it captures queries
+   that Hibernate statistics miss (native queries, stored
+   procedures). Output: timestamped SQL with bind values.
+9. **Detection with statistics:**
+   `hibernate.generate_statistics=true` logs query counts,
+   entity loads, and cache hits per session. The log line
+   "N nanoseconds spent executing M JDBC statements"
+   reveals N+1 when M is unexpectedly high for the
+   operation.
 
 ```text
   Development:  5 rows -> 6 queries -> 6ms   OK
@@ -1136,6 +1276,22 @@ void listOrders_noNPlus1() {
 }
 ```
 
+**Production: p6spy diagnostic output for N+1:**
+
+```text
+  -- p6spy output showing N+1 pattern:
+  2ms|SELECT * FROM orders ...
+  1ms|SELECT * FROM customer WHERE id=?
+  1ms|SELECT * FROM customer WHERE id=?
+  1ms|SELECT * FROM customer WHERE id=?
+  ... (repeated 97 more times)
+  -- Same SELECT, different bind = N+1
+
+  -- Statistics log for N+1 detection:
+  -- "101 JDBC statements executed"
+  -- 101 statements for 100 rows = N+1
+```
+
 ---
 
 ### ⚖️ Trade-offs
@@ -1152,6 +1308,13 @@ tests, and SQL log review discipline.
 | Query count assertions | Medium   | High        |
 | Production monitoring  | Low      | Post-damage |
 | Hibernate statistics   | Low      | High        |
+| p6spy SQL logging      | Low      | High        |
+| Spring Data @Query     | Low      | Per-query   |
+
+p6spy operates at the JDBC layer, capturing all SQL including
+native queries and stored procedures that Hibernate statistics
+cannot track. The cost is ~1-3% overhead per query in
+development; disable in production or use sampling.
 
 ---
 
@@ -1213,6 +1376,15 @@ misconfiguration. They are caused by the simplest possible
 pattern: `findAll()` + iterate + access lazy association. The
 code looks correct, passes tests, and survives code review.
 It only fails under production data volume.
+
+The most reliable N+1 prevention is a three-line integration
+test that asserts query count. Enable
+`hibernate.generate_statistics=true`, call the endpoint,
+check `Statistics.getPrepareStatementCount()`. If a developer
+adds a lazy access that triggers N+1, the test fails in CI
+before the code reaches production. This single test pattern
+prevents more outages than any amount of code review or
+documentation.
 
 ---
 
@@ -1291,6 +1463,20 @@ effects are immediately measurable with statistics.
 true)` skips dirty checking snapshot.
 5. **StatelessSession:** No persistence context, no dirty
    checking, no caching. For bulk operations.
+6. **Query plan cache:** Hibernate parses JPQL/HQL into an
+   AST and translates it to SQL. This parsed plan is cached
+   by query string. String concatenation
+   (`"WHERE id = " + id`) creates a unique string per call,
+   defeating the cache. Parameterized queries
+   (`"WHERE id = :id"`) hit the cache every time. Default
+   cache size: 2048 plans
+   (`hibernate.query.plan_cache_max_size`).
+7. **SQL log analysis:** Enable `hibernate.show_sql=true`
+   and `hibernate.format_sql=true` during development.
+   Count distinct SELECT patterns. Repeated identical
+   patterns with different bind values indicate N+1.
+   Identical patterns with hardcoded values indicate
+   missing parameterization.
 
 ```text
   Tuning ladder (fix in this order):
@@ -1362,6 +1548,19 @@ public List<ReportDTO> generateReport() {
 // No dirty checking snapshot = 15-30% less mem
 ```
 
+**Production: keyset pagination for deep pages:**
+
+```java
+@Query("SELECT o FROM Order o "
+    + "WHERE o.id > :lastId "
+    + "ORDER BY o.id")
+List<Order> findNextPage(
+    @Param("lastId") Long lastId,
+    Pageable pageable);
+// Page 10,000: instant (index seek)
+// vs OFFSET 200,000: scans 200K rows
+```
+
 ---
 
 ### ⚖️ Trade-offs
@@ -1380,6 +1579,15 @@ modification; StatelessSession loses all ORM features.
 | Pagination       | Constant latency    | Deep page degradation  |
 | Read-only        | 15-30% less CPU     | Cannot modify entities |
 | StatelessSession | No context overhead | Loses ORM features     |
+| Plan cache hit   | ~0.5ms saved/query  | Requires parameterized |
+| Keyset paging    | Constant deep-page  | Needs indexed sort col |
+
+For deep pagination, keyset (seek) pagination replaces OFFSET
+with a WHERE clause on the last seen sort value:
+`WHERE id > :lastId ORDER BY id LIMIT 20`. This performs
+constantly regardless of page depth because the database
+uses the index directly instead of scanning and discarding
+OFFSET rows.
 
 ---
 
@@ -1442,6 +1650,16 @@ full entities for lists), and `@Transactional(readOnly=true)`
 performance issues. The remaining 10% involve batching, caching,
 and schema optimization.
 
+Query plan cache misses are an invisible performance tax.
+Each miss parses JPQL, validates against the metamodel,
+builds an AST, and generates SQL. For a query executed
+1000 times per second, a cache miss on every call adds
+measurable latency. The symptom: high CPU in
+`org.hibernate.hql.internal.ast.HqlSqlWalker` in profiler
+output. The fix: parameterize all queries and ensure
+`hibernate.query.plan_cache_max_size` exceeds the number
+of distinct query strings in the application.
+
 ---
 
 ### 📇 Revision Card
@@ -1485,6 +1703,15 @@ projections; query hints (fetch size, timeout, read-only,
 comment); and bulk UPDATE/DELETE statements that bypass the
 persistence context.
 
+Unlike the JPA Criteria API, which builds queries
+programmatically via a type-safe builder pattern, HQL uses
+a string-based syntax that is more readable for complex
+queries. The Criteria API excels at dynamic queries where
+WHERE clauses are conditionally assembled. HQL excels at
+static, complex queries with subqueries and projections.
+Both compile to the same SQL through Hibernate's query
+parser.
+
 ---
 
 ### 🧠 Mental Model
@@ -1515,6 +1742,18 @@ HQL is mostly about knowing the extensions exist.
 WHERE u.lastLogin < :cutoff`. Bypasses persistence context.
 5. **Fetch profiles:** `@FetchProfile` + `session.
 enableFetchProfile("withItems")` for profile-based fetching.
+6. **Query hint types:** `org.hibernate.fetchSize` controls
+   JDBC fetch size (rows buffered per round-trip).
+   `org.hibernate.timeout` sets statement timeout in
+   seconds. `org.hibernate.comment` adds a SQL comment
+   for log tracing. `org.hibernate.readOnly` marks results
+   as immutable (skips snapshot creation).
+7. **Tuple projections:** `SELECT o.id, o.total` returns
+   `Object[]` or JPA `Tuple`. Constructor projection
+   (`SELECT new DTO(...)`) is type-safe and avoids casting.
+   Spring Data also supports interface-based projections
+   via proxy but these are slower than constructor calls
+   due to reflection overhead.
 
 ```text
   Subquery:
@@ -1618,6 +1857,14 @@ equivalents; constructor projections require DTO classes.
 | Constructor proj. | Less memory         | Extra DTO classes |
 | Bulk UPDATE       | No entity loading   | Stale cache       |
 | Query hints       | JDBC tuning         | Provider-specific |
+| Tuple projection  | No DTO class needed | Requires casting  |
+| Criteria API      | Dynamic type-safe   | Verbose for joins |
+
+Constructor projections outperform interface-based (proxy)
+projections in Spring Data. The proxy approach uses runtime
+reflection to map columns to interface methods, adding
+overhead per row. For list endpoints returning hundreds of
+rows, constructor projections measurably reduce response time.
 
 ---
 
@@ -1682,6 +1929,15 @@ snapshot, L1 cache entry) for list endpoints that display 3
 fields. `SELECT new DTO(o.id, o.total, c.name)` eliminates
 all entity overhead and typically halves memory consumption
 for list queries.
+
+Setting `org.hibernate.comment` to an identifier like
+"OrderAPI.list" prepends a SQL comment visible in database
+slow-query logs and `pg_stat_statements`. When a DBA reports
+a slow query, the comment immediately identifies which
+application code generated it. This zero-cost hint bridges
+the gap between Hibernate JPQL and database-side query
+analysis, eliminating the "which code generated this SQL?"
+investigation entirely.
 
 ---
 
