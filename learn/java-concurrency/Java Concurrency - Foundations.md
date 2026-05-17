@@ -68,11 +68,11 @@ permalink: /learn/java-concurrency/foundations/
 
 ### 🟢 What it is
 
-**Concurrency** is a programming model that allows multiple tasks to make progress within overlapping time periods, even on a single core.
+**Concurrency** is a programming model that allows multiple tasks to make progress within overlapping time periods, even on a single core, by interleaving their execution at blocking points.
 
 ### 🎯 Why it exists
 
-Before concurrency, programs ran sequentially: read from disk, wait 10ms, then process. During that 10ms wait the CPU does nothing - millions of wasted cycles. As clock speeds plateaued around 2005, hardware added cores instead of speed. Sequential code cannot use those cores. This is exactly why concurrency exists.
+Before concurrency, programs ran sequentially: read from disk, wait 10ms, then process. During that 10ms wait the CPU does nothing - millions of wasted cycles. A web server handling one request at a time leaves every other user staring at a spinner. As clock speeds plateaued around 2005, hardware added cores instead of speed. Sequential code cannot use those cores. Concurrency lets a single program overlap waits AND leverage multiple cores. This is exactly why concurrency exists.
 
 ### 🧠 Mental Model
 
@@ -86,6 +86,7 @@ Before concurrency, programs ran sequentially: read from disk, wait 10ms, then p
 2. The scheduler suspends that task and switches to another ready task.
 3. When the blocking operation completes, the original task becomes runnable again.
 4. The CPU stays busy instead of idling during waits.
+5. Under load, the OS interleaves hundreds of tasks across available cores, maximizing throughput.
 
 ### ✏️ Minimal Example
 
@@ -117,18 +118,18 @@ Why it's right: both fetches overlap; CPU switches between tasks during I/O wait
 
 **Use when:**
 
-- Tasks spend significant time waiting (I/O-bound work).
-- Multiple independent operations can overlap.
+- Tasks spend significant time waiting (I/O-bound work: network calls, disk reads, database queries).
+- Multiple independent operations can overlap to reduce total latency.
 
 **Avoid when:**
 
-- Work is purely CPU-bound AND single-threaded is fast enough.
-- Added complexity outweighs the latency gain.
+- Work is purely CPU-bound AND single-threaded performance meets requirements.
+- The added complexity (synchronization, debugging, reasoning about interleavings) outweighs the latency gain for your use case.
 
 ### ⚠️ One Gotcha
 
 **Misconception:** "Concurrency makes code faster."
-**Reality:** Concurrency makes code faster ONLY when tasks have idle waits that can overlap. Pure computation on one core gains nothing from concurrency - it adds overhead.
+**Reality:** Concurrency makes code faster ONLY when tasks have idle waits that can overlap. Pure computation on one core gains nothing from concurrency - it adds scheduling overhead and complexity without speedup.
 
 ### 📇 Revision Card
 
@@ -456,24 +457,24 @@ Why it's right: threads share memory directly - zero-copy communication within t
 
 ### 🟢 What it is
 
-**Concurrency** is a program design that enables dealing with multiple things at once. **Parallelism** is a runtime execution mode where multiple things happen at the same physical instant.
+**Concurrency** is a program design that enables dealing with multiple things at once by structuring code to manage interleaved tasks. **Parallelism** is a runtime execution mode where multiple things happen at the same physical instant on separate hardware units.
 
 ### 🎯 Why it exists
 
-The confusion causes engineers to throw threads at CPU-bound problems expecting speedup on single-core containers, or to avoid concurrency entirely for I/O-bound services that desperately need it. Knowing the distinction lets you make the right design choice for the actual workload. This is exactly why this distinction is taught separately.
+The confusion causes engineers to throw threads at CPU-bound problems expecting speedup on single-core containers, or to avoid concurrency entirely for I/O-bound services that desperately need it. A microservice in a container limited to one vCPU gains nothing from parallel streams but benefits enormously from concurrent I/O. Knowing the distinction lets you make the right design choice for the actual workload and the actual hardware budget. This is exactly why this distinction is taught separately.
 
 ### 🧠 Mental Model
 
-> Concurrency: a juggler keeping three balls in the air (one hand, many balls - STRUCTURE). Parallelism: three jugglers each with one ball (many hands, simultaneous - EXECUTION).
+> Concurrency: a juggler keeping three balls in the air (one hand, many balls - STRUCTURE). Parallelism: three jugglers each with one ball (many hands, simultaneous - EXECUTION). You can juggle on a unicycle (one core) but you cannot clone yourself without extra cores.
 
 **Memory hook:** "Concurrency is about the CODE structure. Parallelism is about the HARDWARE executing."
 
 ### ⚙️ How it works
 
 1. Concurrency: program is structured with multiple tasks that can make progress independently.
-2. On one core: tasks interleave (concurrent but not parallel).
+2. On one core: tasks interleave via context switching (concurrent but not parallel).
 3. On multiple cores: tasks can run simultaneously (concurrent AND parallel).
-4. Parallelism without concurrency is possible (SIMD instructions) but uncommon in application code.
+4. Parallelism without concurrency is possible (SIMD instructions, GPU kernels) but uncommon in application-level Java code.
 
 ### ✏️ Minimal Example
 
